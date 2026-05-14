@@ -69,6 +69,7 @@ if DRY_RUN:
     supabase = None
 else:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    supabase.postgrest.auth(SUPABASE_SERVICE_ROLE_KEY)
 
 
 # ────────────────────────────────────────────────────────────────────────────

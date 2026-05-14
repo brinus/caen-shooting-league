@@ -48,8 +48,10 @@ const CSLAuth = {
     const { data, error } = await _supa.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
     _session = data.session
-    const { data: profile } = await _supa.from('profiles').select('*').eq('id', data.user.id).single()
-    _profile = profile
+    // Carica il profilo senza bloccare il redirect — verrà ricaricato al page load successivo
+    _supa.from('profiles').select('*').eq('id', data.user.id).single()
+      .then(({ data: profile }) => { _profile = profile })
+      .catch(() => {})
     return { error: null }
   },
 

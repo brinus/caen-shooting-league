@@ -1,0 +1,88 @@
+# CAEN Shooting League — Stagione 1 · 2026 (1 mag – 31 lug)
+#
+# FORMATO: data,giocatore,iniziali,t1,t2,t3
+#   Ogni riga = una giornata di un giocatore
+#   t1,t2,t3 = punteggio dei 3 tentativi (5 colpi ciascuno, max 50)
+#   -1 = tentativo non effettuato
+#
+# GIORNATE DI GARA: lunedì e mercoledì
+# Gli altri giorni vengono registrati come allenamento (non contano in classifica)
+#
+# ESEMPIO:
+#   2026-05-04,Mario R.,MR,42,38,45
+#   2026-05-04,Anna B.,AB,35,-1,40
+#
+data,giocatore,iniziali,t1,t2,t3
+#---------------------------------
+# Giornata 1 (4 maggio 2026)
+#---------------------------------
+2026-05-04,Andrea Picchi,AP,0,1,3
+2026-05-04,Francesco Pepe,FP,16,10,12
+2026-05-04,Gianluca Becuzzi,GB,9,5,14
+2026-05-04,Alberto Niccolai,AN,6,9,18
+2026-05-04,Chiara Tomaiuolo,CT,3,17,6
+2026-05-04,Matteo Brini,MB,1,12,5
+2026-05-04,Emanuele Bertolucci,EB,12,7,4
+2026-05-04,Tommaso Banchini,TB,7,8,19
+2026-05-04,Antonio Nicolosi,AN,10,1,1
+2026-05-04,Francesco Rogo,FR,12,14,15
+2026-05-04,Andrea Romboli,AR,3,26,-1
+# 2026-05-06,Andrea Strappato,AS,
+2026-05-07,Andrea Della Maggiora,AD,8,7,5
+2026-05-08,Daniele Ninci,DN,6,6,0
+#---------------------------------
+# Giornata 2 (6 maggio 2026)
+#---------------------------------
+2026-05-06,Gianluca Becuzzi,GB,6,10,7
+2026-05-06,Alberto Niccolai,AN,17,19,21
+2026-05-06,Andrea Strappato,AS,3,16,6
+2026-05-06,Matteo Brini,MB,17,14,13
+2026-05-06,Francesco Pepe,FP,3,23,23
+2026-05-06,Andrea Picchi,AP,0,11,2
+2026-05-06,Chiara Tomaiuolo,CT,18,15,13
+2026-05-06,Emanuele Bertolucci,EB,20,10,2
+2026-05-06,Tommaso Banchini,TB,12,14,13
+2026-05-06,Antonio Nicolosi,AN,5,1,18
+2026-05-06,Francesco Rogo,FR,5,8,2
+2026-05-06,Andrea Della Maggiora,AD,5,14,29
+# 2026-05-06,Andrea Romboli,AR,
+2026-05-06,Giovanni Cerretani,GC,3,0,0
+# 2026-05-06,Andrea Romboli,AR,
+#---------------------------------
+# Giornata 3 (11 maggio 2026)
+#---------------------------------
+2026-05-11,Gianluca Becuzzi,GB,21,8,16,
+2026-05-11,Alberto Niccolai,AN,21,13,7
+2026-05-11,Matteo Brini,MB,10,21,7
+2026-05-11,Andrea Picchi,AP,11,8,2
+2026-05-11,Chiara Tomaiuolo,CT,17,9,5
+2026-05-11,Tommaso Banchini,TB,8,9,16
+2026-05-11,Antonio Nicolosi,AN,6,3,13
+2026-05-11,Paolo Masini,PM,10,-1,-1
+# 2026-05-06,Francesco Pepe,FP,
+# 2026-05-06,Andrea Strappato,AS,
+# 2026-05-06,Emanuele Bertolucci,EB,
+# 2026-05-06,Francesco Rogo,FR,
+# 2026-05-06,Andrea Della Maggiora,AD,
+# 2026-05-06,Andrea Romboli,AR,
+# 2026-05-06,Giovanni Cerretani,GC,
+# 2026-05-06,Andrea Romboli,AR,
+#---------------------------------
+# Giornata 4 (13 maggio 2026)
+#---------------------------------
+2026-05-13,Gianluca Becuzzi,GB,9,25,10
+2026-05-13,Alberto Niccolai,AN,20,14,11
+2026-05-13,Andrea Strappato,AS,13,5,15
+2026-05-13,Matteo Brini,MB,19,9,11
+2026-05-13,Andrea Picchi,AP,2,4,0
+2026-05-13,Chiara Tomaiuolo,CT,18,15,14
+2026-05-13,Tommaso Banchini,TB,7,15,10
+2026-05-13,Antonio Nicolosi,AN,1,11,0
+2026-05-13,Andrea Della Maggiora,AD,0,9,2
+2026-05-13,Daniele Ninci,DN,17,23,4
+2026-05-13,Francesco Pepe,FP,6,12,2
+# 2026-05-13,Francesco Rogo,FR,
+# 2026-05-13,Andrea Romboli,AR,
+# 2026-05-13,Giovanni Cerretani,GC,
+# 2026-05-13,Emanuele Bertolucci,EB,
+2026-05-13,Paolo Masini,PM,7,-1,-1

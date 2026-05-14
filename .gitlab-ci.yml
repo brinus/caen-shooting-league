@@ -1,0 +1,10 @@
+pages:
+  stage: deploy
+  image: python:3-alpine
+  script:
+    - python3 scripts/aggiorna.py
+    - mkdir -p public
+    - cp -r index.html classifica.html stats.html sisal.html posts.html post.html regolamento.html css js data risultati csl_logo.png public/
+  publish: public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

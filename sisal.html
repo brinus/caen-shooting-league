@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISAL — CAEN Shooting League</title>
+  <meta name="description" content="Quote fittizie e mercati satirici calcolati sui risultati della CAEN Shooting League.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container container--wide">
+
+      <div class="page-header page-header--sisal">
+        <span class="sisal-kicker">Simulatore non autorizzato</span>
+        <h1>SISAL</h1>
+        <p>Quote completamente fittizie costruite sui risultati reali della lega. Nessuna scommessa vera: solo statistiche che si prendono troppo sul serio.</p>
+      </div>
+
+      <section class="sisal-marquee card">
+        <div>
+          <div class="sisal-marquee-label">Lavagna aperta</div>
+          <div class="sisal-marquee-title" id="sisal-season-title">—</div>
+          <div class="sisal-marquee-meta" id="sisal-season-summary">
+            <span>Quote in caricamento</span>
+          </div>
+        </div>
+        <div class="sisal-progress-wrap">
+          <div class="sisal-progress-label-row">
+            <span class="badge-active" style="background:rgba(73,210,155,0.12);border-color:rgba(73,210,155,0.28);color:var(--sisal-green);animation:none">For fun only</span>
+            <span class="sisal-progress-label" id="sisal-progress-label">—</span>
+          </div>
+          <div class="sisal-progress">
+            <div class="sisal-progress-fill" id="sisal-progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="season-select-wrapper" style="margin-bottom:1.5rem;align-items:center">
+        <label for="sisal-season-select">Stagione:</label>
+        <select id="sisal-season-select"></select>
+        <span class="note" style="color:var(--text-muted);font-size:0.8rem">Mercati principali: titolo, podio, best 30+ e media finale over 18.</span>
+      </div>
+
+      <section>
+        <h2 class="section-title">Lavagna Principale</h2>
+        <div class="sisal-highlight-grid" id="sisal-highlights"></div>
+      </section>
+
+      <section style="margin-bottom:2rem">
+        <div class="lb-tabs-header">
+          <h2 class="section-title" style="margin-bottom:0">Prossima Giornata</h2>
+          <p class="sisal-board-intro" id="sisal-next-copy">—</p>
+        </div>
+        <div class="sisal-next-headline">
+          <div class="sisal-next-title" id="sisal-next-title">—</div>
+          <div class="sisal-next-tag">rigenerata al push</div>
+        </div>
+        <div class="sisal-highlight-grid" id="sisal-next-highlights"></div>
+        <div class="table-wrapper" style="margin-bottom:1rem">
+          <table>
+            <thead>
+              <tr>
+                <th>Giocatore</th>
+                <th>Pos.</th>
+                <th>Vincente</th>
+                <th>Podio</th>
+                <th>Over 25</th>
+                <th>Over 20</th>
+                <th>Segnale</th>
+              </tr>
+            </thead>
+            <tbody id="sisal-next-player-tbody"></tbody>
+          </table>
+        </div>
+        <div class="sisal-specials-grid" id="sisal-next-specials"></div>
+      </section>
+
+      <section style="margin-bottom:2rem">
+        <div class="lb-tabs-header">
+          <h2 class="section-title" style="margin-bottom:0">Quote Giocatori</h2>
+          <p class="sisal-board-intro">Quote piu basse = mercato piu convinto. Le cifre sono serie solo quanto basta per far discutere alla macchinetta del caffe.</p>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Giocatore</th>
+                <th>Pos.</th>
+                <th>Titolo</th>
+                <th>Podio</th>
+                <th>Best 30+</th>
+                <th>Media 18+</th>
+                <th>Segnale</th>
+              </tr>
+            </thead>
+            <tbody id="sisal-player-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style="margin-bottom:2rem">
+        <h2 class="section-title">Mercati Speciali</h2>
+        <div class="sisal-specials-grid" id="sisal-specials"></div>
+      </section>
+
+      <section class="sisal-methodology-card">
+        <div class="sisal-marquee-label">Metodo</div>
+        <h2 style="font-size:1.1rem;color:var(--text);margin-bottom:0.25rem">Come vengono fuori queste assurdita</h2>
+        <ul class="sisal-methodology" id="sisal-methodology"></ul>
+      </section>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="data/data.js"></script>
+  <script src="data/classifica.js"></script>
+  <script src="data/sisal.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

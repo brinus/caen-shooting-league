@@ -1,0 +1,12 @@
+[
+  {
+    "id":          "s1-2026",
+    "nome":        "Stagione 1",
+    "numero":      1,
+    "anno":        2026,
+    "inizio":      "2026-05-01",
+    "fine":        "2026-07-31",
+    "status":      "attiva",
+    "max_recuperi": 4
+  }
+]

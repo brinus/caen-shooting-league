@@ -2,8 +2,8 @@
 // Configurare SUPABASE_URL e SUPABASE_ANON_KEY con i valori del proprio progetto Supabase.
 // La anon key è pubblica per design (protezione tramite RLS nel DB).
 
-const SUPABASE_URL      = 'https://YOUR_PROJECT_REF.supabase.co'
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'
+const SUPABASE_URL      = 'https://uerwrizwqdacnboasznc.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_secret__xto3PfeusF8_JZabMz8bA_8kzk2sI3'
 
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 

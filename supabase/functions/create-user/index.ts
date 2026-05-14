@@ -87,13 +87,14 @@ Deno.serve(async (req: Request) => {
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: `${username}@csl.local`,
       password,
-      email_confirm: true,   // nessuna email di conferma richiesta
+      email_confirm: true,
       user_metadata: {
         username,
         display_name,
         role,
         player_name: player_name || null,
       },
+      app_metadata: { user_role: role },
     })
 
     if (createError) {

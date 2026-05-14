@@ -16,8 +16,10 @@ async function _loadSession() {
   const { data: { session } } = await _supa.auth.getSession()
   _session = session
   if (session) {
-    const { data } = await _supa.from('profiles').select('*').eq('id', session.user.id).single()
-    _profile = data
+    // Non-bloccante: il profilo arriva in background; il ruolo è già nel JWT (app_metadata)
+    _supa.from('profiles').select('*').eq('id', session.user.id).single()
+      .then(({ data }) => { _profile = data; _applyAuthUI() })
+      .catch(() => {})
   } else {
     _profile = null
   }
@@ -34,7 +36,11 @@ const CSLAuth = {
   getProfile() { return _profile },
 
   /** True se l'utente loggato è admin. */
-  isAdmin() { return _profile?.role === 'admin' },
+  isAdmin() {
+    // Prima controlla app_metadata nel JWT (disponibile subito, senza fetch DB)
+    if (_session?.user?.app_metadata?.user_role === 'admin') return true
+    return _profile?.role === 'admin'
+  },
 
   /** True se c'è un utente loggato (qualsiasi ruolo). */
   isLoggedIn() { return !!_session },
@@ -101,11 +107,12 @@ _loadSession().then(() => {
 })
 
 // Ascolta cambiamenti sessione
-_supa.auth.onAuthStateChange(async (event, session) => {
+_supa.auth.onAuthStateChange((event, session) => {
   _session = session
   if (session) {
-    const { data } = await _supa.from('profiles').select('*').eq('id', session.user.id).single()
-    _profile = data
+    _supa.from('profiles').select('*').eq('id', session.user.id).single()
+      .then(({ data }) => { _profile = data; _applyAuthUI() })
+      .catch(() => {})
   } else {
     _profile = null
   }
@@ -124,7 +131,9 @@ function _applyAuthUI() {
   }
 
   const p = CSLAuth.getProfile()
-  const name = p?.display_name || p?.username || '?'
+  const name = p?.display_name || p?.username
+    || _session?.user?.user_metadata?.display_name
+    || _session?.user?.email?.split('@')[0] || '?'
   const adminLink = CSLAuth.isAdmin()
     ? `<a href="admin.html" class="nav-auth-link nav-auth-admin" title="Pannello Admin">⚙ Admin</a>`
     : ''

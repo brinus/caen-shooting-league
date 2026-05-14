@@ -3,7 +3,7 @@
 // La anon key è pubblica per design (protezione tramite RLS nel DB).
 
 const SUPABASE_URL      = 'https://uerwrizwqdacnboasznc.supabase.co'
-const SUPABASE_ANON_KEY = 'sb_secret__xto3PfeusF8_JZabMz8bA_8kzk2sI3'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlcndyaXp3cWRhY25ib2Fzem5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NjQ0NzUsImV4cCI6MjA5NDM0MDQ3NX0.fx1R_H_RFWH9-HaMpLb-8sobHcGBE4v_gUvr8E_dBrM'
 
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 

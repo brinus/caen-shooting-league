@@ -1,0 +1,150 @@
+// CAEN Shooting League — Supabase Client + Auth helpers
+// Configurare SUPABASE_URL e SUPABASE_ANON_KEY con i valori del proprio progetto Supabase.
+// La anon key è pubblica per design (protezione tramite RLS nel DB).
+
+const SUPABASE_URL      = 'https://YOUR_PROJECT_REF.supabase.co'
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'
+
+const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// ── Stato sessione ─────────────────────────────────────────────
+
+let _session  = null
+let _profile  = null
+
+async function _loadSession() {
+  const { data: { session } } = await _supa.auth.getSession()
+  _session = session
+  if (session) {
+    const { data } = await _supa.from('profiles').select('*').eq('id', session.user.id).single()
+    _profile = data
+  } else {
+    _profile = null
+  }
+}
+
+// ── API pubblica ───────────────────────────────────────────────
+
+const CSLAuth = {
+
+  /** Ritorna la sessione corrente (può essere null se non loggati). */
+  getSession() { return _session },
+
+  /** Ritorna il profilo dell'utente loggato (null se non loggati). */
+  getProfile() { return _profile },
+
+  /** True se l'utente loggato è admin. */
+  isAdmin() { return _profile?.role === 'admin' },
+
+  /** True se c'è un utente loggato (qualsiasi ruolo). */
+  isLoggedIn() { return !!_session },
+
+  /**
+   * Login con username + password.
+   * @returns {Promise<{error: string|null}>}
+   */
+  async signIn(username, password) {
+    const email = `${username.trim().toLowerCase()}@csl.local`
+    const { data, error } = await _supa.auth.signInWithPassword({ email, password })
+    if (error) return { error: error.message }
+    _session = data.session
+    const { data: profile } = await _supa.from('profiles').select('*').eq('id', data.user.id).single()
+    _profile = profile
+    return { error: null }
+  },
+
+  /** Logout. */
+  async signOut() {
+    await _supa.auth.signOut()
+    _session = null
+    _profile = null
+    window.location.href = 'index.html'
+  },
+
+  /**
+   * Crea un nuovo account utente (solo admin, via Edge Function).
+   * @param {{ username, password, display_name, role?, player_name? }} opts
+   * @returns {Promise<{error: string|null, user_id?: string}>}
+   */
+  async createUser(opts) {
+    if (!_session) return { error: 'Non sei autenticato' }
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${_session.access_token}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(opts),
+    })
+    const json = await res.json()
+    if (!res.ok) return { error: json.error || 'Errore creazione utente' }
+    return { error: null, user_id: json.user_id }
+  },
+
+  /** Cambia password di un utente (admin) — usa Edge Function o Supabase Admin API se necessario. */
+  async updatePassword(newPassword) {
+    const { error } = await _supa.auth.updateUser({ password: newPassword })
+    return { error: error?.message || null }
+  },
+
+  // ── Accesso client Supabase per query dirette ──────────────
+  get client() { return _supa },
+}
+
+// Inizializza al caricamento
+_loadSession().then(() => {
+  document.dispatchEvent(new CustomEvent('csl:auth-ready', { detail: { profile: _profile } }))
+  _applyAuthUI()
+})
+
+// Ascolta cambiamenti sessione
+_supa.auth.onAuthStateChange(async (event, session) => {
+  _session = session
+  if (session) {
+    const { data } = await _supa.from('profiles').select('*').eq('id', session.user.id).single()
+    _profile = data
+  } else {
+    _profile = null
+  }
+  _applyAuthUI()
+})
+
+// ── UI dinamica nav ────────────────────────────────────────────
+
+function _applyAuthUI() {
+  const placeholder = document.getElementById('nav-auth-placeholder')
+  if (!placeholder) return
+
+  if (!CSLAuth.isLoggedIn()) {
+    placeholder.innerHTML = `<a href="login.html" class="nav-auth-btn">Accedi</a>`
+    return
+  }
+
+  const p = CSLAuth.getProfile()
+  const name = p?.display_name || p?.username || '?'
+  const adminLink = CSLAuth.isAdmin()
+    ? `<a href="admin.html" class="nav-auth-link nav-auth-admin" title="Pannello Admin">⚙ Admin</a>`
+    : ''
+
+  placeholder.innerHTML = `
+    <div class="nav-auth-user">
+      ${adminLink}
+      <a href="profilo.html" class="nav-auth-link" title="Il tuo profilo">
+        <span class="nav-auth-avatar">${name.charAt(0).toUpperCase()}</span>
+        <span class="nav-auth-name">${_escapeHtml(name)}</span>
+      </a>
+      <button class="nav-auth-btn nav-auth-logout" onclick="CSLAuth.signOut()" title="Logout">⏻</button>
+    </div>
+  `
+}
+
+function _escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+window.CSLAuth = CSLAuth

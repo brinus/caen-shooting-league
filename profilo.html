@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profilo — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div id="profile-loading" class="page-loading">Caricamento profilo…</div>
+      <div id="profile-not-found" class="page-error" hidden>Giocatore non trovato.</div>
+      <div id="profile-login-required" class="page-error" hidden>
+        <a href="login.html">Accedi</a> per visualizzare il tuo profilo.
+      </div>
+
+      <div id="profile-content" hidden>
+
+        <!-- Header profilo -->
+        <div class="profile-header card">
+          <div class="profile-avatar" id="profile-avatar">?</div>
+          <div class="profile-info">
+            <h1 class="profile-name" id="profile-name">—</h1>
+            <div class="profile-meta">
+              <span class="profile-role badge" id="profile-role-badge"></span>
+              <span class="profile-season" id="profile-season-label"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statistiche stagione attiva -->
+        <section class="profile-stats-section" style="margin-top:1.5rem">
+          <h2 class="section-title">📊 Stagione attiva</h2>
+          <div class="profile-stats-grid" id="profile-stats-grid"></div>
+        </section>
+
+        <!-- Posizione in classifica -->
+        <section style="margin-top:2rem">
+          <h2 class="section-title">🏆 Posizione in classifica</h2>
+          <div class="profile-rank-card card" id="profile-rank-card"></div>
+        </section>
+
+        <!-- Storico giornate -->
+        <section style="margin-top:2rem;margin-bottom:3rem">
+          <h2 class="section-title">📅 Giornate disputate</h2>
+          <div class="profile-giornate" id="profile-giornate"></div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/ranking.js"></script>
+  <script src="data/data.js"></script>
+  <script src="data/classifica.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    document.addEventListener('csl:auth-ready', async function () {
+      const params = new URLSearchParams(window.location.search)
+      const playerParam = params.get('giocatore')  // visualizza profilo pubblico di un altro
+
+      // Determina quale profilo mostrare
+      let targetPlayerName = null
+      let isOwnProfile = false
+
+      if (playerParam) {
+        // Profilo pubblico di un altro giocatore (URL: profilo.html?giocatore=Nome+Cognome)
+        targetPlayerName = decodeURIComponent(playerParam)
+      } else if (CSLAuth.isLoggedIn()) {
+        // Profilo proprio
+        const profile = CSLAuth.getProfile()
+        targetPlayerName = profile?.player_name || profile?.display_name
+        isOwnProfile = true
+      } else {
+        // Non loggato e nessun param → richiede login
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-login-required').hidden = false
+        return
+      }
+
+      if (!targetPlayerName) {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+
+      await renderProfile(targetPlayerName, isOwnProfile)
+    })
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00')
+      return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+    }
+
+    async function renderProfile(playerName, isOwnProfile) {
+      // Cerca il giocatore in CSL.stagioni (dati statici o da Supabase via ranking.js)
+      // Se Supabase è configurato usa dati live, altrimenti usa statici
+      let stagioni = CSL.stagioni
+
+      if (window.CSLRanking && typeof CSLAuth !== 'undefined' && CSLAuth.isLoggedIn()) {
+        try {
+          await new Promise(resolve => {
+            CSLRanking.loadStagioniFromSupabase(data => {
+              if (data) stagioni = data
+              resolve()
+            })
+          })
+        } catch (e) { /* usa dati statici */ }
+      }
+
+      // Cerca il giocatore nella stagione attiva
+      const seasonAttiva = stagioni.find(s => s.status === 'attiva') || stagioni[stagioni.length - 1]
+      if (!seasonAttiva) {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+
+      const playerData = seasonAttiva.classifica?.find(p =>
+        p.nome.toLowerCase() === playerName.toLowerCase()
+      )
+
+      document.getElementById('profile-loading').hidden = true
+
+      if (!playerData && !stagioni.some(s => s.classifica?.some(p => p.nome.toLowerCase() === playerName.toLowerCase()))) {
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+
+      document.getElementById('profile-content').hidden = false
+      document.title = `${escHtml(playerName)} — CSL`
+
+      // Header
+      const initiali = playerData?.iniziali || playerName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+      document.getElementById('profile-avatar').textContent = initiali
+      document.getElementById('profile-name').textContent = playerName
+
+      const roleBadge = document.getElementById('profile-role-badge')
+      if (isOwnProfile && CSLAuth.isAdmin()) {
+        roleBadge.textContent = 'Admin'
+        roleBadge.classList.add('badge-admin')
+      } else {
+        roleBadge.textContent = 'Partecipante'
+        roleBadge.classList.add('badge-participant')
+      }
+
+      document.getElementById('profile-season-label').textContent =
+        `${seasonAttiva.nome} ${seasonAttiva.anno}`
+
+      // Stats grid
+      const statsGrid = document.getElementById('profile-stats-grid')
+      if (playerData) {
+        statsGrid.innerHTML = `
+          <div class="profile-stat-card card">
+            <div class="profile-stat-value">#${playerData.posizione}</div>
+            <div class="profile-stat-label">Posizione</div>
+          </div>
+          <div class="profile-stat-card card">
+            <div class="profile-stat-value">${playerData.punti_campionato}</div>
+            <div class="profile-stat-label">Punti campionato</div>
+          </div>
+          <div class="profile-stat-card card">
+            <div class="profile-stat-value">${playerData.record}</div>
+            <div class="profile-stat-label">Record</div>
+          </div>
+          <div class="profile-stat-card card">
+            <div class="profile-stat-value">${playerData.media_tiro.toFixed(1)}</div>
+            <div class="profile-stat-label">Media tiro</div>
+          </div>
+          <div class="profile-stat-card card">
+            <div class="profile-stat-value">${playerData.vittorie}</div>
+            <div class="profile-stat-label">Vittorie</div>
+          </div>
+          <div class="profile-stat-card card">
+            <div class="profile-stat-value">${playerData.partite}</div>
+            <div class="profile-stat-label">Giornate</div>
+          </div>
+        `
+      } else {
+        statsGrid.innerHTML = '<p class="text-muted">Nessuna statistica disponibile per questa stagione.</p>'
+      }
+
+      // Rank card
+      const rankCard = document.getElementById('profile-rank-card')
+      if (playerData) {
+        const posBadge = playerData.posizione <= 3
+          ? ['🥇','🥈','🥉'][playerData.posizione - 1]
+          : `#${playerData.posizione}`
+        rankCard.innerHTML = `
+          <div class="rank-summary">
+            <span class="rank-position-big">${posBadge}</span>
+            <div class="rank-details">
+              <div><strong>${playerData.punti_campionato}</strong> punti campionato</div>
+              <div><strong>${playerData.punti_tiro}</strong> punti tiro</div>
+              <div>Recuperi: ${playerData.recuperi_usati}/${playerData.recuperi_max}</div>
+            </div>
+          </div>
+        `
+      } else {
+        rankCard.innerHTML = '<p class="text-muted">Giocatore non in classifica nella stagione corrente.</p>'
+      }
+
+      // Storico giornate
+      const giornateEl = document.getElementById('profile-giornate')
+      const giornatePersonali = (seasonAttiva.giornate || [])
+        .map(g => ({
+          ...g,
+          risultato: g.risultati.find(r => r.nome.toLowerCase() === playerName.toLowerCase())
+        }))
+        .filter(g => g.risultato)
+        .sort((a, b) => b.data.localeCompare(a.data))
+
+      if (!giornatePersonali.length) {
+        giornateEl.innerHTML = '<p class="text-muted">Nessuna giornata registrata.</p>'
+      } else {
+        giornateEl.innerHTML = giornatePersonali.map(g => {
+          const r = g.risultato
+          return `
+            <div class="profile-giornata-row card">
+              <div class="profile-giornata-date">
+                <span class="giornata-num">G${g.numero}</span>
+                <span class="giornata-day">${g.giorno}</span>
+                <span class="giornata-date-str">${formatDate(g.data)}</span>
+                ${r.recupero ? '<span class="badge-recupero">recupero</span>' : ''}
+              </div>
+              <div class="profile-giornata-tentativi">
+                ${[r.t1, r.t2, r.t3].map(t =>
+                  t === -1
+                    ? `<span class="attempt attempt-skipped">—</span>`
+                    : `<span class="attempt">${t}</span>`
+                ).join('')}
+              </div>
+              <div class="profile-giornata-best">
+                <span class="attempt-best">${r.punteggio}</span>
+              </div>
+              <div class="profile-giornata-pos">
+                <span class="rank-badge rank-badge-${r.posizione <= 3 ? r.posizione : 'other'}">
+                  ${r.posizione <= 3 ? ['🥇','🥈','🥉'][r.posizione-1] : `#${r.posizione}`}
+                </span>
+                <span class="camp-pts camp-pts-${r.punti_campionato}">${r.punti_campionato} pt</span>
+              </div>
+            </div>
+          `
+        }).join('')
+      }
+    }
+  </script>
+</body>
+</html>

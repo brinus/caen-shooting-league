@@ -1,7 +1,74 @@
 # 🎯 CAEN Shooting League
 
-Sito statico per il campionato interno di Nerf shooting.  
-Le classifiche sono generate automaticamente da uno script Python che legge file CSV.
+Sito dinamico per il campionato interno di Nerf shooting.  
+Autenticazione utenti, profili giocatori, pannello admin — powered by **Supabase**.
+
+---
+
+## Setup iniziale Supabase
+
+### 1. Crea il progetto Supabase
+
+1. Registrati su [supabase.com](https://supabase.com) e crea un nuovo progetto.
+2. Annota **Project URL** e **anon key** dalla sezione *Settings → API*.
+
+### 2. Configura il client JS
+
+In `js/supabase-client.js` sostituisci i placeholder:
+
+```js
+const SUPABASE_URL  = 'https://<ref>.supabase.co';
+const SUPABASE_ANON_KEY = '<anon_key>';
+```
+
+> L'`anon key` è pubblica per design in Supabase. Le RLS policies proteggono i dati.
+
+### 3. Esegui la migrazione SQL
+
+Copia il contenuto di `supabase/migrations/001_initial_schema.sql` e incollalo nell'editor SQL del Dashboard Supabase (*SQL Editor → New query → Run*).
+
+### 4. Importa i dati esistenti
+
+```bash
+pip install supabase python-dotenv
+
+# Crea .env (NON committare questo file)
+echo "SUPABASE_URL=https://<ref>.supabase.co" > .env
+echo "SUPABASE_SERVICE_ROLE_KEY=<service_role_key>" >> .env
+
+# Anteprima
+python scripts/import_to_supabase.py --dry-run
+
+# Import completo
+python scripts/import_to_supabase.py
+```
+
+> La `service_role_key` si trova in *Settings → API → service_role*. Non esporla mai nel codice frontend.
+
+### 5. Crea il primo admin
+
+1. Nel Dashboard Supabase, vai su *Authentication → Users → Create user*.
+2. Oppure usa l'Edge Function dopo il deploy (vedi §6).
+3. Poi nella tabella `profiles` imposta `role = 'admin'` per quell'utente.
+
+### 6. Deploy Edge Function (creazione utenti)
+
+```bash
+# Installa Supabase CLI
+npm install -g supabase
+
+# Login e link al progetto
+supabase login
+supabase link --project-ref <ref>
+
+# Imposta la service role key come secret
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+
+# Deploy
+supabase functions deploy create-user
+```
+
+---
 
 ---
 
@@ -142,22 +209,36 @@ Lo script:
 
 ```
 risultati/
-  s1-2025.csv       ← risultati per stagione (uno per stagione)
-  s2-2025.csv
-  s1-2026.csv
+  s1-2026.csv         ← risultati per stagione (uno per stagione)
 data/
-  seasons.json      ← configurazione stagioni (modifica manuale)
-  data.js           ← configurazione sito e post (modifica manuale)
-  classifica.js     ← AUTO-GENERATO da aggiorna.py (non modificare)
+  seasons.json        ← configurazione stagioni (modifica manuale o via admin panel)
+  data.js             ← configurazione sito e post (legacy, migrati su Supabase)
+  classifica.js       ← AUTO-GENERATO da aggiorna.py (non modificare)
 scripts/
-  aggiorna.py       ← pipeline dati
-index.html          Homepage (titoli stagione + podio + ultimi post)
-classifica.html     Classifica con selettore stagione e due tab
-stats.html          Statistiche per giocatore (per stagione o carriera)
-posts.html          Lista post
-post.html           Singolo post (Markdown)
-regolamento.html    Regole ufficiali
-css/style.css       Stile
-js/app.js           Logica client-side
-.gitlab-ci.yml      Deploy automatico su GitLab Pages
+  aggiorna.py         ← pipeline dati (CSV → classifica.js per deploy statico)
+  import_to_supabase.py ← import dati esistenti su Supabase (una-tantum)
+supabase/
+  migrations/
+    001_initial_schema.sql  ← schema DB + RLS (eseguire nel Dashboard Supabase)
+  functions/
+    create-user/
+      index.ts         ← Edge Function creazione utenti admin-only
+js/
+  app.js               ← Logica client-side (ranking, pagine)
+  supabase-client.js   ← Client Supabase + auth helpers (CSLAuth global)
+  ranking.js           ← Porting logica Python ranking → JavaScript (CSLRanking global)
+  admin.js             ← Logica pannello admin
+css/
+  style.css            ← Stile (include stili auth/admin/profilo)
+index.html             Homepage
+classifica.html        Classifica con selettore stagione e due tab
+stats.html             Statistiche per giocatore
+posts.html             Lista post
+post.html              Singolo post (Markdown)
+regolamento.html       Regole ufficiali
+login.html             Pagina di login
+profilo.html           Profilo giocatore con statistiche
+admin.html             Pannello admin (giornate, post, utenti, stagioni)
+admin-post.html        Editor post (Markdown + anteprima live)
+.gitlab-ci.yml         Deploy automatico su GitLab Pages
 ```

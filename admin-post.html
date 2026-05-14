@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor Post — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div id="post-editor-guard" class="page-error" hidden>
+        Accesso negato. Solo gli admin possono scrivere post.
+        <br><a href="index.html">← Torna alla home</a>
+      </div>
+
+      <div id="post-editor-content" hidden>
+
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem">
+          <div>
+            <h1 id="editor-title-heading">Nuovo Post</h1>
+            <p>Scrivi in Markdown — l'anteprima si aggiorna in tempo reale</p>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <a href="admin.html#posts" class="btn-secondary">← Admin</a>
+            <button class="btn-primary" id="btn-save-post">Pubblica</button>
+          </div>
+        </div>
+
+        <form id="form-post" novalidate>
+          <div class="card" style="padding:1.5rem;margin-bottom:1.5rem">
+            <div class="form-row">
+              <div class="form-group" style="flex:2">
+                <label>Titolo</label>
+                <input type="text" class="form-input" id="post-titolo" required placeholder="Titolo del post">
+              </div>
+              <div class="form-group">
+                <label>Data</label>
+                <input type="date" class="form-input" id="post-data" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Slug <small class="text-muted">(URL-friendly, auto-generato)</small></label>
+                <input type="text" class="form-input" id="post-slug" placeholder="es. titolo-del-post">
+              </div>
+              <div class="form-group">
+                <label>Autore</label>
+                <input type="text" class="form-input" id="post-autore" placeholder="es. M">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Tag <small class="text-muted">(separati da virgola)</small></label>
+              <input type="text" class="form-input" id="post-tags" placeholder="es. risultati, annuncio">
+            </div>
+            <div class="form-group">
+              <label>Excerpt <small class="text-muted">(~150 caratteri)</small></label>
+              <textarea class="form-input" id="post-excerpt" rows="2"
+                        placeholder="Breve descrizione mostrata nella card del post"></textarea>
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="post-published" checked>
+                &nbsp;Pubblicato
+              </label>
+            </div>
+          </div>
+
+          <!-- Editor + Preview split -->
+          <div class="post-editor-split">
+            <div class="post-editor-pane">
+              <div class="post-editor-pane-label">Markdown</div>
+              <textarea class="form-input post-editor-textarea" id="post-content"
+                        placeholder="# Titolo&#10;&#10;Scrivi qui il contenuto in Markdown…"></textarea>
+            </div>
+            <div class="post-editor-pane">
+              <div class="post-editor-pane-label">Anteprima</div>
+              <div class="post-content post-editor-preview" id="post-preview"></div>
+            </div>
+          </div>
+
+          <div class="form-error"   id="post-error"   hidden style="margin-top:1rem"></div>
+          <div class="form-success" id="post-success" hidden style="margin-top:1rem"></div>
+
+          <div style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;justify-content:flex-end">
+            <button type="button" class="btn-secondary" id="btn-delete-post" hidden style="color:var(--error)">Elimina post</button>
+            <button type="submit" class="btn-primary" id="btn-save-post-form">Salva</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="data/data.js"></script>
+  <script src="data/classifica.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let editingPostId = null
+
+    document.addEventListener('csl:auth-ready', async function () {
+      if (!CSLAuth.isAdmin()) {
+        document.getElementById('post-editor-guard').hidden = false
+        return
+      }
+      document.getElementById('post-editor-content').hidden = false
+
+      // Imposta data di default a oggi
+      document.getElementById('post-data').value = new Date().toISOString().split('T')[0]
+
+      // Imposta autore di default dal profilo
+      const profile = CSLAuth.getProfile()
+      if (profile) document.getElementById('post-autore').value = profile.display_name || profile.username
+
+      // Carica post esistente se si sta modificando
+      const params = new URLSearchParams(window.location.search)
+      const postId = params.get('id')
+      if (postId) {
+        await loadPost(postId)
+      }
+    })
+
+    // Auto-genera slug dal titolo
+    document.getElementById('post-titolo').addEventListener('input', function () {
+      if (editingPostId) return  // non sovrascrivere slug in modifica
+      document.getElementById('post-slug').value = slugify(this.value)
+    })
+
+    // Preview live
+    document.getElementById('post-content').addEventListener('input', function () {
+      updatePreview()
+    })
+
+    function updatePreview() {
+      const content = document.getElementById('post-content').value
+      const preview = document.getElementById('post-preview')
+      if (window.marked) {
+        preview.innerHTML = marked.parse(content)
+      } else {
+        preview.textContent = content
+      }
+    }
+
+    function slugify(str) {
+      return str.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim().replace(/\s+/g, '-')
+        .replace(/-+/g, '-').slice(0, 80)
+    }
+
+    async function loadPost(id) {
+      const { data, error } = await CSLAuth.client
+        .from('posts').select('*').eq('id', id).single()
+      if (error || !data) {
+        showError('post-error', 'Post non trovato.')
+        return
+      }
+      editingPostId = id
+      document.getElementById('editor-title-heading').textContent = 'Modifica Post'
+      document.getElementById('btn-save-post-form').textContent = 'Aggiorna'
+      document.getElementById('btn-delete-post').hidden = false
+
+      document.getElementById('post-titolo').value  = data.titolo || ''
+      document.getElementById('post-slug').value    = data.slug   || ''
+      document.getElementById('post-data').value    = data.data   || ''
+      document.getElementById('post-autore').value  = data.autore || ''
+      document.getElementById('post-tags').value    = (data.tags || []).join(', ')
+      document.getElementById('post-excerpt').value = data.excerpt || ''
+      document.getElementById('post-content').value = data.content || ''
+      document.getElementById('post-published').checked = data.published !== false
+      updatePreview()
+    }
+
+    document.getElementById('form-post').addEventListener('submit', async function (e) {
+      e.preventDefault()
+      hideMessages()
+
+      const titolo   = document.getElementById('post-titolo').value.trim()
+      const slug     = document.getElementById('post-slug').value.trim() || slugify(titolo)
+      const data     = document.getElementById('post-data').value
+      const autore   = document.getElementById('post-autore').value.trim()
+      const tagsRaw  = document.getElementById('post-tags').value
+      const excerpt  = document.getElementById('post-excerpt').value.trim()
+      const content  = document.getElementById('post-content').value
+      const published = document.getElementById('post-published').checked
+
+      if (!titolo || !slug || !data) {
+        showError('post-error', 'Titolo, slug e data sono obbligatori.')
+        return
+      }
+
+      const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean)
+      const profile = CSLAuth.getProfile()
+
+      const payload = {
+        titolo, slug, data, autore, tags, excerpt, content, published,
+        updated_at: new Date().toISOString(),
+      }
+
+      let error
+      if (editingPostId) {
+        ;({ error } = await CSLAuth.client
+          .from('posts').update(payload).eq('id', editingPostId))
+      } else {
+        payload.created_by = profile?.id
+        ;({ error } = await CSLAuth.client.from('posts').insert(payload))
+      }
+
+      if (error) {
+        showError('post-error', error.message)
+      } else {
+        showSuccess('post-success', editingPostId ? 'Post aggiornato!' : 'Post pubblicato!')
+        if (!editingPostId) {
+          setTimeout(() => window.location.href = 'admin.html', 1200)
+        }
+      }
+    })
+
+    document.getElementById('btn-delete-post').addEventListener('click', async function () {
+      if (!editingPostId) return
+      if (!confirm('Eliminare questo post? L\'azione non può essere annullata.')) return
+      const { error } = await CSLAuth.client.from('posts').delete().eq('id', editingPostId)
+      if (error) {
+        showError('post-error', error.message)
+      } else {
+        window.location.href = 'admin.html'
+      }
+    })
+
+    function showError(id, msg) {
+      const el = document.getElementById(id)
+      el.textContent = msg
+      el.hidden = false
+    }
+    function showSuccess(id, msg) {
+      const el = document.getElementById(id)
+      el.textContent = msg
+      el.hidden = false
+    }
+    function hideMessages() {
+      document.getElementById('post-error').hidden = true
+      document.getElementById('post-success').hidden = true
+    }
+  </script>
+</body>
+</html>

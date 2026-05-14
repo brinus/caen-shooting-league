@@ -1292,9 +1292,41 @@ function initPost() {
 
   if (!slug) { showPostError('Nessun post specificato.'); return; }
 
+  // Cerca prima in Supabase (CSL.posts già aggiornato dal router), poi nel fallback
   var post = CSL.posts.find(function(p) { return p.slug === slug; });
-  if (!post) { showPostError('Post non trovato.'); return; }
 
+  if (!post) {
+    // Tentativo diretto su Supabase se attivo
+    if (_supabaseActive()) {
+      CSLAuth.client.from('posts').select('*').eq('slug', slug).single()
+        .then(function(res) {
+          if (res.data) {
+            var p = res.data;
+            _renderPost({
+              id:      p.id,
+              slug:    p.slug,
+              titolo:  p.titolo,
+              data:    p.data,
+              autore:  p.autore || '',
+              tag:     p.tags || [],
+              excerpt: p.excerpt || '',
+              content: p.content || '',
+            });
+          } else {
+            showPostError('Post non trovato.');
+          }
+        })
+        .catch(function() { showPostError('Post non trovato.'); });
+    } else {
+      showPostError('Post non trovato.');
+    }
+    return;
+  }
+
+  _renderPost(post);
+}
+
+function _renderPost(post) {
   document.title = post.titolo + ' — CSL';
 
   var titleEl = document.getElementById('post-title');
@@ -1306,16 +1338,19 @@ function initPost() {
   metaEl.innerHTML =
     '<span>' + formatDate(post.data) + '</span>' +
     '<span>di ' + escapeHtml(post.autore) + '</span>' +
-    post.tag.map(function(t) { return '<span class="post-tag">' + escapeHtml(t) + '</span>'; }).join('');
+    (post.tag || []).map(function(t) { return '<span class="post-tag">' + escapeHtml(t) + '</span>'; }).join('');
 
   if (typeof marked !== 'undefined') {
-    // Configure marked for safe output
     marked.setOptions({ breaks: true });
     bodyEl.innerHTML = marked.parse(post.content);
   } else {
-    // Fallback: plain text
     bodyEl.innerHTML = '<pre style="white-space:pre-wrap;font-size:0.9rem;color:var(--text)">' +
       escapeHtml(post.content) + '</pre>';
+  }
+
+  // Emette evento per il pulsante admin "Modifica post"
+  if (post.id) {
+    document.dispatchEvent(new CustomEvent('csl:post-loaded', { detail: { postId: post.id } }));
   }
 }
 
@@ -1551,30 +1586,156 @@ function renderSisalBoard(seasonId) {
   }
 }
 
+// ── Supabase Integration ───────────────────────────────────────
+
+/**
+ * Ritorna true se Supabase è configurato (URL non è il placeholder).
+ * Usato per decidere se caricare dati dinamici o usare i file statici.
+ */
+function _supabaseActive() {
+  return typeof CSLAuth !== 'undefined'
+    && typeof CSLAuth.client !== 'undefined'
+    && !CSLAuth.client.supabaseUrl?.includes('YOUR_PROJECT_REF');
+}
+
+/**
+ * Carica i post da Supabase e li converte nel formato CSL.posts.
+ * Ritorna i post aggiornati (o l'array statico se Supabase non disponibile).
+ */
+async function _loadPostsFromSupabase() {
+  if (!_supabaseActive()) return CSL.posts || [];
+  try {
+    var res = await CSLAuth.client
+      .from('posts')
+      .select('slug, titolo, data, autore, tags, excerpt, content, published')
+      .eq('published', true)
+      .order('data', { ascending: false });
+    if (res.error || !res.data) return CSL.posts || [];
+    return res.data.map(function(p) {
+      return {
+        slug:    p.slug,
+        titolo:  p.titolo,
+        data:    p.data,
+        autore:  p.autore || '',
+        tag:     p.tags || [],
+        excerpt: p.excerpt || '',
+        content: p.content || '',
+      };
+    });
+  } catch (e) {
+    return CSL.posts || [];
+  }
+}
+
+/**
+ * Carica le stagioni con ranking da Supabase via CSLRanking.
+ */
+async function _loadStagioniFromSupabase() {
+  if (!_supabaseActive() || typeof CSLRanking === 'undefined') return null;
+  return new Promise(function(resolve) {
+    CSLRanking.loadStagioniFromSupabase(function(data) { resolve(data); });
+  });
+}
+
 // ── Router ─────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function() {
   initNav();
   var page = window.location.pathname.split('/').pop() || 'index.html';
-  switch (page) {
-    case 'index.html':
-    case '':
-      initHome();
-      break;
-    case 'classifica.html':
-      initClassifica();
-      break;
-    case 'posts.html':
-      initPosts();
-      break;
-    case 'post.html':
-      initPost();
-      break;
-    case 'stats.html':
-      initStats();
-      break;
-    case 'sisal.html':
-      initSisal();
-      break;
+
+  // Se Supabase è attivo, aspetta auth-ready per dati live; altrimenti rende subito.
+  var _rendered = false;
+
+  function _run() {
+    if (_rendered) return;
+    _rendered = true;
+    switch (page) {
+      case 'index.html':
+      case '':
+        initHome();
+        break;
+      case 'classifica.html':
+        initClassifica();
+        break;
+      case 'posts.html':
+        initPosts();
+        break;
+      case 'post.html':
+        initPost();
+        break;
+      case 'stats.html':
+        initStats();
+        break;
+      case 'sisal.html':
+        initSisal();
+        break;
+    }
+  }
+
+  if (_supabaseActive()) {
+    // Aspetta auth-ready per poi caricare dati live e ri-renderizzare
+    document.addEventListener('csl:auth-ready', async function() {
+      var liveStagioni = await _loadStagioniFromSupabase();
+      if (liveStagioni && liveStagioni.length) {
+        CSL.stagioni = liveStagioni;
+      }
+
+      var livePosts = await _loadPostsFromSupabase();
+      if (livePosts && livePosts.length) {
+        CSL.posts = livePosts;
+      }
+
+      // Carica regolamento da Supabase in regolamento.html
+      if (page === 'regolamento.html' && _supabaseActive()) {
+        try {
+          var regRes = await CSLAuth.client
+            .from('regolamento').select('content').eq('id', 1).single();
+          if (!regRes.error && regRes.data && regRes.data.content) {
+            var rulesContent = document.querySelector('.rules-content');
+            if (rulesContent) {
+              rulesContent.innerHTML = regRes.data.content;
+              // Mostra pulsante modifica per admin
+              if (CSLAuth.isAdmin()) {
+                _injectRegolamentoAdminBtn(rulesContent);
+              }
+            }
+          }
+        } catch (e) { /* usa HTML statico */ }
+      }
+
+      // Aggiungi pulsante "Modifica" su post.html per admin
+      if (page === 'post.html' && CSLAuth.isAdmin()) {
+        document.addEventListener('csl:post-loaded', function(ev) {
+          _injectPostAdminBtn(ev.detail.postId);
+        });
+      }
+
+      _run();
+    });
+    // Timeout fallback: se auth-ready non arriva entro 3s, renderizza con dati statici
+    setTimeout(_run, 3000);
+  } else {
+    _run();
   }
 });
+
+function _injectRegolamentoAdminBtn(container) {
+  var btn = document.createElement('a');
+  btn.href = 'admin.html#regolamento';
+  btn.className = 'btn-link admin-edit-btn';
+  btn.innerHTML = '✎ Modifica regolamento';
+  btn.style.cssText = 'display:block;text-align:right;margin-bottom:1rem';
+  container.parentNode.insertBefore(btn, container);
+}
+
+function _injectPostAdminBtn(postId) {
+  if (!postId) return;
+  var backLink = document.querySelector('.post-back-link');
+  if (!backLink) return;
+  var editBtn = document.createElement('a');
+  editBtn.href = 'admin-post.html?id=' + encodeURIComponent(postId);
+  editBtn.className = 'btn-link admin-edit-btn';
+  editBtn.innerHTML = '✎ Modifica post';
+  editBtn.style.cssText = 'margin-left:1rem';
+  backLink.parentNode.insertBefore(editBtn, backLink.nextSibling);
+}

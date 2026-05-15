@@ -389,6 +389,36 @@
         })
       }
 
+      /* ── Coppie di mercati incompatibili per lo stesso giocatore ── */
+      var CONFLICTING_PAIRS = [
+        ['giornata_win',    'giornata_podio'],   // vince ⇒ podio
+        ['giornata_over_25','giornata_over_20'],  // >25 ⇒ >20
+        ['titolo',          'podio'],             // titolo ⇒ podio
+        ['titolo',          'top5'],              // titolo ⇒ top5
+        ['podio',           'top5'],              // podio  ⇒ top5
+      ]
+
+      function getConflictMessage(newBd, selections) {
+        if (!newBd.player_name || newBd.player_name === '—') return null
+        for (var i = 0; i < selections.length; i++) {
+          var ex = selections[i]
+          if (ex.player_name !== newBd.player_name) continue
+          // stesso contesto (stessa giornata o stessa stagione)
+          var sameCtx = newBd.giornata_date && ex.giornata_date
+            ? newBd.giornata_date === ex.giornata_date
+            : newBd.season_id === ex.season_id
+          if (!sameCtx) continue
+          for (var j = 0; j < CONFLICTING_PAIRS.length; j++) {
+            var p = CONFLICTING_PAIRS[j]
+            if ((p[0] === newBd.bet_type && p[1] === ex.bet_type) ||
+                (p[1] === newBd.bet_type && p[0] === ex.bet_type)) {
+              return '⛔ Scommessa impossibile: "' + esc(ex.market_label) + '" e "' + esc(newBd.market_label) + '" sono correlate per ' + esc(newBd.player_name) + '.'
+            }
+          }
+        }
+        return null
+      }
+
       /* ── Toggle selezione nella schedina ── */
       function toggleSelection(bd, panelName) {
         if (_selPanel && _selPanel !== panelName) {
@@ -409,6 +439,13 @@
             errBox.textContent = 'Massimo 10 selezioni per multipla.'
             errBox.hidden = false
             setTimeout(function(){ errBox.hidden = true }, 2000)
+            return
+          }
+          var conflict = getConflictMessage(bd, _selections)
+          if (conflict) {
+            errBox.textContent = conflict
+            errBox.hidden = false
+            setTimeout(function(){ errBox.hidden = true }, 3500)
             return
           }
           _selections.push(bd)
@@ -465,6 +502,8 @@
 
         if (_selections.length === 0) {
           selArea.hidden = true
+          slip.innerHTML = ''
+          bkdn.innerHTML = ''
           btnConfirm.disabled = true
           btnConfirm.textContent = 'Seleziona una scommessa'
           return
@@ -475,9 +514,12 @@
         if (_selections.length === 1) {
           var s = _selections[0]
           slip.innerHTML = '<div class="bet-selected-display">'
+            + '<div class="bet-sel-main">'
             + '<span class="bet-sel-player">' + esc(s.player_name !== '—' ? s.player_name : '') + '</span>'
             + ' <span class="bet-sel-market">' + esc(s.market_label) + '</span>'
             + ' <span class="bet-q">@' + fmtQ(s.quota) + '</span>'
+            + '</div>'
+            + '<button class="bet-slip-rm" data-idx="0" title="Rimuovi selezione">✕</button>'
             + '</div>'
         } else {
           slip.innerHTML = '<div class="bet-slip-hdr">'
@@ -495,6 +537,9 @@
                   + '</li>'
               }).join('')
             + '</ul>'
+          // Binding diretto più affidabile della sola event delegation
+          var clearBtn = document.getElementById('_btn-clear-slip')
+          if (clearBtn) clearBtn.addEventListener('click', clearSlip)
         }
 
         /* ---- Breakdown ---- */

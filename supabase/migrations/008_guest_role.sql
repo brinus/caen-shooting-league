@@ -70,8 +70,9 @@ CREATE TRIGGER risultati_award_guest_coins
 -- per tutte le giornate già registrate.
 DO $$
 DECLARE
-  v_guest RECORD;
-  v_date  RECORD;
+  v_guest         RECORD;
+  v_date          RECORD;
+  v_rows_inserted INT;
 BEGIN
   FOR v_guest IN SELECT id FROM public.profiles WHERE role = 'guest' LOOP
     -- Assicura wallet

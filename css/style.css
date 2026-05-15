@@ -2908,6 +2908,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   justify-content: center;
   padding: 1rem;
 }
+.bet-modal-overlay[hidden] { display: none !important; }
 .bet-modal {
   width: 100%;
   max-width: 440px;

@@ -28,15 +28,18 @@ ALTER TABLE public.profiles
 
 
 -- ── 2. Trigger: eroga 100 Bossoli a tutti i guest per ogni nuova data ─────────
--- Ogni INSERT in risultati prova (idempotentemente) ad accreditare +100 a ogni
--- profilo con ruolo 'guest' per quella data. Re-import o inserimenti multipli
--- nella stessa data non generano accrediti duplicati.
+-- Solo per giornate reali (lunedì DOW=1, mercoledì DOW=3).
+-- Recuperi e allenamenti (altri giorni) non vengono conteggiati.
 CREATE OR REPLACE FUNCTION public.award_guest_coins_on_new_giornata()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_guest         RECORD;
   v_rows_inserted INT;
 BEGIN
+  -- Salta i recuperi: premia solo lunedì (1) e mercoledì (3)
+  IF EXTRACT(DOW FROM NEW.data) NOT IN (1, 3) THEN
+    RETURN NEW;
+  END IF;
   FOR v_guest IN SELECT id FROM public.profiles WHERE role = 'guest' LOOP
     -- Assicura che il wallet esista
     INSERT INTO public.wallets (profile_id, base_coins)
@@ -74,7 +77,9 @@ DECLARE
   v_guest  RECORD;
   v_target INT;
 BEGIN
-  SELECT COUNT(DISTINCT data) * 100 INTO v_target FROM public.risultati;
+  SELECT COUNT(DISTINCT data) * 100 INTO v_target
+    FROM public.risultati
+    WHERE EXTRACT(DOW FROM data) IN (1, 3);  -- solo lunedì e mercoledì
 
   FOR v_guest IN SELECT id FROM public.profiles WHERE role = 'guest' LOOP
     -- Crea o corregge il wallet al valore esatto
@@ -86,6 +91,7 @@ BEGIN
     -- Popola il log (idempotente, non aggiunge coin — quelli sono già nel wallet)
     INSERT INTO public.giornata_coins_log (profile_id, data)
       SELECT DISTINCT v_guest.id, data FROM public.risultati
+      WHERE EXTRACT(DOW FROM data) IN (1, 3)  -- solo lunedì e mercoledì
       ON CONFLICT (profile_id, data) DO NOTHING;
   END LOOP;
 END $$;
@@ -167,7 +173,9 @@ BEGIN
 
   -- Quando si promuove a guest: imposta wallet al valore corretto e popola il log
   IF p_role = 'guest' THEN
-    SELECT COUNT(DISTINCT data) * 100 INTO v_rows FROM public.risultati;
+    SELECT COUNT(DISTINCT data) * 100 INTO v_rows
+      FROM public.risultati
+      WHERE EXTRACT(DOW FROM data) IN (1, 3);  -- solo lunedì e mercoledì
 
     INSERT INTO public.wallets (profile_id, base_coins)
       VALUES (p_profile_id, v_rows)
@@ -176,6 +184,7 @@ BEGIN
 
     INSERT INTO public.giornata_coins_log (profile_id, data)
       SELECT DISTINCT p_profile_id, data FROM public.risultati
+      WHERE EXTRACT(DOW FROM data) IN (1, 3)  -- solo lunedì e mercoledì
       ON CONFLICT (profile_id, data) DO NOTHING;
   END IF;
 

@@ -12,11 +12,12 @@ document.addEventListener('csl:auth-ready', function () {
   document.getElementById('admin-content').hidden = false
   initTabs()
   loadGiornateTab()
+  loadStagioniTab()
+  loadScommesseTab()
   loadPostsTab()
   loadRegolamentoTab()
-  loadUtentiTab()
-  loadStagioniTab()
   loadCommentiTab()
+  loadUtentiTab()
 })
 
 // ── Tabs ───────────────────────────────────────────────────────
@@ -371,20 +372,52 @@ async function loadUsersList() {
   listEl.textContent = 'Caricamento…'
 
   const { data, error } = await CSLAuth.client
-    .from('profiles').select('username, display_name, role, player_name, created_at').order('created_at')
+    .from('profiles').select('id, username, display_name, role, player_name, created_at').order('created_at')
 
   if (error) { listEl.textContent = 'Errore: ' + error.message; return }
   if (!data?.length) { listEl.textContent = 'Nessun utente.'; return }
 
+  const selfId = CSLAuth.getProfile()?.id
+
   listEl.innerHTML = data.map(function (u) {
-    const roleCls = u.role === 'admin' ? 'badge-admin' : 'badge-participant'
-    return `<div class="admin-list-row">
-      <strong>${escHtml(u.username)}</strong>
+    const roleLabels = { admin: 'Admin', participant: 'Partecipante', guest: 'Ospite' }
+    const roleCls    = { admin: 'badge-admin', participant: 'badge-participant', guest: 'badge-guest' }
+    const isSelf = u.id === selfId
+    const roleSelect = isSelf ? '' : `
+      <select class="form-input user-role-select" data-id="${escHtml(u.id)}" style="width:auto;font-size:0.8rem;padding:0.25rem 0.5rem">
+        <option value="participant" ${u.role === 'participant' ? 'selected' : ''}>Partecipante</option>
+        <option value="guest"       ${u.role === 'guest'       ? 'selected' : ''}>Ospite</option>
+        <option value="admin"       ${u.role === 'admin'       ? 'selected' : ''}>Admin</option>
+      </select>
+      <button class="btn-secondary user-role-save" data-id="${escHtml(u.id)}" style="padding:0.25rem 0.7rem;font-size:0.8rem">Salva</button>`
+    return `<div class="admin-list-row" style="flex-wrap:wrap;gap:0.5rem">
+      <strong style="min-width:120px">${escHtml(u.username)}</strong>
       <span>${escHtml(u.display_name)}</span>
-      <span class="badge ${roleCls}">${u.role === 'admin' ? 'Admin' : 'Partecipante'}</span>
+      <span class="badge ${roleCls[u.role] || 'badge-participant'}">${roleLabels[u.role] || u.role}</span>
       <span class="text-muted">${u.player_name ? escHtml(u.player_name) : '—'}</span>
+      ${roleSelect}
     </div>`
   }).join('')
+
+  listEl.querySelectorAll('.user-role-save').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      const profileId = btn.dataset.id
+      const sel = listEl.querySelector(`.user-role-select[data-id="${profileId}"]`)
+      const newRole = sel.value
+      btn.disabled = true
+      const { data: rpcData, error: rpcErr } = await CSLAuth.client.rpc('update_user_role', {
+        p_profile_id: profileId,
+        p_role: newRole,
+      })
+      btn.disabled = false
+      if (rpcErr || rpcData?.error) {
+        alert('Errore: ' + (rpcErr?.message || rpcData?.error))
+        return
+      }
+      showMsg('create-user-success', '✓ Ruolo aggiornato.', false)
+      await loadUsersList()
+    })
+  })
 }
 
 // ── TAB: Stagioni ──────────────────────────────────────────────
@@ -506,4 +539,171 @@ async function populateSeasonSelect(selectId) {
   // Pre-seleziona stagione attiva
   const active = seasons.find(s => s.status === 'attiva')
   if (active) sel.value = active.id
+}
+
+// ── TAB: Scommesse ─────────────────────────────────────────────
+
+async function loadScommesseTab() {
+  // Sub-tabs singole / multiple
+  document.querySelectorAll('.admin-subtab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.admin-subtab').forEach(function (b) {
+        b.style.background = 'transparent'
+        b.style.color = 'var(--text-muted)'
+        b.classList.remove('active')
+      })
+      btn.style.background = 'rgba(255,102,0,0.12)'
+      btn.style.color = 'var(--primary)'
+      btn.classList.add('active')
+      document.getElementById('subpanel-singole').hidden  = btn.dataset.subtab !== 'singole'
+      document.getElementById('subpanel-multiple').hidden = btn.dataset.subtab !== 'multiple'
+    })
+  })
+
+  document.getElementById('scommesse-filtro-status').addEventListener('change', reloadScommesse)
+  document.getElementById('btn-reload-scommesse').addEventListener('click', reloadScommesse)
+  await reloadScommesse()
+}
+
+async function reloadScommesse() {
+  await Promise.all([loadScommesseSingole(), loadScommesseMultiple()])
+}
+
+async function loadScommesseSingole() {
+  const listEl = document.getElementById('scommesse-singole-list')
+  const statusFilter = document.getElementById('scommesse-filtro-status').value
+  listEl.textContent = 'Caricamento…'
+
+  let q = CSLAuth.client
+    .from('scommesse')
+    .select('*, profiles(id, username, display_name)')
+    .order('created_at', { ascending: false })
+    .limit(300)
+  if (statusFilter !== 'tutte') q = q.eq('status', statusFilter)
+
+  const { data, error } = await q
+  if (error) { listEl.textContent = 'Errore: ' + error.message; return }
+  if (!data?.length) { listEl.innerHTML = '<p class="text-muted" style="padding:1rem 0">Nessuna scommessa.</p>'; return }
+
+  const betTypeLabel = {
+    titolo: 'Titolo', podio: 'Podio', top5: 'Top 5',
+    best_30: 'Best 30+', avg_18: 'Media ≥18',
+    giornata_win: 'Vincente gg.', giornata_podio: 'Podio gg.',
+    giornata_over_20: 'Over 20', giornata_over_25: 'Over 25',
+    giornata_over_30: 'Over 30', speciale: 'Speciale',
+  }
+
+  listEl.innerHTML = data.map(function (s) {
+    const user = s.profiles?.display_name || s.profiles?.username || '?'
+    const tipo = betTypeLabel[s.bet_type] || s.bet_type
+    const potWin = Math.floor(s.importo * s.quota)
+    const dateStr = new Date(s.created_at).toLocaleString('it-IT', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    })
+    const actions = s.status === 'attiva' ? betActionButtons(s.id, 'singola') : ''
+    return `<div class="admin-list-row admin-bet-row" style="flex-wrap:wrap;gap:0.5rem" data-id="${escHtml(s.id)}">
+      <span class="admin-list-date" style="min-width:110px">${dateStr}</span>
+      <strong style="min-width:100px">${escHtml(user)}</strong>
+      <span class="badge badge-participant" style="font-size:0.7rem">${escHtml(tipo)}</span>
+      <span style="min-width:100px">${escHtml(s.player_name)}</span>
+      <span style="min-width:110px">${s.importo} → <strong>${potWin}</strong> 🪙 <span class="text-muted">×${s.quota}</span></span>
+      ${betStatusBadge(s.status)}
+      <span style="display:flex;gap:0.35rem;flex-wrap:wrap">${actions}</span>
+    </div>`
+  }).join('')
+
+  attachBetListeners(listEl, 'singola')
+}
+
+async function loadScommesseMultiple() {
+  const listEl = document.getElementById('scommesse-multiple-list')
+  const statusFilter = document.getElementById('scommesse-filtro-status').value
+  listEl.textContent = 'Caricamento…'
+
+  let q = CSLAuth.client
+    .from('parlay_bets')
+    .select('*, profiles(id, username, display_name)')
+    .order('created_at', { ascending: false })
+    .limit(300)
+  if (statusFilter !== 'tutte') q = q.eq('status', statusFilter)
+
+  const { data, error } = await q
+  if (error) { listEl.textContent = 'Errore: ' + error.message; return }
+  if (!data?.length) { listEl.innerHTML = '<p class="text-muted" style="padding:1rem 0">Nessuna schedina multipla.</p>'; return }
+
+  listEl.innerHTML = data.map(function (s) {
+    const user = s.profiles?.display_name || s.profiles?.username || '?'
+    const legs = Array.isArray(s.legs) ? s.legs : []
+    const potWin = Math.floor(s.importo * s.quota_final)
+    const dateStr = new Date(s.created_at).toLocaleString('it-IT', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    })
+    const legsHtml = legs.map(function (l) {
+      return `<span class="text-muted" style="font-size:0.75rem">• ${escHtml(l.player_name || '?')} <em>${escHtml(l.bet_type || '')}</em> ×${l.quota}</span>`
+    }).join(' ')
+    const actions = s.status === 'attiva' ? betActionButtons(s.id, 'multipla') : ''
+    return `<div class="admin-list-row admin-bet-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem" data-id="${escHtml(s.id)}">
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;width:100%">
+        <span class="admin-list-date" style="min-width:110px">${dateStr}</span>
+        <strong style="min-width:100px">${escHtml(user)}</strong>
+        <span class="badge badge-participant" style="font-size:0.7rem">${escHtml(s.panel)}</span>
+        <span class="text-muted">${legs.length} gamb${legs.length === 1 ? 'a' : 'e'}</span>
+        <span>${s.importo} → <strong>${potWin}</strong> 🪙 <span class="text-muted">×${Number(s.quota_final).toFixed(2)}</span></span>
+        ${betStatusBadge(s.status)}
+        <span style="display:flex;gap:0.35rem;flex-wrap:wrap">${actions}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;padding-left:0.5rem">${legsHtml}</div>
+    </div>`
+  }).join('')
+
+  attachBetListeners(listEl, 'multipla')
+}
+
+function betActionButtons(id, tipo) {
+  const sid = escHtml(id)
+  return `<button class="btn-vinci btn-bet-action" data-id="${sid}" data-tipo="${tipo}"
+    style="background:rgba(73,210,155,0.15);color:var(--success);border:1px solid rgba(73,210,155,0.3);padding:0.2rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;font-weight:600">✓ Vinta</button>
+  <button class="btn-perdi btn-bet-action" data-id="${sid}" data-tipo="${tipo}"
+    style="background:rgba(255,80,80,0.12);color:#ff6060;border:1px solid rgba(255,80,80,0.25);padding:0.2rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;font-weight:600">✗ Persa</button>
+  <button class="btn-annulla btn-bet-action" data-id="${sid}" data-tipo="${tipo}"
+    style="background:rgba(150,150,150,0.1);color:var(--text-muted);border:1px solid rgba(150,150,150,0.2);padding:0.2rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem">⊘ Ann.</button>`
+}
+
+function betStatusBadge(status) {
+  const map = {
+    attiva:    '<span class="badge badge-attiva-bet">Attiva</span>',
+    vinta:     '<span class="badge badge-vinta">Vinta</span>',
+    persa:     '<span class="badge badge-persa">Persa</span>',
+    annullata: '<span class="badge badge-annullata">Annullata</span>',
+  }
+  return map[status] || `<span class="badge">${escHtml(status)}</span>`
+}
+
+function attachBetListeners(container, tipo) {
+  const statusMap = { 'btn-vinci': 'vinta', 'btn-perdi': 'persa', 'btn-annulla': 'annullata' }
+  container.querySelectorAll('.btn-bet-action').forEach(function (btn) {
+    const newStatus = Object.entries(statusMap).find(([cls]) => btn.classList.contains(cls))?.[1]
+    if (!newStatus) return
+    btn.addEventListener('click', function () { resolveBet(btn.dataset.id, newStatus, tipo) })
+  })
+}
+
+async function resolveBet(betId, newStatus, tipo) {
+  const label = { vinta: 'vincente', persa: 'persa', annullata: 'annullata' }[newStatus]
+  if (!confirm(`Segnare questa ${tipo === 'singola' ? 'scommessa' : 'schedina'} come ${label}?`)) return
+
+  const rpcName = tipo === 'singola' ? 'resolve_bet' : 'resolve_parlay'
+  const { data: rpcData, error } = await CSLAuth.client.rpc(rpcName, {
+    p_bet_id: betId,
+    p_status: newStatus,
+  })
+
+  if (error || rpcData?.error) {
+    showMsg('scommesse-error', 'Errore: ' + (error?.message || rpcData?.error), true)
+    document.getElementById('scommesse-success').hidden = true
+    return
+  }
+  showMsg('scommesse-success', `✓ Segnata come ${newStatus}.`, false)
+  document.getElementById('scommesse-error').hidden = true
+  await reloadScommesse()
 }

@@ -36,17 +36,25 @@
 
         <div class="page-header">
           <h1>⚙ Pannello Admin</h1>
-          <p>Gestione giornate, post, regolamento e utenti</p>
+          <p>Gestione completa della lega: giornate, scommesse, post, utenti e molto altro.</p>
         </div>
 
         <!-- Tab nav -->
         <div class="admin-tabs">
+          <span class="admin-tab-group-label">Gara</span>
           <button class="admin-tab active" data-tab="giornate">📅 Giornate</button>
+          <button class="admin-tab" data-tab="stagioni">🏅 Stagioni</button>
+          <span class="admin-tab-sep"></span>
+          <span class="admin-tab-group-label">SISAL</span>
+          <button class="admin-tab" data-tab="scommesse">🎲 Scommesse</button>
+          <span class="admin-tab-sep"></span>
+          <span class="admin-tab-group-label">Contenuto</span>
           <button class="admin-tab" data-tab="posts">📰 Post</button>
           <button class="admin-tab" data-tab="regolamento">📋 Regolamento</button>
-          <button class="admin-tab" data-tab="utenti">👥 Utenti</button>
-          <button class="admin-tab" data-tab="stagioni">🏅 Stagioni</button>
           <button class="admin-tab" data-tab="commenti">💬 Commenti</button>
+          <span class="admin-tab-sep"></span>
+          <span class="admin-tab-group-label">Accesso</span>
+          <button class="admin-tab" data-tab="utenti">👥 Utenti</button>
         </div>
 
         <!-- ── TAB: Giornate ──────────────────────────────────── -->
@@ -157,6 +165,7 @@
                   <label>Ruolo</label>
                   <select class="form-input" id="new-role">
                     <option value="participant">Partecipante</option>
+                    <option value="guest">Ospite (Guest)</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
@@ -177,6 +186,42 @@
           <div class="admin-section card" style="margin-top:1.5rem">
             <h2>Utenti registrati</h2>
             <div id="users-list" class="admin-list"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Scommesse ─────────────────────────────────── -->
+        <div class="admin-panel" id="tab-scommesse">
+          <div class="admin-section card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem">
+              <h2 style="margin:0">Gestione Scommesse</h2>
+              <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+                <label style="font-size:0.85rem;color:var(--text-muted)">Stato:</label>
+                <select class="form-input" id="scommesse-filtro-status" style="width:auto">
+                  <option value="attiva">Attive</option>
+                  <option value="tutte">Tutte</option>
+                  <option value="vinta">Vinte</option>
+                  <option value="persa">Perse</option>
+                  <option value="annullata">Annullate</option>
+                </select>
+                <button class="btn-secondary" id="btn-reload-scommesse" style="padding:0.4rem 0.9rem">↺ Aggiorna</button>
+              </div>
+            </div>
+
+            <!-- Sub-tabs singole / multiple -->
+            <div style="display:flex;gap:0.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem">
+              <button class="admin-subtab active" data-subtab="singole" style="padding:0.35rem 1rem;border-radius:6px;border:1px solid var(--border);background:rgba(255,102,0,0.12);color:var(--primary);cursor:pointer;font-size:0.85rem;font-weight:600">🎯 Singole</button>
+              <button class="admin-subtab" data-subtab="multiple" style="padding:0.35rem 1rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-size:0.85rem;font-weight:600">📋 Multiple (Parlay)</button>
+            </div>
+
+            <div id="subpanel-singole">
+              <div id="scommesse-singole-list" class="admin-list"></div>
+            </div>
+            <div id="subpanel-multiple" hidden>
+              <div id="scommesse-multiple-list" class="admin-list"></div>
+            </div>
+
+            <div class="form-error"   id="scommesse-error"   hidden style="margin-top:1rem"></div>
+            <div class="form-success" id="scommesse-success" hidden style="margin-top:1rem"></div>
           </div>
         </div>
 

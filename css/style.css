@@ -2356,9 +2356,18 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 }
 .badge-admin       { background: rgba(255,102,0,0.15); color: var(--primary); border: 1px solid rgba(255,102,0,0.35); }
 .badge-participant { background: rgba(100,120,255,0.12); color: #8899ff; border: 1px solid rgba(100,120,255,0.25); }
+.badge-guest       { background: rgba(73,210,155,0.1); color: #4ad2a0; border: 1px solid rgba(73,210,155,0.25); }
 .badge-published   { background: rgba(73,210,155,0.12); color: var(--success); border: 1px solid rgba(73,210,155,0.25); }
 .badge-draft       { background: rgba(255,204,0,0.1); color: var(--secondary); border: 1px solid rgba(255,204,0,0.25); }
 .badge-recupero    { background: rgba(100,120,255,0.12); color: #8899ff; font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: 4px; }
+/* Scommesse status */
+.badge-vinta     { background: rgba(73,210,155,0.12); color: var(--success); border: 1px solid rgba(73,210,155,0.25); }
+.badge-persa     { background: rgba(255,80,80,0.12); color: #ff6060; border: 1px solid rgba(255,80,80,0.25); }
+.badge-attiva-bet{ background: rgba(100,120,255,0.12); color: #8899ff; border: 1px solid rgba(100,120,255,0.25); }
+.badge-annullata { background: rgba(150,150,150,0.1); color: var(--text-muted); border: 1px solid rgba(150,150,150,0.2); }
+/* Admin tab groups */
+.admin-tab-group-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 0.25rem; align-self: center; }
+.admin-tab-sep { width: 1px; background: var(--border); align-self: stretch; margin: 0 0.25rem; }
 
 /* ── Profile Page ──────────────────────────────────────────── */
 .page-loading, .page-error {
@@ -2453,6 +2462,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   gap: 0.4rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
+  align-items: center;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.75rem;
 }

@@ -90,10 +90,94 @@ const CSLAuth = {
     return { error: null, user_id: json.user_id }
   },
 
-  /** Cambia password di un utente (admin) — usa Edge Function o Supabase Admin API se necessario. */
+  /** Cambia password dell'utente loggato. */
   async updatePassword(newPassword) {
     const { error } = await _supa.auth.updateUser({ password: newPassword })
     return { error: error?.message || null }
+  },
+
+  // ── Wallet (Bossoli) ───────────────────────────────────────
+
+  /** Ritorna il saldo del wallet: { base_coins, bet_coins, total }. */
+  async getWallet() {
+    if (!_session) return { base_coins: 0, bet_coins: 0, total: 0 }
+    const { data } = await _supa
+      .from('wallets')
+      .select('base_coins, bet_coins')
+      .eq('profile_id', _session.user.id)
+      .single()
+    const base = data?.base_coins ?? 0
+    const bets = data?.bet_coins  ?? 0
+    return { base_coins: base, bet_coins: bets, total: base + bets }
+  },
+
+  // ── Scommesse ──────────────────────────────────────────────
+
+  /** Ritorna le scommesse dell'utente loggato. */
+  async getBets(seasonId = null) {
+    if (!_session) return []
+    let q = _supa
+      .from('scommesse')
+      .select('id, season_id, bet_type, player_name, importo, quota, status, vincita_netta, created_at, resolved_at')
+      .eq('profile_id', _session.user.id)
+      .order('created_at', { ascending: false })
+    if (seasonId) q = q.eq('season_id', seasonId)
+    const { data } = await q
+    return data || []
+  },
+
+  /**
+   * Piazza una scommessa (RPC atomica).
+   * @returns {Promise<{success?:boolean, bet_id?:string, new_balance?:number, error?:string}>}
+   */
+  async placeBet(season_id, bet_type, player_name, importo, quota) {
+    if (!_session) return { error: 'Non autenticato' }
+    const { data, error } = await _supa.rpc('place_bet', {
+      p_season_id:   season_id,
+      p_bet_type:    bet_type,
+      p_player_name: player_name,
+      p_importo:     importo,
+      p_quota:       quota,
+    })
+    if (error) return { error: error.message }
+    return data  // { success, bet_id, new_balance } o { error }
+  },
+
+  /**
+   * Risolve una scommessa (solo admin).
+   * @param {string} bet_id  UUID della scommessa
+   * @param {'vinta'|'persa'|'annullata'} status
+   */
+  async resolveBet(bet_id, status) {
+    if (!this.isAdmin()) return { error: 'Non autorizzato' }
+    const { data, error } = await _supa.rpc('resolve_bet', {
+      p_bet_id: bet_id,
+      p_status: status,
+    })
+    if (error) return { error: error.message }
+    return data
+  },
+
+  /**
+   * Sincronizza retroattivamente i wallet di tutti i giocatori (solo admin).
+   * base_coins = giornate_giocate × 100
+   */
+  async syncWallets() {
+    if (!this.isAdmin()) return { error: 'Non autorizzato' }
+    const { data, error } = await _supa.rpc('sync_all_wallets')
+    if (error) return { error: error.message }
+    return data
+  },
+
+  /** Admin: ritorna tutte le scommesse attive con profilo utente. */
+  async getAllActiveBets() {
+    if (!this.isAdmin()) return []
+    const { data } = await _supa
+      .from('scommesse')
+      .select('id, profile_id, season_id, bet_type, player_name, importo, quota, status, created_at, profiles(display_name, username)')
+      .eq('status', 'attiva')
+      .order('created_at', { ascending: false })
+    return data || []
   },
 
   // ── Accesso client Supabase per query dirette ──────────────

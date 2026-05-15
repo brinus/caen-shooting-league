@@ -35,7 +35,7 @@
 
       <div id="profile-content" hidden>
 
-        <!-- Header profilo -->
+        <!-- ── Header profilo (sempre visibile) ── -->
         <div class="profile-header card">
           <div class="profile-avatar" id="profile-avatar">?</div>
           <div class="profile-info">
@@ -45,67 +45,165 @@
               <span class="profile-season" id="profile-season-label"></span>
             </div>
           </div>
+          <!-- Wallet badge (solo profilo proprio) -->
+          <div id="profile-wallet-badge" class="profile-wallet-badge" hidden>
+            <span class="wallet-icon">🪙</span>
+            <span id="wallet-balance-header">—</span>
+            <span class="wallet-label">Bossoli</span>
+          </div>
         </div>
 
-        <!-- Statistiche stagione attiva -->
-        <section class="profile-stats-section" style="margin-top:1.5rem">
-          <h2 class="section-title">📊 Stagione attiva</h2>
-          <div class="profile-stats-grid" id="profile-stats-grid"></div>
-        </section>
+        <!-- ── Layout sidebar + main ── -->
+        <div id="profile-own-layout" class="profile-layout" hidden>
 
-        <!-- Posizione in classifica -->
-        <section style="margin-top:2rem">
-          <h2 class="section-title">🏆 Posizione in classifica</h2>
-          <div class="profile-rank-card card" id="profile-rank-card"></div>
-        </section>
+          <!-- Sidebar navigazione -->
+          <nav class="profile-sidebar" aria-label="Sezioni profilo">
+            <button class="profile-sidebar-btn active" data-tab="dashboard">
+              <span class="sidebar-icon">🏠</span> Dashboard
+            </button>
+            <button class="profile-sidebar-btn" data-tab="statistiche">
+              <span class="sidebar-icon">📊</span> Statistiche
+            </button>
+            <button class="profile-sidebar-btn" data-tab="scommesse">
+              <span class="sidebar-icon">🎰</span> Scommesse
+            </button>
+            <button class="profile-sidebar-btn" data-tab="impostazioni">
+              <span class="sidebar-icon">⚙</span> Impostazioni
+            </button>
+          </nav>
 
-        <!-- Storico giornate -->
-        <section style="margin-top:2rem">
-          <h2 class="section-title">📅 Giornate disputate</h2>
-          <div class="profile-giornate" id="profile-giornate"></div>
-        </section>
+          <!-- Contenuto tab -->
+          <div class="profile-main">
 
-        <!-- Grafico andamento punteggi -->
-        <section id="profile-sparkline-section" style="margin-top:2rem" hidden>
-          <h2 class="section-title">📈 Andamento punteggi</h2>
-          <div class="card profile-sparkline-card">
-            <div class="profile-sparkline-wrap sparkline-wrap"></div>
-          </div>
-        </section>
+            <!-- ── Tab: Dashboard ── -->
+            <div id="tab-dashboard" class="profile-tab">
 
-        <!-- Quote SISAL -->
-        <section id="profile-sisal-section" style="margin-top:2rem" hidden>
-          <h2 class="section-title">📊 Quote SISAL</h2>
-          <div class="card profile-sisal-card">
-            <div id="profile-sisal-content"></div>
-          </div>
-        </section>
+              <!-- Wallet card -->
+              <section>
+                <h2 class="section-title">🪙 Bossoli</h2>
+                <div class="wallet-card card" id="wallet-card">
+                  <div class="wallet-total">
+                    <div class="wallet-amount" id="wallet-total-amount">—</div>
+                    <div class="wallet-amount-label">Bossoli disponibili</div>
+                  </div>
+                  <div class="wallet-breakdown" id="wallet-breakdown"></div>
+                </div>
+              </section>
 
-        <!-- Cambio password (solo profilo proprio) -->
-        <section id="profile-password-section" style="margin-top:2rem;margin-bottom:3rem" hidden>
-          <h2 class="section-title">🔒 Cambia password</h2>
-          <div class="card" style="max-width:460px">
-            <form id="form-change-password">
-              <div class="form-group" style="margin-bottom:1rem">
-                <label>Nuova password</label>
-                <input type="password" class="form-input" id="pw-new"
-                       placeholder="Minimo 8 caratteri" minlength="8" required>
+              <!-- Scommesse attive (dashboard) -->
+              <section style="margin-top:1.75rem">
+                <h2 class="section-title">🎰 Scommesse attive</h2>
+                <div id="dashboard-active-bets">
+                  <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
+                </div>
+              </section>
+
+            </div>
+
+            <!-- ── Tab: Statistiche ── -->
+            <div id="tab-statistiche" class="profile-tab" hidden>
+
+              <section>
+                <h2 class="section-title">📊 Stagione attiva</h2>
+                <div class="profile-stats-grid" id="profile-stats-grid"></div>
+              </section>
+
+              <section style="margin-top:2rem">
+                <h2 class="section-title">🏆 Posizione in classifica</h2>
+                <div class="profile-rank-card card" id="profile-rank-card"></div>
+              </section>
+
+              <section style="margin-top:2rem">
+                <h2 class="section-title">📅 Giornate disputate</h2>
+                <div class="profile-giornate" id="profile-giornate"></div>
+              </section>
+
+              <section id="profile-sparkline-section" style="margin-top:2rem" hidden>
+                <h2 class="section-title">📈 Andamento punteggi</h2>
+                <div class="card profile-sparkline-card">
+                  <div class="profile-sparkline-wrap"></div>
+                </div>
+              </section>
+
+              <section id="profile-sisal-section" style="margin-top:2rem" hidden>
+                <h2 class="section-title">📊 Quote SISAL</h2>
+                <div class="card profile-sisal-card">
+                  <div id="profile-sisal-content"></div>
+                </div>
+              </section>
+
+            </div>
+
+            <!-- ── Tab: Scommesse ── -->
+            <div id="tab-scommesse" class="profile-tab" hidden>
+              <h2 class="section-title">🎰 Storico scommesse</h2>
+              <div id="bets-history-list">
+                <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
               </div>
-              <div class="form-group" style="margin-bottom:1.25rem">
-                <label>Conferma nuova password</label>
-                <input type="password" class="form-input" id="pw-confirm"
-                       placeholder="Ripeti la nuova password" required>
-              </div>
-              <div class="form-error"   id="pw-error"   hidden></div>
-              <div class="form-success" id="pw-success" hidden></div>
-              <button type="submit" class="btn-primary" id="btn-change-password" style="margin-top:0.75rem">
-                Aggiorna password
-              </button>
-            </form>
-          </div>
-        </section>
+            </div>
 
-      </div>
+            <!-- ── Tab: Impostazioni ── -->
+            <div id="tab-impostazioni" class="profile-tab" hidden>
+              <h2 class="section-title">🔒 Cambia password</h2>
+              <div class="card" style="max-width:460px">
+                <form id="form-change-password">
+                  <div class="form-group" style="margin-bottom:1rem">
+                    <label>Nuova password</label>
+                    <input type="password" class="form-input" id="pw-new"
+                           placeholder="Minimo 8 caratteri" minlength="8" required>
+                  </div>
+                  <div class="form-group" style="margin-bottom:1.25rem">
+                    <label>Conferma nuova password</label>
+                    <input type="password" class="form-input" id="pw-confirm"
+                           placeholder="Ripeti la nuova password" required>
+                  </div>
+                  <div class="form-error"   id="pw-error"   hidden></div>
+                  <div class="form-success" id="pw-success" hidden></div>
+                  <button type="submit" class="btn-primary" id="btn-change-password" style="margin-top:0.75rem">
+                    Aggiorna password
+                  </button>
+                </form>
+              </div>
+            </div>
+
+          </div><!-- /profile-main -->
+        </div><!-- /profile-own-layout -->
+
+        <!-- ── Layout senza sidebar (profilo altrui) ── -->
+        <div id="profile-other-layout">
+
+          <section class="profile-stats-section" style="margin-top:1.5rem">
+            <h2 class="section-title">📊 Stagione attiva</h2>
+            <div class="profile-stats-grid" id="profile-stats-grid-other"></div>
+          </section>
+
+          <section style="margin-top:2rem">
+            <h2 class="section-title">🏆 Posizione in classifica</h2>
+            <div class="profile-rank-card card" id="profile-rank-card-other"></div>
+          </section>
+
+          <section style="margin-top:2rem">
+            <h2 class="section-title">📅 Giornate disputate</h2>
+            <div class="profile-giornate" id="profile-giornate-other"></div>
+          </section>
+
+          <section id="profile-sparkline-section-other" style="margin-top:2rem" hidden>
+            <h2 class="section-title">📈 Andamento punteggi</h2>
+            <div class="card profile-sparkline-card">
+              <div class="profile-sparkline-wrap"></div>
+            </div>
+          </section>
+
+          <section id="profile-sisal-section-other" style="margin-top:2rem;margin-bottom:3rem" hidden>
+            <h2 class="section-title">📊 Quote SISAL</h2>
+            <div class="card profile-sisal-card">
+              <div id="profile-sisal-content-other"></div>
+            </div>
+          </section>
+
+        </div><!-- /profile-other-layout -->
+
+      </div><!-- /profile-content -->
 
     </div>
   </main>
@@ -122,204 +220,238 @@
   <script src="data/sisal.js"></script>
   <script src="js/app.js"></script>
   <script>
-    document.addEventListener('csl:auth-ready', async function () {
-      const params = new URLSearchParams(window.location.search)
-      const playerParam = params.get('giocatore')
-      let targetPlayerName = null
-      let isOwnProfile = false
+    /* ────────────────────────────────────────────────────────────
+       PROFILO — script principale
+    ──────────────────────────────────────────────────────────── */
 
-      if (playerParam) {
-        targetPlayerName = decodeURIComponent(playerParam)
-      } else if (CSLAuth.isLoggedIn()) {
-        const profile = CSLAuth.getProfile()
-        const meta = CSLAuth.getSession()?.user?.user_metadata
-        targetPlayerName = profile?.player_name || profile?.display_name
-          || meta?.player_name || meta?.display_name
-        isOwnProfile = true
-      } else {
-        document.getElementById('profile-loading').hidden = true
-        document.getElementById('profile-login-required').hidden = false
-        return
-      }
-
-      if (!targetPlayerName) {
-        document.getElementById('profile-loading').hidden = true
-        document.getElementById('profile-not-found').hidden = false
-        return
-      }
-
-      await renderProfile(targetPlayerName, isOwnProfile)
-    })
-
-    function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
-    function escHtml(s) { return _esc(s) }
+    // ── Helpers ──────────────────────────────────────────────────
+    function _esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }
     function formatDate(dateStr) {
-      return new Date(dateStr + 'T00:00:00').toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
+      return new Date(dateStr + 'T00:00:00')
+        .toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
     }
     function fmtQ(n) {
-      return Number(n||0).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 })
+      return Number(n||0).toLocaleString('it-IT', {minimumFractionDigits:2, maximumFractionDigits:2})
+    }
+    function fmtCoins(n) { return Number(n||0).toLocaleString('it-IT') }
+
+    // ── Sparkline profilo (più fine + più info) ───────────────────
+    function buildProfileSparkline(timeline) {
+      if (!timeline || timeline.length < 2) return ''
+      var W = 600, H = 88, PADX = 28, PADY_T = 24, PADY_B = 22
+      var graphH = H - PADY_T - PADY_B  // area grafico: 42px
+      var scores = timeline.map(function(t) { return t.punteggio })
+      var minV = Math.min.apply(null, scores)
+      var maxV = Math.max.apply(null, scores)
+      var range = maxV - minV || 1
+      var avg = scores.reduce(function(a,b){return a+b},0) / scores.length
+
+      function px(i) { return PADX + (i / (timeline.length - 1)) * (W - PADX * 2) }
+      function py(v) { return PADY_T + graphH - ((v - minV) / range) * graphH }
+
+      var pts = timeline.map(function(t,i) { return px(i)+','+py(t.punteggio) }).join(' ')
+      var avgY = py(avg).toFixed(1)
+
+      // Area riempimento
+      var areaD = 'M '+px(0)+','+py(timeline[0].punteggio)
+        + timeline.slice(1).map(function(t,i){ return ' L '+px(i+1)+','+py(t.punteggio) }).join('')
+        + ' L '+px(timeline.length-1)+','+(PADY_T+graphH)
+        + ' L '+px(0)+','+(PADY_T+graphH)+' Z'
+
+      var isUp = scores[scores.length-1] > scores[0]
+      var isFlat = scores[scores.length-1] === scores[0]
+      var lineColor = isFlat ? 'rgba(255,255,255,0.3)' : (isUp ? '#66bb6a' : '#ef5350')
+      var areaId = 'psg'+Math.random().toString(36).slice(2,8)
+
+      // Etichette punteggio sopra ogni punto
+      var labels = timeline.map(function(t,i) {
+        var cx = px(i), cy = py(t.punteggio)
+        var labelY = cy - 8
+        if (labelY < 4) labelY = cy + 16
+        return '<text class="spark-label" x="'+cx.toFixed(1)+'" y="'+labelY.toFixed(1)+'"'
+          +' text-anchor="middle">'+t.punteggio+'</text>'
+      }).join('')
+
+      // Etichette giornata sotto (G1, G2…)
+      var roundLabels = timeline.map(function(t,i) {
+        var recMark = t.recupero ? '<tspan fill="#64b5f6">R</tspan>' : ''
+        return '<text class="spark-round-label" x="'+px(i).toFixed(1)+'" y="'+(H-4)+'"'
+          +' text-anchor="middle">G'+(i+1)+recMark+'</text>'
+      }).join('')
+
+      // Linea media tratteggiata
+      var avgLine = '<line x1="'+PADX+'" y1="'+avgY+'" x2="'+(W-PADX)+'" y2="'+avgY+'"'
+        +' class="spark-avg-line"/>'
+      // Label media
+      var avgLabel = '<text class="spark-avg-label" x="'+(W-PADX+3)+'" y="'+(parseFloat(avgY)+4)+'">'
+        +'⌀ '+avg.toFixed(1)+'</text>'
+
+      // Dots interattivi
+      var dots = timeline.map(function(t,i) {
+        var cx = px(i).toFixed(1), cy = py(t.punteggio).toFixed(1)
+        var isLast = i === timeline.length - 1
+        var dotFill = t.recupero ? '#64b5f6' : (isLast ? lineColor : 'rgba(255,255,255,0.65)')
+        return '<circle class="spark-dot'+(isLast?' spark-dot--last':'')+(t.recupero?' spark-dot--recupero':'')
+          +'" cx="'+cx+'" cy="'+cy+'" r="'+(isLast?3.5:2.5)+'" fill="'+dotFill+'"'
+          +' data-date="'+t.data+'" data-score="'+t.punteggio+'" data-recupero="'+(t.recupero?'1':'0')+'"/>'
+      }).join('')
+
+      return '<svg class="sparkline sparkline--profile" viewBox="0 0 '+W+' '+H+'"'
+        +' preserveAspectRatio="none" aria-hidden="true">'
+        +'<defs><linearGradient id="'+areaId+'" x1="0" y1="0" x2="0" y2="1">'
+        +'<stop offset="0%" stop-color="'+lineColor+'" stop-opacity="0.18"/>'
+        +'<stop offset="100%" stop-color="'+lineColor+'" stop-opacity="0"/>'
+        +'</linearGradient></defs>'
+        +'<path class="spark-area" d="'+areaD+'" fill="url(#'+areaId+')"/>'
+        + avgLine + avgLabel
+        +'<polyline class="spark-line" points="'+pts+'"'
+        +' fill="none" stroke="'+lineColor+'" stroke-width="1.3"'
+        +' stroke-linejoin="round" stroke-linecap="round"/>'
+        + labels + roundLabels + dots
+        +'</svg>'
     }
 
-    async function renderProfile(playerName, isOwnProfile) {
-      let stagioni = CSL.stagioni
-      if (window.CSLRanking && CSLAuth.isLoggedIn()) {
-        try {
-          await new Promise(resolve => {
-            CSLRanking.loadStagioniFromSupabase(data => { if (data) stagioni = data; resolve() })
-          })
-        } catch(e) {}
-      }
+    // ── Render sezione statistiche ────────────────────────────────
+    function renderStats(playerName, playerData, giornatePersonali, prefix, isOwnProfile) {
+      var sfx = prefix  // '' o '-other'
 
-      const seasonAttiva = stagioni.find(s => s.status === 'attiva') || stagioni[stagioni.length - 1]
-      if (!seasonAttiva) {
-        document.getElementById('profile-loading').hidden = true
-        document.getElementById('profile-not-found').hidden = false
-        return
-      }
-
-      const playerData = seasonAttiva.classifica?.find(p => p.nome.toLowerCase() === playerName.toLowerCase())
-      document.getElementById('profile-loading').hidden = true
-
-      if (!playerData && !stagioni.some(s => s.classifica?.some(p => p.nome.toLowerCase() === playerName.toLowerCase()))) {
-        document.getElementById('profile-not-found').hidden = false
-        return
-      }
-
-      document.getElementById('profile-content').hidden = false
-      document.title = playerName + ' — CSL'
-
-      // ── Header ──────────────────────────────────────────────
-      const initiali = playerData?.iniziali || playerName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2)
-      document.getElementById('profile-avatar').textContent = initiali
-      document.getElementById('profile-name').textContent   = playerName
-      const roleBadge = document.getElementById('profile-role-badge')
-      roleBadge.textContent = (isOwnProfile && CSLAuth.isAdmin()) ? 'Admin' : 'Partecipante'
-      roleBadge.classList.add((isOwnProfile && CSLAuth.isAdmin()) ? 'badge-admin' : 'badge-participant')
-      document.getElementById('profile-season-label').textContent = seasonAttiva.nome + ' ' + seasonAttiva.anno
-
-      // ── Stats grid (migliorato) ──────────────────────────────
-      const statsGrid = document.getElementById('profile-stats-grid')
-      if (playerData) {
-        const winRate = playerData.partite > 0 ? Math.round(playerData.vittorie / playerData.partite * 100) : 0
-        const posLabel = playerData.posizione <= 3
-          ? ['🥇','🥈','🥉'][playerData.posizione - 1]
-          : '#' + playerData.posizione
-        const recHtml = playerData.recuperi_usati > 0
-          ? '<span class="recupero-counter recupero-counter--used" title="Recuperi usati">' + playerData.recuperi_usati + '/' + playerData.recuperi_max + 'R</span>'
+      // Stats grid
+      var statsGrid = document.getElementById('profile-stats-grid'+sfx)
+      if (playerData && statsGrid) {
+        var winRate = playerData.partite > 0 ? Math.round(playerData.vittorie / playerData.partite * 100) : 0
+        var posLabel = playerData.posizione <= 3
+          ? ['🥇','🥈','🥉'][playerData.posizione - 1] : '#' + playerData.posizione
+        var recHtml = playerData.recuperi_usati > 0
+          ? '<span class="recupero-counter recupero-counter--used">'
+            + playerData.recuperi_usati + '/' + playerData.recuperi_max + 'R</span>'
           : ''
         statsGrid.innerHTML = [
-          { icon:'📍', val: posLabel,                             label: 'Posizione',   extra:'', cls:'profile-stat-card--pos' },
-          { icon:'⚡', val: playerData.punti_campionato,          label: 'Punti camp.', extra:'', cls:'profile-stat-card--primary', color:'var(--primary)' },
-          { icon:'🎯', val: playerData.record + '<small>/50</small>', label: 'Record',  extra:'', cls:'profile-stat-card--gold',    color:'var(--secondary)' },
-          { icon:'📊', val: playerData.media_tiro.toFixed(1),     label: 'Media tiro',  extra:'', cls:'' },
-          { icon:'🏆', val: playerData.vittorie,                  label: 'Vittorie',    extra:'<span class="profile-stat-sub">(' + winRate + '%)</span>', cls:'' },
-          { icon:'📅', val: playerData.partite,                   label: 'Giornate',    extra: recHtml, cls:'' },
+          { icon:'📍', val:posLabel, label:'Posizione', extra:'', cls:'profile-stat-card--pos' },
+          { icon:'⚡', val:playerData.punti_campionato, label:'Punti camp.', extra:'', cls:'profile-stat-card--primary', color:'var(--primary)' },
+          { icon:'🎯', val:playerData.record+'<small>/50</small>', label:'Record', extra:'', cls:'profile-stat-card--gold', color:'var(--secondary)' },
+          { icon:'📊', val:playerData.media_tiro.toFixed(1), label:'Media tiro', extra:'', cls:'' },
+          { icon:'🏆', val:playerData.vittorie, label:'Vittorie', extra:'<span class="profile-stat-sub">('+winRate+'%)</span>', cls:'' },
+          { icon:'📅', val:playerData.partite, label:'Giornate', extra:recHtml, cls:'' },
         ].map(function(s) {
-          return '<div class="profile-stat-card card ' + s.cls + '">' +
-            '<div class="profile-stat-icon">' + s.icon + '</div>' +
-            '<div class="profile-stat-value"' + (s.color ? ' style="color:' + s.color + '"' : '') + '>' + s.val + '</div>' +
-            '<div class="profile-stat-label">' + s.label + (s.extra ? ' ' + s.extra : '') + '</div>' +
-          '</div>'
+          return '<div class="profile-stat-card card '+s.cls+'">'
+            +'<div class="profile-stat-icon">'+s.icon+'</div>'
+            +'<div class="profile-stat-value"'+(s.color?' style="color:'+s.color+'"':'')+'>'+s.val+'</div>'
+            +'<div class="profile-stat-label">'+s.label+(s.extra?' '+s.extra:'')+'</div>'
+            +'</div>'
         }).join('')
-      } else {
+      } else if (statsGrid) {
         statsGrid.innerHTML = '<p class="text-muted">Nessuna statistica disponibile per questa stagione.</p>'
       }
 
-      // ── Rank card ────────────────────────────────────────────
-      const rankCard = document.getElementById('profile-rank-card')
-      if (playerData) {
-        const posBadge = playerData.posizione <= 3 ? ['🥇','🥈','🥉'][playerData.posizione-1] : '#'+playerData.posizione
-        rankCard.innerHTML = '<div class="rank-summary">' +
-          '<span class="rank-position-big">' + posBadge + '</span>' +
-          '<div class="rank-details">' +
-            '<div><strong>' + playerData.punti_campionato + '</strong> punti campionato</div>' +
-            '<div><strong>' + playerData.punti_tiro + '</strong> punti tiro</div>' +
-            '<div>Recuperi: ' + playerData.recuperi_usati + '/' + playerData.recuperi_max + '</div>' +
-          '</div></div>'
-      } else {
-        rankCard.innerHTML = '<p class="text-muted">Giocatore non in classifica nella stagione corrente.</p>'
-      }
-
-      // ── Storico giornate ─────────────────────────────────────
-      const giornateEl = document.getElementById('profile-giornate')
-      const giornatePersonali = (seasonAttiva.giornate || [])
-        .map(function(g) { return Object.assign({}, g, { risultato: g.risultati.find(function(r) { return r.nome.toLowerCase() === playerName.toLowerCase() }) }) })
-        .filter(function(g) { return g.risultato })
-        .sort(function(a, b) { return b.data.localeCompare(a.data) })
-
-      if (!giornatePersonali.length) {
-        giornateEl.innerHTML = '<p class="text-muted">Nessuna giornata registrata.</p>'
-      } else {
-        giornateEl.innerHTML = giornatePersonali.map(function(g) {
-          const r = g.risultato
-          const attempts = [r.t1, r.t2, r.t3].map(function(t) {
-            return t === -1 ? '<span class="attempt attempt-skipped">—</span>' : '<span class="attempt">' + t + '</span>'
-          }).join('')
-          return '<div class="profile-giornata-row card">' +
-            '<div class="profile-giornata-date">' +
-              '<span class="giornata-num">G' + g.numero + '</span>' +
-              '<span class="giornata-day">' + _esc(g.giorno) + '</span>' +
-              '<span class="giornata-date-str">' + formatDate(g.data) + '</span>' +
-              (r.recupero ? '<span class="badge-recupero">recupero</span>' : '') +
-            '</div>' +
-            '<div class="profile-giornata-tentativi">' + attempts + '</div>' +
-            '<div class="profile-giornata-best"><span class="attempt-best">' + r.punteggio + '</span></div>' +
-            '<div class="profile-giornata-pos">' +
-              '<span class="rank-badge rank-badge-' + (r.posizione <= 3 ? r.posizione : 'other') + '">' +
-                (r.posizione <= 3 ? ['🥇','🥈','🥉'][r.posizione-1] : '#'+r.posizione) +
-              '</span>' +
-              '<span class="camp-pts camp-pts-' + r.punti_campionato + '">' + r.punti_campionato + ' pt</span>' +
-            '</div>' +
-          '</div>'
-        }).join('')
-      }
-
-      // ── Sparkline ────────────────────────────────────────────
-      if (giornatePersonali.length >= 2 && typeof buildSparkline !== 'undefined') {
-        const timeline = giornatePersonali.slice()
-          .sort(function(a,b) { return a.data.localeCompare(b.data) })
-          .map(function(g) { return { data: g.data, punteggio: g.risultato.punteggio, recupero: g.risultato.recupero || false } })
-        const sparkSection = document.getElementById('profile-sparkline-section')
-        sparkSection.hidden = false
-        const sparkWrap = sparkSection.querySelector('.profile-sparkline-wrap')
-        sparkWrap.innerHTML = buildSparkline(timeline) + '<div class="sparkline-tooltip" style="display:none"></div>'
-        const tip = sparkWrap.querySelector('.sparkline-tooltip')
-        sparkWrap.querySelectorAll('.spark-dot').forEach(function(dot) {
-          dot.addEventListener('mouseenter', function() {
-            const d = new Date(dot.getAttribute('data-date') + 'T00:00:00')
-            const label = d.toLocaleDateString('it-IT', { day:'numeric', month:'short' })
-            const recLabel = dot.getAttribute('data-recupero') === '1' ? ' [R]' : ''
-            tip.textContent = label + recLabel + ' — ' + dot.getAttribute('data-score') + ' pt'
-            tip.style.display = 'block'
-            const wRect = sparkWrap.getBoundingClientRect()
-            const dRect = dot.getBoundingClientRect()
-            tip.style.left = Math.min(Math.max(dRect.left - wRect.left + dRect.width / 2, 28), sparkWrap.offsetWidth - 28) + 'px'
-          })
-          dot.addEventListener('mouseleave', function() { tip.style.display = 'none' })
-        })
-      }
-
-      // ── Quote SISAL ──────────────────────────────────────────
-      if (window.CSL && CSL.sisal && CSL.sisal.length) {
-        const board = CSL.sisal.find(function(b) { return b.season_id === seasonAttiva.id }) || CSL.sisal[CSL.sisal.length - 1]
-        if (board) {
-          const sp = board.players.find(function(p) { return p.nome.toLowerCase() === playerName.toLowerCase() })
-          if (sp) {
-            const sisalSection = document.getElementById('profile-sisal-section')
-            sisalSection.hidden = false
-            renderSisalProfile(sp, board, document.getElementById('profile-sisal-content'))
-          }
+      // Rank card
+      var rankCard = document.getElementById('profile-rank-card'+sfx)
+      if (rankCard) {
+        if (playerData) {
+          var posBadge = playerData.posizione <= 3 ? ['🥇','🥈','🥉'][playerData.posizione-1] : '#'+playerData.posizione
+          rankCard.innerHTML = '<div class="rank-summary">'
+            +'<span class="rank-position-big">'+posBadge+'</span>'
+            +'<div class="rank-details">'
+            +'<div><strong>'+playerData.punti_campionato+'</strong> punti campionato</div>'
+            +'<div><strong>'+playerData.punti_tiro+'</strong> punti tiro</div>'
+            +'<div>Recuperi: '+playerData.recuperi_usati+'/'+playerData.recuperi_max+'</div>'
+            +'</div></div>'
+        } else {
+          rankCard.innerHTML = '<p class="text-muted">Giocatore non in classifica nella stagione corrente.</p>'
         }
       }
 
-      // ── Cambio password (solo profilo proprio) ───────────────
-      if (isOwnProfile) initPasswordForm()
+      // Giornate
+      var giornateEl = document.getElementById('profile-giornate'+sfx)
+      if (giornateEl) {
+        if (!giornatePersonali.length) {
+          giornateEl.innerHTML = '<p class="text-muted">Nessuna giornata registrata.</p>'
+        } else {
+          giornateEl.innerHTML = giornatePersonali.map(function(g) {
+            var r = g.risultato
+            var attempts = [r.t1, r.t2, r.t3].map(function(t) {
+              return t === -1
+                ? '<span class="attempt attempt-skipped">—</span>'
+                : '<span class="attempt">'+t+'</span>'
+            }).join('')
+            return '<div class="profile-giornata-row card">'
+              +'<div class="profile-giornata-date">'
+              +'<span class="giornata-num">G'+g.numero+'</span>'
+              +'<span class="giornata-day">'+_esc(g.giorno)+'</span>'
+              +'<span class="giornata-date-str">'+formatDate(g.data)+'</span>'
+              +(r.recupero ? '<span class="badge-recupero">recupero</span>' : '')
+              +'</div>'
+              +'<div class="profile-giornata-tentativi">'+attempts+'</div>'
+              +'<div class="profile-giornata-best"><span class="attempt-best">'+r.punteggio+'</span></div>'
+              +'<div class="profile-giornata-pos">'
+              +'<span class="rank-badge rank-badge-'+(r.posizione<=3?r.posizione:'other')+'">'
+              +(r.posizione<=3?['🥇','🥈','🥉'][r.posizione-1]:'#'+r.posizione)+'</span>'
+              +'<span class="camp-pts camp-pts-'+r.punti_campionato+'">'+r.punti_campionato+' pt</span>'
+              +'</div>'
+              +'</div>'
+          }).join('')
+        }
+      }
+
+      // Sparkline (profilo migliorato)
+      if (giornatePersonali.length >= 2) {
+        var timeline = giornatePersonali.slice()
+          .sort(function(a,b){ return a.data.localeCompare(b.data) })
+          .map(function(g){ return { data:g.data, punteggio:g.risultato.punteggio, recupero:g.risultato.recupero||false } })
+
+        var sparkSectionId = 'profile-sparkline-section' + (sfx ? sfx : '')
+        var sparkSection = document.getElementById(sparkSectionId)
+        if (sparkSection) {
+          sparkSection.hidden = false
+          var sparkWrap = sparkSection.querySelector('.profile-sparkline-wrap')
+          sparkWrap.innerHTML = buildProfileSparkline(timeline)
+            + '<div class="sparkline-tooltip" style="display:none"></div>'
+          var tip = sparkWrap.querySelector('.sparkline-tooltip')
+          sparkWrap.querySelectorAll('.spark-dot').forEach(function(dot) {
+            dot.addEventListener('mouseenter', function() {
+              var d = new Date(dot.getAttribute('data-date')+'T00:00:00')
+              var label = d.toLocaleDateString('it-IT',{day:'numeric',month:'short'})
+              var recLabel = dot.getAttribute('data-recupero')==='1' ? ' [R]' : ''
+              tip.textContent = label+recLabel+' — '+dot.getAttribute('data-score')+' pt'
+              tip.style.display = 'block'
+              var wRect = sparkWrap.getBoundingClientRect()
+              var dRect = dot.getBoundingClientRect()
+              tip.style.left = Math.min(
+                Math.max(dRect.left - wRect.left + dRect.width/2, 32),
+                sparkWrap.offsetWidth - 32
+              )+'px'
+            })
+            dot.addEventListener('mouseleave', function(){ tip.style.display='none' })
+          })
+        }
+      }
+
+      // SISAL
+      if (window.CSL && CSL.sisal && CSL.sisal.length) {
+        var board = CSL.sisal.find(function(b){ return b.season_id === _seasonId })
+          || CSL.sisal[CSL.sisal.length-1]
+        if (board) {
+          var sp = board.players.find(function(p){ return p.nome.toLowerCase()===playerName.toLowerCase() })
+          if (sp) {
+            var sisalSectionId = 'profile-sisal-section' + (sfx ? sfx : '')
+            var sisalSection = document.getElementById(sisalSectionId)
+            var contentId = 'profile-sisal-content' + (sfx ? sfx : '')
+            if (sisalSection) {
+              sisalSection.hidden = false
+              renderSisalProfile(sp, board, document.getElementById(contentId))
+            }
+          }
+        }
+      }
     }
 
+    // ── Render SISAL profilo ──────────────────────────────────────
     function renderSisalProfile(p, board, container) {
-      const trendClass = p.trend === 'Caldo' ? 'sisal-chip--hot' : p.trend === 'Freddo' ? 'sisal-chip--cold' : 'sisal-chip--steady'
-      const trendIcon  = p.trend === 'Caldo' ? '🔥' : p.trend === 'Freddo' ? '🧊' : '→'
-      const quotes = [
+      if (!container) return
+      var trendClass = p.trend==='Caldo' ? 'sisal-chip--hot' : p.trend==='Freddo' ? 'sisal-chip--cold' : 'sisal-chip--steady'
+      var trendIcon  = p.trend==='Caldo' ? '🔥' : p.trend==='Freddo' ? '🧊' : '→'
+      var quotes = [
         { label:'Titolo',    val:p.quote_titolo,  icon:'🏆', featured:true  },
         { label:'Podio',     val:p.quote_podio,   icon:'🥉', featured:false },
         { label:'Top 5',     val:p.quote_top5,    icon:'⭐', featured:false },
@@ -327,55 +459,246 @@
         { label:'Media ≥18', val:p.quote_avg_18,  icon:'📊', featured:false },
       ]
       container.innerHTML =
-        '<div class="profile-sisal-meta">' +
-          '<span class="sisal-chip ' + trendClass + '">' + trendIcon + ' ' + _esc(p.trend) + '</span>' +
-          '<span class="profile-sisal-conf-wrap">' +
-            '<span class="sisal-confidence-bar" style="width:100px"><span class="sisal-confidence-fill" style="width:' + p.confidence + '%"></span></span>' +
-            '<span class="profile-sisal-conf-label">conf. ' + p.confidence + '%</span>' +
-          '</span>' +
-          '<span class="profile-sisal-giornate">G' + board.giornate_giocate + '/' + board.giornate_totali + ' giocate</span>' +
-        '</div>' +
-        '<div class="profile-sisal-quotes">' +
-          quotes.map(function(q) {
-            return '<div class="profile-sisal-quote-item' + (q.featured ? ' profile-sisal-quote-item--featured' : '') + '">' +
-              '<div class="profile-sisal-quote-label">' + q.icon + ' ' + _esc(q.label) + '</div>' +
-              '<div class="' + (q.featured ? 'sisal-quote--featured' : 'sisal-quote') + ' profile-sisal-quote-val">' + fmtQ(q.val) + '</div>' +
-            '</div>'
-          }).join('') +
-        '</div>' +
-        (p.note ? '<div class="profile-sisal-note">&#8220;' + _esc(p.note) + '&#8221;</div>' : '') +
-        '<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — ' + _esc(board.season_label) + '</p>'
+        '<div class="profile-sisal-meta">'
+        +'<span class="sisal-chip '+trendClass+'">'+trendIcon+' '+_esc(p.trend)+'</span>'
+        +'<span class="profile-sisal-conf-wrap">'
+        +'<span class="sisal-confidence-bar" style="width:100px"><span class="sisal-confidence-fill" style="width:'+p.confidence+'%"></span></span>'
+        +'<span class="profile-sisal-conf-label">conf. '+p.confidence+'%</span>'
+        +'</span>'
+        +'<span class="profile-sisal-giornate">G'+board.giornate_giocate+'/'+board.giornate_totali+' giocate</span>'
+        +'</div>'
+        +'<div class="profile-sisal-quotes">'
+        +quotes.map(function(q) {
+          return '<div class="profile-sisal-quote-item'+(q.featured?' profile-sisal-quote-item--featured':'')+'">'
+            +'<div class="profile-sisal-quote-label">'+q.icon+' '+_esc(q.label)+'</div>'
+            +'<div class="'+(q.featured?'sisal-quote--featured':'sisal-quote')+' profile-sisal-quote-val">'+fmtQ(q.val)+'</div>'
+            +'</div>'
+        }).join('')
+        +'</div>'
+        +(p.note ? '<div class="profile-sisal-note">&#8220;'+_esc(p.note)+'&#8221;</div>' : '')
+        +'<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — '+_esc(board.season_label)+'</p>'
     }
 
-    function initPasswordForm() {
-      const section = document.getElementById('profile-password-section')
-      if (!section) return
-      section.hidden = false
-      const form   = document.getElementById('form-change-password')
-      const errBox = document.getElementById('pw-error')
-      const sucBox = document.getElementById('pw-success')
-      const btn    = document.getElementById('btn-change-password')
+    // ── Wallet dashboard ─────────────────────────────────────────
+    async function renderWallet() {
+      var wallet = await CSLAuth.getWallet()
+      var total  = wallet.total
 
+      // Badge nell'header
+      var badge = document.getElementById('profile-wallet-badge')
+      badge.hidden = false
+      document.getElementById('wallet-balance-header').textContent = fmtCoins(total)
+
+      // Wallet card nel tab Dashboard
+      document.getElementById('wallet-total-amount').textContent = fmtCoins(total) + ' 🪙'
+      var breakdown = document.getElementById('wallet-breakdown')
+      breakdown.innerHTML =
+        '<div class="wallet-row"><span class="wallet-row-label">Giornate giocate</span>'
+        +'<span class="wallet-row-val">+'+fmtCoins(wallet.base_coins)+'</span></div>'
+        +'<div class="wallet-row"><span class="wallet-row-label">Netto scommesse</span>'
+        +'<span class="wallet-row-val '+(wallet.bet_coins>=0?'wallet-pos':'wallet-neg')
+        +'">'+(wallet.bet_coins>=0?'+':'')+fmtCoins(wallet.bet_coins)+'</span></div>'
+    }
+
+    // ── Scommesse ────────────────────────────────────────────────
+    var _BET_LABELS = { titolo:'🏆 Titolo', podio:'🥉 Podio', top5:'⭐ Top 5', best_30:'🎯 Best ≥30', avg_18:'📊 Media ≥18' }
+
+    async function renderActiveBets(container) {
+      var bets = (await CSLAuth.getBets()).filter(function(b){ return b.status==='attiva' })
+      if (!bets.length) {
+        container.innerHTML = '<p class="text-muted">Nessuna scommessa attiva al momento.</p>'
+        return
+      }
+      container.innerHTML = '<div class="bets-list">'
+        + bets.map(function(b) {
+          var potential = Math.floor(b.importo * b.quota)
+          return '<div class="bet-row card">'
+            +'<div class="bet-row-info">'
+            +'<span class="bet-row-player">'+_esc(b.player_name)+'</span>'
+            +'<span class="bet-row-type">'+_esc(_BET_LABELS[b.bet_type]||b.bet_type)+'</span>'
+            +'<span class="bet-row-quota">@'+fmtQ(b.quota)+'</span>'
+            +'</div>'
+            +'<div class="bet-row-amounts">'
+            +'<span class="bet-row-importo">🪙 '+fmtCoins(b.importo)+' puntati</span>'
+            +'<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+            +'</div>'
+            +'</div>'
+        }).join('')
+        +'</div>'
+    }
+
+    async function renderBetsHistory(container) {
+      var bets = await CSLAuth.getBets()
+      if (!bets.length) {
+        container.innerHTML = '<p class="text-muted">Nessuna scommessa effettuata.</p>'
+        return
+      }
+      var statusLabel = { attiva:'⏳ Attiva', vinta:'✅ Vinta', persa:'❌ Persa', annullata:'↩ Annullata' }
+      var statusCls   = { attiva:'bet-status--active', vinta:'bet-status--won', persa:'bet-status--lost', annullata:'bet-status--cancelled' }
+      container.innerHTML = '<div class="bets-list">'
+        + bets.map(function(b) {
+          var potential = Math.floor(b.importo * b.quota)
+          var profitHtml = (b.vincita_netta !== null && b.vincita_netta !== undefined)
+            ? '<span class="bet-row-profit '+(b.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'
+              +(b.vincita_netta>=0?'+':'')+fmtCoins(b.vincita_netta)+' Bossoli</span>'
+            : ''
+          var dateStr = new Date(b.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
+          return '<div class="bet-row card">'
+            +'<div class="bet-row-info">'
+            +'<span class="bet-row-player">'+_esc(b.player_name)+'</span>'
+            +'<span class="bet-row-type">'+_esc(_BET_LABELS[b.bet_type]||b.bet_type)+'</span>'
+            +'<span class="bet-row-quota">@'+fmtQ(b.quota)+'</span>'
+            +'<span class="bet-status '+_esc(statusCls[b.status]||'')+'">'+_esc(statusLabel[b.status]||b.status)+'</span>'
+            +'</div>'
+            +'<div class="bet-row-amounts">'
+            +'<span class="bet-row-importo">🪙 '+fmtCoins(b.importo)+' puntati</span>'
+            +(b.status==='attiva'
+              ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+              : profitHtml)
+            +'<span class="bet-row-date">'+dateStr+'</span>'
+            +'</div>'
+            +'</div>'
+        }).join('')
+        +'</div>'
+    }
+
+    // ── Sidebar tab switching ─────────────────────────────────────
+    var _activeTab = 'dashboard'
+    function initSidebar() {
+      document.querySelectorAll('.profile-sidebar-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tab = btn.getAttribute('data-tab')
+          document.querySelectorAll('.profile-sidebar-btn').forEach(function(b){ b.classList.remove('active') })
+          btn.classList.add('active')
+          document.querySelectorAll('.profile-tab').forEach(function(t){ t.hidden = true })
+          var tabEl = document.getElementById('tab-'+tab)
+          if (tabEl) tabEl.hidden = false
+          _activeTab = tab
+          // Carica dati on-demand
+          if (tab === 'scommesse') {
+            var c = document.getElementById('bets-history-list')
+            if (c && c.querySelector('.text-muted')) renderBetsHistory(c)
+          }
+        })
+      })
+    }
+
+    // ── Cambio password ───────────────────────────────────────────
+    function initPasswordForm() {
+      var form   = document.getElementById('form-change-password')
+      var errBox = document.getElementById('pw-error')
+      var sucBox = document.getElementById('pw-success')
+      var btn    = document.getElementById('btn-change-password')
+      if (!form) return
       form.addEventListener('submit', async function(e) {
         e.preventDefault()
         errBox.hidden = true; sucBox.hidden = true
-        const newPw  = document.getElementById('pw-new').value
-        const confPw = document.getElementById('pw-confirm').value
-        if (newPw.length < 8) {
-          errBox.textContent = 'La password deve essere di almeno 8 caratteri.'
-          errBox.hidden = false; return
-        }
-        if (newPw !== confPw) {
-          errBox.textContent = 'Le due password non coincidono.'
-          errBox.hidden = false; return
-        }
+        var newPw  = document.getElementById('pw-new').value
+        var confPw = document.getElementById('pw-confirm').value
+        if (newPw.length < 8) { errBox.textContent='La password deve essere di almeno 8 caratteri.'; errBox.hidden=false; return }
+        if (newPw !== confPw) { errBox.textContent='Le due password non coincidono.'; errBox.hidden=false; return }
         btn.disabled = true; btn.textContent = 'Aggiornamento…'
-        const { error } = await CSLAuth.updatePassword(newPw)
+        var res = await CSLAuth.updatePassword(newPw)
         btn.disabled = false; btn.textContent = 'Aggiorna password'
-        if (error) { errBox.textContent = error; errBox.hidden = false }
-        else { sucBox.textContent = '✓ Password aggiornata con successo.'; sucBox.hidden = false; form.reset() }
+        if (res.error) { errBox.textContent=res.error; errBox.hidden=false }
+        else { sucBox.textContent='✓ Password aggiornata con successo.'; sucBox.hidden=false; form.reset() }
       })
     }
+
+    // ── Bootstrap principale ──────────────────────────────────────
+    var _seasonId = null
+
+    document.addEventListener('csl:auth-ready', async function() {
+      var params       = new URLSearchParams(window.location.search)
+      var playerParam  = params.get('giocatore')
+      var targetPlayer = null
+      var isOwnProfile = false
+
+      if (playerParam) {
+        targetPlayer = decodeURIComponent(playerParam)
+      } else if (CSLAuth.isLoggedIn()) {
+        var prof = CSLAuth.getProfile()
+        var meta = CSLAuth.getSession()?.user?.user_metadata
+        targetPlayer = prof?.player_name || prof?.display_name || meta?.player_name || meta?.display_name
+        isOwnProfile = true
+      } else {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-login-required').hidden = false
+        return
+      }
+
+      if (!targetPlayer) {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+
+      // Carica stagioni
+      var stagioni = CSL.stagioni
+      if (window.CSLRanking && CSLAuth.isLoggedIn()) {
+        try {
+          await new Promise(function(resolve) {
+            CSLRanking.loadStagioniFromSupabase(function(data) { if (data) stagioni = data; resolve() })
+          })
+        } catch(e) {}
+      }
+
+      var seasonAttiva = stagioni.find(function(s){ return s.status==='attiva' }) || stagioni[stagioni.length-1]
+      if (!seasonAttiva) {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+      _seasonId = seasonAttiva.id
+
+      var playerData = seasonAttiva.classifica?.find(function(p){ return p.nome.toLowerCase()===targetPlayer.toLowerCase() })
+      document.getElementById('profile-loading').hidden = true
+
+      if (!playerData && !stagioni.some(function(s){ return s.classifica?.some(function(p){ return p.nome.toLowerCase()===targetPlayer.toLowerCase() }) })) {
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+
+      document.getElementById('profile-content').hidden = false
+      document.title = targetPlayer + ' — CSL'
+
+      // Header
+      var initiali = playerData?.iniziali || targetPlayer.split(' ').map(function(w){ return w[0] }).join('').toUpperCase().slice(0,2)
+      document.getElementById('profile-avatar').textContent = initiali
+      document.getElementById('profile-name').textContent   = targetPlayer
+      var roleBadge = document.getElementById('profile-role-badge')
+      roleBadge.textContent = (isOwnProfile && CSLAuth.isAdmin()) ? 'Admin' : 'Partecipante'
+      roleBadge.classList.add((isOwnProfile && CSLAuth.isAdmin()) ? 'badge-admin' : 'badge-participant')
+      document.getElementById('profile-season-label').textContent = seasonAttiva.nome + ' ' + seasonAttiva.anno
+
+      // Giornate personali (usate in entrambi i layout)
+      var giornatePersonali = (seasonAttiva.giornate || [])
+        .map(function(g){ return Object.assign({}, g, { risultato: g.risultati.find(function(r){ return r.nome.toLowerCase()===targetPlayer.toLowerCase() }) }) })
+        .filter(function(g){ return g.risultato })
+        .sort(function(a,b){ return b.data.localeCompare(a.data) })
+
+      if (isOwnProfile) {
+        // ── Layout con sidebar ──
+        document.getElementById('profile-own-layout').hidden  = false
+        document.getElementById('profile-other-layout').style.display = 'none'
+
+        renderStats(targetPlayer, playerData, giornatePersonali, '', true)
+        initSidebar()
+        initPasswordForm()
+
+        // Wallet + scommesse attive
+        await renderWallet()
+        await renderActiveBets(document.getElementById('dashboard-active-bets'))
+
+      } else {
+        // ── Layout senza sidebar ──
+        document.getElementById('profile-own-layout').style.display  = 'none'
+        document.getElementById('profile-other-layout').hidden = false
+
+        renderStats(targetPlayer, playerData, giornatePersonali, '-other', false)
+      }
+    })
   </script>
 </body>
 </html>
+

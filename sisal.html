@@ -140,5 +140,206 @@
   <script src="data/classifica.js"></script>
   <script src="data/sisal.js"></script>
   <script src="js/app.js"></script>
+
+  <!-- ── Bet widget + modal ── -->
+  <div id="bet-widget" class="bet-widget" hidden>
+    <span class="bet-widget-balance">
+      🪙 <strong id="bet-widget-amount">—</strong> Bossoli
+    </span>
+    <button class="btn-bet-open" id="btn-open-bet-modal" aria-label="Piazza scommessa">
+      🎰 Scommetti
+    </button>
+  </div>
+
+  <div id="bet-modal-overlay" class="bet-modal-overlay" hidden aria-modal="true" role="dialog">
+    <div class="bet-modal card">
+      <div class="bet-modal-header">
+        <h2 class="bet-modal-title">🎰 Piazza scommessa</h2>
+        <button class="bet-modal-close" id="btn-close-bet-modal" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div class="bet-modal-wallet">
+        🪙 Saldo disponibile: <strong id="bet-modal-balance">—</strong> Bossoli
+      </div>
+
+      <div class="bet-modal-form">
+        <div class="form-group">
+          <label for="bet-select-season">Stagione</label>
+          <select class="form-input" id="bet-select-season"></select>
+        </div>
+        <div class="form-group">
+          <label for="bet-select-player">Giocatore</label>
+          <select class="form-input" id="bet-select-player">
+            <option value="">— seleziona stagione prima —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="bet-select-type">Mercato</label>
+          <select class="form-input" id="bet-select-type">
+            <option value="titolo">🏆 Titolo</option>
+            <option value="podio">🥉 Podio</option>
+            <option value="top5">⭐ Top 5</option>
+            <option value="best_30">🎯 Best ≥30</option>
+            <option value="avg_18">📊 Media ≥18</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="bet-input-amount">Importo (min 10)</label>
+          <input type="number" class="form-input" id="bet-input-amount"
+                 min="10" step="10" placeholder="es. 50">
+        </div>
+
+        <div class="bet-modal-preview" id="bet-modal-preview" hidden>
+          Quota: <strong id="bet-preview-quota">—</strong>
+          &rarr; Potenziale vincita: <strong id="bet-preview-win">—</strong> 🪙
+        </div>
+
+        <div class="form-error"   id="bet-error"   hidden></div>
+        <div class="form-success" id="bet-success"  hidden></div>
+
+        <button class="btn-primary" id="btn-confirm-bet" style="width:100%;margin-top:0.5rem">
+          Conferma scommessa
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── SISAL — Bet widget script ── */
+    ;(function() {
+      var widget   = document.getElementById('bet-widget')
+      var overlay  = document.getElementById('bet-modal-overlay')
+      var btnOpen  = document.getElementById('btn-open-bet-modal')
+      var btnClose = document.getElementById('btn-close-bet-modal')
+      var selSeason = document.getElementById('bet-select-season')
+      var selPlayer = document.getElementById('bet-select-player')
+      var selType   = document.getElementById('bet-select-type')
+      var inputAmt  = document.getElementById('bet-input-amount')
+      var preview   = document.getElementById('bet-modal-preview')
+      var previewQ  = document.getElementById('bet-preview-quota')
+      var previewW  = document.getElementById('bet-preview-win')
+      var errBox    = document.getElementById('bet-error')
+      var sucBox    = document.getElementById('bet-success')
+      var btnConfirm = document.getElementById('btn-confirm-bet')
+
+      var _wallet = 0
+
+      function fmtQ(n) { return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) }
+      function fmtC(n) { return Number(n||0).toLocaleString('it-IT') }
+      function getQuota() {
+        var sId = selSeason.value
+        var pName = selPlayer.value
+        var bType = selType.value
+        var boards = CSL.sisal || []
+        var board = boards.find(function(b){ return b.season_id===sId })
+        if (!board) return null
+        var player = board.players.find(function(p){ return p.nome===pName })
+        if (!player) return null
+        var map = { titolo:'quote_titolo', podio:'quote_podio', top5:'quote_top5', best_30:'quote_best_30', avg_18:'quote_avg_18' }
+        return player[map[bType]] || null
+      }
+
+      function updatePreview() {
+        var q = getQuota()
+        var amt = parseInt(inputAmt.value) || 0
+        if (q && amt >= 10) {
+          var win = Math.floor(amt * q)
+          previewQ.textContent = fmtQ(q)
+          previewW.textContent = fmtC(win)
+          preview.hidden = false
+        } else {
+          preview.hidden = true
+        }
+      }
+
+      function populatePlayers() {
+        var sId = selSeason.value
+        var boards = CSL.sisal || []
+        var board = boards.find(function(b){ return b.season_id===sId })
+        selPlayer.innerHTML = ''
+        if (!board) {
+          selPlayer.innerHTML = '<option value="">— nessun dato —</option>'
+          return
+        }
+        board.players.forEach(function(p) {
+          var opt = document.createElement('option')
+          opt.value = p.nome; opt.textContent = p.nome
+          selPlayer.appendChild(opt)
+        })
+        updatePreview()
+      }
+
+      // Populate season select
+      document.addEventListener('DOMContentLoaded', function() {
+        var boards = CSL.sisal || []
+        boards.slice().reverse().forEach(function(b) {
+          var opt = document.createElement('option')
+          opt.value = b.season_id; opt.textContent = b.season_label
+          selSeason.appendChild(opt)
+        })
+        if (boards.length) populatePlayers()
+      })
+
+      selSeason.addEventListener('change', populatePlayers)
+      selPlayer.addEventListener('change', updatePreview)
+      selType.addEventListener('change', updatePreview)
+      inputAmt.addEventListener('input', updatePreview)
+
+      // Init widget visibility after auth
+      document.addEventListener('csl:auth-ready', async function() {
+        if (!CSLAuth.isLoggedIn()) return
+        widget.hidden = false
+        var w = await CSLAuth.getWallet()
+        _wallet = w.total
+        document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
+        document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
+      })
+
+      btnOpen.addEventListener('click', function() {
+        errBox.hidden = true; sucBox.hidden = true
+        overlay.hidden = false
+        document.body.style.overflow = 'hidden'
+        updatePreview()
+      })
+
+      function closeModal() {
+        overlay.hidden = true
+        document.body.style.overflow = ''
+      }
+      btnClose.addEventListener('click', closeModal)
+      overlay.addEventListener('click', function(e) { if (e.target===overlay) closeModal() })
+      document.addEventListener('keydown', function(e) { if (e.key==='Escape') closeModal() })
+
+      btnConfirm.addEventListener('click', async function() {
+        errBox.hidden = true; sucBox.hidden = true
+        var sId   = selSeason.value
+        var pName = selPlayer.value
+        var bType = selType.value
+        var amt   = parseInt(inputAmt.value) || 0
+        var q     = getQuota()
+
+        if (!sId || !pName) { errBox.textContent='Seleziona stagione e giocatore.'; errBox.hidden=false; return }
+        if (amt < 10) { errBox.textContent='Importo minimo 10 Bossoli.'; errBox.hidden=false; return }
+        if (amt > _wallet) { errBox.textContent='Saldo insufficiente ('+fmtC(_wallet)+' Bossoli disponibili).'; errBox.hidden=false; return }
+        if (!q) { errBox.textContent='Quota non disponibile per questa selezione.'; errBox.hidden=false; return }
+
+        btnConfirm.disabled = true; btnConfirm.textContent = 'Elaborazione…'
+        var res = await CSLAuth.placeBet(sId, bType, pName, amt, q)
+        btnConfirm.disabled = false; btnConfirm.textContent = 'Conferma scommessa'
+
+        if (res && res.error) {
+          errBox.textContent = res.error; errBox.hidden = false
+        } else {
+          _wallet = res.new_balance || (_wallet - amt)
+          document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
+          document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
+          sucBox.textContent = '✅ Scommessa piazzata! Saldo: '+fmtC(_wallet)+' Bossoli.'
+          sucBox.hidden = false
+          inputAmt.value = ''
+          preview.hidden = true
+        }
+      })
+    })()
+  </script>
 </body>
 </html>

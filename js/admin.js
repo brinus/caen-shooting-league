@@ -1,6 +1,10 @@
 // CAEN Shooting League — Admin Panel Logic
 
 document.addEventListener('csl:auth-ready', function () {
+  if (!CSLAuth.isLoggedIn()) {
+    window.location.href = 'login.html?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)
+    return
+  }
   if (!CSLAuth.isAdmin()) {
     document.getElementById('admin-guard').hidden = false
     return

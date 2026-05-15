@@ -2988,15 +2988,40 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
    BET BOARD — 3-tab modal (sisal.html)
    ══════════════════════════════════════════════════════════════ */
 
+/* ── Custom scrollbar mixin (riusato su tutto il modal) ── */
+.bet-modal,
+.bet-board-wrap,
+.bet-speciali-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,102,0,0.45) transparent;
+}
+.bet-modal::-webkit-scrollbar,
+.bet-board-wrap::-webkit-scrollbar,
+.bet-speciali-list::-webkit-scrollbar { width: 5px; height: 5px; }
+.bet-modal::-webkit-scrollbar-track,
+.bet-board-wrap::-webkit-scrollbar-track,
+.bet-speciali-list::-webkit-scrollbar-track { background: transparent; }
+.bet-modal::-webkit-scrollbar-thumb,
+.bet-board-wrap::-webkit-scrollbar-thumb,
+.bet-speciali-list::-webkit-scrollbar-thumb {
+  background: rgba(255,102,0,0.4);
+  border-radius: 10px;
+}
+.bet-modal::-webkit-scrollbar-thumb:hover,
+.bet-board-wrap::-webkit-scrollbar-thumb:hover,
+.bet-speciali-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,102,0,0.7);
+}
+
 /* Modal dimensions */
 .bet-modal {
-  width: min(720px, 98vw);
-  max-height: 92vh;
+  width: min(860px, 98vw);
+  max-height: 94vh;
   overflow-y: auto;
-  padding: 1.5rem;
+  padding: 1.75rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.9rem;
 }
 .bet-modal-header {
   display: flex;
@@ -3054,7 +3079,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 }
 
 /* ── Bet board table ── */
-.bet-board-wrap { max-height: 300px; overflow-y: auto; }
+.bet-board-wrap { max-height: 360px; overflow-y: auto; }
 .bet-board-table {
   width: 100%;
   border-collapse: collapse;
@@ -3148,11 +3173,11 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 /* ── Speciali list ── */
 .bet-speciali-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.6rem;
-  max-height: 300px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.65rem;
+  max-height: 360px;
   overflow-y: auto;
-  padding-right: 0.25rem;
+  padding-right: 0.3rem;
 }
 .bet-speciale-card {
   background: var(--bg-card-2);
@@ -3284,9 +3309,10 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 }
 
 @media (max-width: 600px) {
-  .bet-modal { padding: 1rem; }
+  .bet-modal { padding: 1rem 0.85rem; max-height: 96vh; }
   .bet-tab-btn { font-size: 0.75rem; padding: 0.4rem 0.5rem; }
   .bet-board-table { font-size: 0.75rem; }
-  .bet-speciali-list { grid-template-columns: 1fr; }
+  .bet-board-wrap { max-height: 260px; }
+  .bet-speciali-list { grid-template-columns: 1fr; max-height: 260px; }
   .bet-amount-input { max-width: 100%; width: 100%; }
 }

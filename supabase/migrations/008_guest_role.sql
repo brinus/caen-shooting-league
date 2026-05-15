@@ -83,8 +83,8 @@ BEGIN
       INSERT INTO public.giornata_coins_log (profile_id, data)
         VALUES (v_guest.id, v_date.data)
         ON CONFLICT (profile_id, data) DO NOTHING;
-      -- Se inserito, aggiorna il wallet
-      IF FOUND THEN
+      GET DIAGNOSTICS v_rows_inserted = ROW_COUNT;
+      IF v_rows_inserted = 1 THEN
         UPDATE public.wallets
           SET base_coins = base_coins + 100, updated_at = NOW()
           WHERE profile_id = v_guest.id;
@@ -149,6 +149,9 @@ CREATE OR REPLACE FUNCTION public.update_user_role(
   p_profile_id UUID,
   p_role       TEXT
 ) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_date DATE;
+  v_rows INT;
 BEGIN
   IF NOT public.is_admin() THEN
     RETURN json_build_object('error', 'Non autorizzato');
@@ -164,6 +167,25 @@ BEGIN
   END IF;
 
   UPDATE public.profiles SET role = p_role WHERE id = p_profile_id;
+
+  -- Quando si promuove a guest: crea wallet e backfilla i Bossoli per le giornate passate
+  IF p_role = 'guest' THEN
+    INSERT INTO public.wallets (profile_id, base_coins)
+      VALUES (p_profile_id, 0)
+      ON CONFLICT (profile_id) DO NOTHING;
+
+    FOR v_date IN SELECT DISTINCT data FROM public.risultati LOOP
+      INSERT INTO public.giornata_coins_log (profile_id, data)
+        VALUES (p_profile_id, v_date)
+        ON CONFLICT (profile_id, data) DO NOTHING;
+      GET DIAGNOSTICS v_rows = ROW_COUNT;
+      IF v_rows = 1 THEN
+        UPDATE public.wallets
+          SET base_coins = base_coins + 100, updated_at = NOW()
+          WHERE profile_id = p_profile_id;
+      END IF;
+    END LOOP;
+  END IF;
 
   RETURN json_build_object('success', true);
 END;

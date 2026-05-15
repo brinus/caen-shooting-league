@@ -789,7 +789,9 @@
       var playerData = seasonAttiva.classifica?.find(function(p){ return p.nome.toLowerCase()===targetPlayer.toLowerCase() })
       document.getElementById('profile-loading').hidden = true
 
-      if (!playerData && !stagioni.some(function(s){ return s.classifica?.some(function(p){ return p.nome.toLowerCase()===targetPlayer.toLowerCase() }) })) {
+      // I guest non sono in classifica: mostro il profilo solo se è il proprio
+      var isInAnyClassifica = stagioni.some(function(s){ return s.classifica?.some(function(p){ return p.nome.toLowerCase()===targetPlayer.toLowerCase() }) })
+      if (!isOwnProfile && !playerData && !isInAnyClassifica) {
         document.getElementById('profile-not-found').hidden = false
         return
       }
@@ -801,9 +803,12 @@
       var initiali = playerData?.iniziali || targetPlayer.split(' ').map(function(w){ return w[0] }).join('').toUpperCase().slice(0,2)
       document.getElementById('profile-avatar').textContent = initiali
       document.getElementById('profile-name').textContent   = targetPlayer
-      var roleBadge = document.getElementById('profile-role-badge')
-      roleBadge.textContent = (isOwnProfile && CSLAuth.isAdmin()) ? 'Admin' : 'Partecipante'
-      roleBadge.classList.add((isOwnProfile && CSLAuth.isAdmin()) ? 'badge-admin' : 'badge-participant')
+      var roleBadge  = document.getElementById('profile-role-badge')
+      var ownRole    = isOwnProfile ? (CSLAuth.getProfile()?.role || 'participant') : 'participant'
+      var roleLabelMap = { admin: 'Admin', participant: 'Partecipante', guest: 'Ospite' }
+      var roleBadgeMap = { admin: 'badge-admin', participant: 'badge-participant', guest: 'badge-guest' }
+      roleBadge.textContent = roleLabelMap[ownRole] || 'Partecipante'
+      roleBadge.classList.add(roleBadgeMap[ownRole] || 'badge-participant')
       document.getElementById('profile-season-label').textContent = seasonAttiva.nome + ' ' + seasonAttiva.anno
 
       // Giornate personali (usate in entrambi i layout)
@@ -817,7 +822,15 @@
         document.getElementById('profile-own-layout').hidden  = false
         document.getElementById('profile-other-layout').style.display = 'none'
 
-        renderStats(targetPlayer, playerData, giornatePersonali, '', true)
+        // I guest non hanno dati in classifica: salta render statistiche
+        if (playerData || giornatePersonali.length > 0) {
+          renderStats(targetPlayer, playerData, giornatePersonali, '', true)
+        } else {
+          // Nascondi il tab statistiche per i guest
+          var statsBtn = document.querySelector('.profile-sidebar-btn[data-tab="statistiche"]')
+          if (statsBtn) statsBtn.hidden = true
+          document.getElementById('profile-season-label').textContent = 'Ospite'
+        }
         initSidebar()
         initPasswordForm()
 

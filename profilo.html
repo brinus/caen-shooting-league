@@ -93,9 +93,11 @@
         // Profilo pubblico di un altro giocatore (URL: profilo.html?giocatore=Nome+Cognome)
         targetPlayerName = decodeURIComponent(playerParam)
       } else if (CSLAuth.isLoggedIn()) {
-        // Profilo proprio
+        // Profilo proprio — usa profile se già caricato, altrimenti legge da JWT user_metadata
         const profile = CSLAuth.getProfile()
+        const meta = CSLAuth.getSession()?.user?.user_metadata
         targetPlayerName = profile?.player_name || profile?.display_name
+          || meta?.player_name || meta?.display_name
         isOwnProfile = true
       } else {
         // Non loggato e nessun param → richiede login

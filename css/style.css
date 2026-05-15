@@ -3222,7 +3222,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;
 }
 
-/* ── Selection + amount area ── */
+/* ── Selection area / schedina ── */
 .bet-selection-area {
   border-top: 1px solid var(--border);
   padding-top: 0.85rem;
@@ -3230,6 +3230,8 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   flex-direction: column;
   gap: 0.6rem;
 }
+
+/* Singola selezione */
 .bet-selected-display {
   font-size: 0.85rem;
   line-height: 1.4;
@@ -3240,6 +3242,100 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 }
 .bet-sel-player { font-weight: 700; color: var(--text); }
 .bet-sel-market { color: var(--text-muted); font-size: 0.8rem; }
+
+/* Schedina multipla */
+.bet-slip-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.85rem;
+  background: rgba(255,102,0,0.07);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 8px 0 0;
+}
+.bet-slip-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+.bet-slip-title em { font-style: normal; color: var(--text-muted); font-weight: 400; }
+.bet-slip-clear {
+  font-size: 0.72rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+}
+.bet-slip-clear:hover { color: var(--primary); }
+.bet-slip-legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+}
+.bet-slip-leg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.bet-slip-leg:first-child { border-top: none; }
+.bet-slip-leg-txt { flex: 1; color: var(--text-muted); }
+.bet-slip-leg-txt strong { color: var(--text); }
+.bet-slip-rm {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 0.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.bet-slip-rm:hover { color: var(--primary); }
+
+/* Breakdown quota */
+.bet-breakdown {
+  font-size: 0.8rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bd-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  background: var(--bg-card-2);
+  border-top: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-muted);
+}
+.bd-line:first-child { border-top: none; }
+.bd-line strong { color: var(--sisal-green); font-family: 'Orbitron', sans-serif; font-size: 0.78rem; }
+.bd-line em { font-style: normal; color: var(--text-muted); font-size: 0.75rem; }
+.bd-line--bonus {
+  background: rgba(255,204,0,0.06);
+  color: var(--secondary);
+}
+.bd-line--bonus em { color: rgba(255,204,0,0.6); }
+.bd-line--total {
+  background: rgba(73,210,155,0.07);
+  color: var(--sisal-green);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.bd-line--win {
+  background: rgba(73,210,155,0.12);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.bd-line--win strong { color: var(--secondary); font-size: 0.85rem; }
 
 .bet-chips-row {
   display: flex;
@@ -3314,6 +3410,32 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   font-size: 0.72rem;
   color: #ef5350;
 }
+
+/* ── Parlay (multipla) rows in profilo ── */
+.parlay-row { border-left: 3px solid var(--secondary) !important; }
+.bet-parlay-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  background: rgba(255,204,0,0.12);
+  color: var(--secondary);
+  margin-right: 0.3rem;
+}
+.parlay-bonus { font-style: normal; color: var(--secondary); font-size: 0.75rem; }
+.parlay-legs-list {
+  margin: 0.35rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+}
+.parlay-leg {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.parlay-leg strong { color: var(--text); }
+.parlay-leg em { font-style: normal; color: var(--sisal-green); font-family: 'Orbitron', sans-serif; font-size: 0.72rem; }
 
 /* ══════════════════════════════════════════════════════════════
    SONDAGGI — poll widget (post.html) + editor (admin-post.html)

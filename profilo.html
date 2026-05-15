@@ -136,8 +136,12 @@
 
             <!-- ── Tab: Scommesse ── -->
             <div id="tab-scommesse" class="profile-tab" hidden>
-              <h2 class="section-title">🎰 Storico scommesse</h2>
+              <h2 class="section-title">🎰 Scommesse singole</h2>
               <div id="bets-history-list">
+                <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
+              </div>
+              <h2 class="section-title" style="margin-top:2rem">📋 Multipli (schedine)</h2>
+              <div id="parlay-history-list">
                 <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
               </div>
             </div>
@@ -578,7 +582,7 @@
     async function renderBetsHistory(container) {
       var bets = await CSLAuth.getBets()
       if (!bets.length) {
-        container.innerHTML = '<p class="text-muted">Nessuna scommessa effettuata.</p>'
+        container.innerHTML = '<p class="text-muted">Nessuna scommessa singola effettuata.</p>'
         return
       }
       var statusLabel = { attiva:'⏳ Attiva', vinta:'✅ Vinta', persa:'❌ Persa', annullata:'↩ Annullata' }
@@ -612,6 +616,50 @@
         +'</div>'
     }
 
+    async function renderParlayHistory(container) {
+      var parlays = await CSLAuth.getParlayBets()
+      if (!parlays.length) {
+        container.innerHTML = '<p class="text-muted">Nessuna scommessa multipla effettuata.</p>'
+        return
+      }
+      var statusLabel = { attiva:'⏳ Attiva', vinta:'✅ Vinta', persa:'❌ Persa', annullata:'↩ Annullata' }
+      var statusCls   = { attiva:'bet-status--active', vinta:'bet-status--won', persa:'bet-status--lost', annullata:'bet-status--cancelled' }
+      var panelLabel  = { stagione:'📅 Stagione', giornata:'⚡ Giornata', speciali:'✨ Speciali' }
+      container.innerHTML = '<div class="bets-list">'
+        + parlays.map(function(p) {
+          var legs      = Array.isArray(p.legs) ? p.legs : []
+          var potential = Math.floor(p.importo * p.quota_final)
+          var bonusPct  = Math.round((p.bonus_mult - 1) * 100)
+          var dateStr   = new Date(p.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
+          var profitHtml = (p.vincita_netta !== null && p.vincita_netta !== undefined)
+            ? '<span class="bet-row-profit '+(p.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'+(p.vincita_netta>=0?'+':'')+fmtCoins(p.vincita_netta)+' Bossoli</span>'
+            : ''
+          var legsHtml = legs.map(function(l) {
+            return '<div class="parlay-leg">📌 '
+              + (l.player_name && l.player_name !== '—' ? '<strong>'+_esc(l.player_name)+'</strong> · ' : '')
+              + _esc(l.market_label || l.bet_type)
+              + ' <em>@'+fmtQ(l.quota)+'</em></div>'
+          }).join('')
+          return '<div class="bet-row card parlay-row">'
+            +'<div class="bet-row-info">'
+            +'<span class="bet-parlay-badge">'+_esc(panelLabel[p.panel]||p.panel)+'</span>'
+            +'<span class="bet-row-quota">'+legs.length+' selezioni → @'+fmtQ(p.quota_final)
+              +(bonusPct > 0 ? ' <em class="parlay-bonus">(+'+bonusPct+'% bonus)</em>' : '')+'</span>'
+            +'<span class="bet-status '+_esc(statusCls[p.status]||'')+'">'+_esc(statusLabel[p.status]||p.status)+'</span>'
+            +'</div>'
+            +'<div class="parlay-legs-list">'+legsHtml+'</div>'
+            +'<div class="bet-row-amounts">'
+            +'<span class="bet-row-importo">🪙 '+fmtCoins(p.importo)+' puntati</span>'
+            +(p.status==='attiva'
+              ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+              : profitHtml)
+            +'<span class="bet-row-date">'+dateStr+'</span>'
+            +'</div>'
+            +'</div>'
+        }).join('')
+        +'</div>'
+    }
+
     // ── Sidebar tab switching ─────────────────────────────────────
     var _activeTab = 'dashboard'
     function initSidebar() {
@@ -626,8 +674,10 @@
           _activeTab = tab
           // Carica dati on-demand
           if (tab === 'scommesse') {
-            var c = document.getElementById('bets-history-list')
-            if (c && c.querySelector('.text-muted')) renderBetsHistory(c)
+            var c  = document.getElementById('bets-history-list')
+            var cp = document.getElementById('parlay-history-list')
+            if (c  && c.querySelector('.text-muted'))  renderBetsHistory(c)
+            if (cp && cp.querySelector('.text-muted')) renderParlayHistory(cp)
           }
         })
       })

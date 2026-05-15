@@ -213,21 +213,21 @@
         <div id="bet-speciali-list" class="bet-speciali-list"></div>
       </div>
 
-      <!-- ── Selezione + importo (comune a tutti i tab) ── -->
+      <!-- ── Schedina + importo (comune a tutti i tab) ── -->
       <div class="bet-selection-area" id="bet-selection-area" hidden>
-        <div class="bet-selected-display" id="bet-selected-display"></div>
+        <!-- Elenco selezioni + pulsante svuota -->
+        <div id="bet-slip" class="bet-slip"></div>
+        <!-- Chips importo -->
         <div class="bet-chips-row">
           <button class="bet-chip" data-amt="50">50</button>
           <button class="bet-chip" data-amt="100">100</button>
           <button class="bet-chip" data-amt="200">200</button>
           <button class="bet-chip" data-amt="500">500</button>
           <input type="number" id="bet-input-amount" class="form-input bet-amount-input"
-                 min="10" step="10" placeholder="Altro…">
+                 min="10" step="10" placeholder="Importo…">
         </div>
-        <div class="bet-preview-row" id="bet-preview-row" hidden>
-          Quota <strong id="bet-preview-quota">—</strong>
-          &rarr; vincita potenziale <strong id="bet-preview-win">—</strong> 🪙
-        </div>
+        <!-- Breakdown quota (singola o multipla) -->
+        <div id="bet-breakdown" class="bet-breakdown"></div>
       </div>
 
       <div class="form-error"  id="bet-error"   hidden></div>
@@ -243,9 +243,17 @@
   <script>
     ;(function () {
       /* ── State ── */
-      var _wallet   = 0
-      var _selected = null   // { bet_type, player_name, quota, market_label, season_id, giornata_date, giornata_num }
-      var _seasonId = null
+      var _wallet     = 0
+      var _selections = []   // array di { bet_type, player_name, quota, market_label, season_id, giornata_date, giornata_num }
+      var _selPanel   = null // 'stagione' | 'giornata' | 'speciali'
+      var _seasonId   = null
+
+      /* ── Bonus multipla (per numero di selezioni) ── */
+      var PARLAY_BONUS = [1, 1, 1.05, 1.10, 1.18, 1.28, 1.40, 1.55]
+      function getBonus(n) { return PARLAY_BONUS[Math.min(n, 7)] || 1.55 }
+      function getPanelLabel(p) {
+        return { stagione:'📅 Fine Stagione', giornata:'⚡ Prossima Giornata', speciali:'✨ Speciali' }[p] || p
+      }
 
       /* ── DOM refs ── */
       var widget     = document.getElementById('bet-widget')
@@ -255,11 +263,7 @@
       var btnConfirm = document.getElementById('btn-confirm-bet')
       var selSeason  = document.getElementById('bet-select-season')
       var inputAmt   = document.getElementById('bet-input-amount')
-      var previewRow = document.getElementById('bet-preview-row')
-      var previewQ   = document.getElementById('bet-preview-quota')
-      var previewW   = document.getElementById('bet-preview-win')
       var selArea    = document.getElementById('bet-selection-area')
-      var selDisplay = document.getElementById('bet-selected-display')
       var errBox     = document.getElementById('bet-error')
       var sucBox     = document.getElementById('bet-success')
 
@@ -296,7 +300,7 @@
             + betCell(p.quote_avg_18,  mkBd('avg_18',  p.quote_avg_18,  '📊 Media ≥18 (stagione)'))
             + '</tr>'
         }).join('')
-        attachBoardClicks(tbody)
+        attachBoardClicks(tbody, 'stagione')
       }
 
       /* ── Tab: Prossima Giornata ── */
@@ -326,7 +330,7 @@
             + betCell(p.quote_over_20,  mkBd('giornata_over_20', p.quote_over_20,  '📊 Over 20 G' + nm.numero))
             + '</tr>'
         }).join('')
-        attachBoardClicks(tbody)
+        attachBoardClicks(tbody, 'giornata')
       }
 
       /* ── Tab: Speciali ── */
@@ -371,50 +375,161 @@
         }).join('')
         listEl.querySelectorAll('.bet-speciale-card').forEach(function(card) {
           card.addEventListener('click', function() {
-            listEl.querySelectorAll('.bet-speciale-card').forEach(function(c){ c.classList.remove('selected') })
-            card.classList.add('selected')
-            selectBet(JSON.parse(card.getAttribute('data-bet').replace(/&#39;/g,"'")))
+            toggleSelection(JSON.parse(card.getAttribute('data-bet').replace(/&#39;/g,"'")), 'speciali')
           })
         })
       }
 
       /* ── Board click delegation ── */
-      function attachBoardClicks(tbody) {
+      function attachBoardClicks(tbody, panelName) {
         tbody.querySelectorAll('.bet-cell[data-bet]').forEach(function(cell) {
           cell.addEventListener('click', function() {
-            document.querySelectorAll('.bet-cell.selected, .bet-speciale-card.selected')
-              .forEach(function(c){ c.classList.remove('selected') })
-            cell.classList.add('selected')
-            selectBet(JSON.parse(cell.getAttribute('data-bet').replace(/&#39;/g,"'")))
+            toggleSelection(JSON.parse(cell.getAttribute('data-bet').replace(/&#39;/g,"'")), panelName)
           })
         })
       }
 
-      /* ── Select a bet ── */
-      function selectBet(bd) {
-        _selected = bd
-        selArea.hidden = false
-        var tag = bd.giornata_num ? ' · G' + bd.giornata_num : ''
-        selDisplay.innerHTML = '<span class="bet-sel-player">' + esc(bd.player_name) + '</span>'
-          + ' <span class="bet-sel-market">' + esc(bd.market_label) + esc(tag) + '</span>'
-          + ' <span class="bet-q">@' + fmtQ(bd.quota) + '</span>'
-        updatePreview()
-        btnConfirm.disabled = false
-        btnConfirm.textContent = 'Conferma scommessa'
-        errBox.hidden = true; sucBox.hidden = true
+      /* ── Toggle selezione nella schedina ── */
+      function toggleSelection(bd, panelName) {
+        if (_selPanel && _selPanel !== panelName) {
+          errBox.textContent = '🔒 Stai costruendo una schedina su ' + getPanelLabel(_selPanel) + '. Svuota per cambiare pannello.'
+          errBox.hidden = false
+          setTimeout(function(){ errBox.hidden = true }, 3000)
+          return
+        }
+        var key = bd.bet_type + '|' + bd.player_name + '|' + bd.market_label
+        var idx = _selections.findIndex(function(s){
+          return (s.bet_type + '|' + s.player_name + '|' + s.market_label) === key
+        })
+        if (idx >= 0) {
+          _selections.splice(idx, 1)
+          if (_selections.length === 0) _selPanel = null
+        } else {
+          if (_selections.length >= 10) {
+            errBox.textContent = 'Massimo 10 selezioni per multipla.'
+            errBox.hidden = false
+            setTimeout(function(){ errBox.hidden = true }, 2000)
+            return
+          }
+          _selections.push(bd)
+          if (!_selPanel) _selPanel = panelName
+        }
+        syncCellHighlights()
+        renderSelectionArea()
+        errBox.hidden = true
       }
 
-      /* ── Preview ── */
-      function updatePreview() {
-        if (!_selected) return
-        var amt = parseInt(inputAmt.value) || 0
-        if (amt >= 10) {
-          previewQ.textContent = fmtQ(_selected.quota)
-          previewW.textContent = fmtC(Math.floor(amt * _selected.quota))
-          previewRow.hidden = false
-        } else {
-          previewRow.hidden = true
+      /* ── Rimuove una leg per indice ── */
+      function removeFromSlip(idx) {
+        _selections.splice(idx, 1)
+        if (_selections.length === 0) _selPanel = null
+        syncCellHighlights()
+        renderSelectionArea()
+      }
+
+      /* ── Svuota tutta la schedina ── */
+      function clearSlip() {
+        _selections = []; _selPanel = null
+        syncCellHighlights()
+        renderSelectionArea()
+      }
+
+      /* ── Sincronizza stile .selected sulle celle ── */
+      function syncCellHighlights() {
+        document.querySelectorAll('.bet-cell.selected, .bet-speciale-card.selected')
+          .forEach(function(c){ c.classList.remove('selected') })
+        _selections.forEach(function(s) {
+          var key = s.bet_type + '|' + s.player_name + '|' + s.market_label
+          document.querySelectorAll('.bet-cell[data-bet]').forEach(function(cell) {
+            try {
+              var bd = JSON.parse(cell.getAttribute('data-bet').replace(/&#39;/g,"'"))
+              if ((bd.bet_type+'|'+bd.player_name+'|'+bd.market_label) === key)
+                cell.classList.add('selected')
+            } catch(e){}
+          })
+          document.querySelectorAll('.bet-speciale-card[data-bet]').forEach(function(card) {
+            try {
+              var bd = JSON.parse(card.getAttribute('data-bet').replace(/&#39;/g,"'"))
+              if ((bd.bet_type+'|'+bd.player_name+'|'+bd.market_label) === key)
+                card.classList.add('selected')
+            } catch(e){}
+          })
+        })
+      }
+
+      /* ── Render area selezione / schedina ── */
+      function renderSelectionArea() {
+        var slip  = document.getElementById('bet-slip')
+        var bkdn  = document.getElementById('bet-breakdown')
+        var amt   = parseInt(inputAmt.value) || 0
+
+        if (_selections.length === 0) {
+          selArea.hidden = true
+          btnConfirm.disabled = true
+          btnConfirm.textContent = 'Seleziona una scommessa'
+          return
         }
+        selArea.hidden = false
+
+        /* ---- Slip HTML ---- */
+        if (_selections.length === 1) {
+          var s = _selections[0]
+          slip.innerHTML = '<div class="bet-selected-display">'
+            + '<span class="bet-sel-player">' + esc(s.player_name !== '—' ? s.player_name : '') + '</span>'
+            + ' <span class="bet-sel-market">' + esc(s.market_label) + '</span>'
+            + ' <span class="bet-q">@' + fmtQ(s.quota) + '</span>'
+            + '</div>'
+        } else {
+          slip.innerHTML = '<div class="bet-slip-hdr">'
+            + '<span class="bet-slip-title">📋 ' + _selections.length + ' selezioni · <em>' + getPanelLabel(_selPanel) + '</em></span>'
+            + '<button class="bet-slip-clear" id="_btn-clear-slip">Svuota ✕</button>'
+            + '</div>'
+            + '<ul class="bet-slip-legs">'
+            + _selections.map(function(s, i) {
+                return '<li class="bet-slip-leg">'
+                  + '<span class="bet-slip-leg-txt">'
+                  + (s.player_name !== '—' ? '<strong>' + esc(s.player_name) + '</strong> · ' : '')
+                  + esc(s.market_label) + '</span>'
+                  + '<span class="bet-q">@' + fmtQ(s.quota) + '</span>'
+                  + '<button class="bet-slip-rm" data-idx="' + i + '">✕</button>'
+                  + '</li>'
+              }).join('')
+            + '</ul>'
+        }
+
+        /* ---- Breakdown ---- */
+        var baseQ  = _selections.reduce(function(acc, s){ return acc * s.quota }, 1)
+        var bonus  = getBonus(_selections.length)
+        var finalQ = _selections.length > 1 ? baseQ * bonus : baseQ
+        var html   = ''
+
+        if (_selections.length > 1) {
+          var bonusPct = Math.round((bonus - 1) * 100)
+          html += '<div class="bd-line">'
+            + '<span>Quota base (' + _selections.length + ' selezioni)</span>'
+            + '<span>' + _selections.map(function(s){ return fmtQ(s.quota) }).join(' × ')
+            + ' = <strong>' + fmtQ(baseQ) + '</strong></span></div>'
+          html += '<div class="bd-line bd-line--bonus">'
+            + '<span>Bonus multipla ' + _selections.length + ' selezioni</span>'
+            + '<span>×' + fmtQ(bonus) + ' <em>(+' + bonusPct + '%)</em></span></div>'
+          html += '<div class="bd-line bd-line--total">'
+            + '<span>Quota finale</span>'
+            + '<span>' + fmtQ(finalQ) + '</span></div>'
+        }
+        if (amt >= 10) {
+          html += '<div class="bd-line bd-line--win">'
+            + '<span>Vincita potenziale</span>'
+            + '<strong>' + fmtC(Math.floor(amt * finalQ)) + ' 🪙</strong></div>'
+        } else if (_selections.length === 1) {
+          html += '<div class="bd-line"><span>Quota</span><span>@' + fmtQ(finalQ) + '</span></div>'
+        }
+        bkdn.innerHTML = html
+
+        /* ---- Confirm button ---- */
+        btnConfirm.disabled = false
+        btnConfirm.textContent = _selections.length === 1
+          ? 'Conferma scommessa'
+          : 'Conferma multipla (' + _selections.length + ' selezioni)'
       }
 
       /* ── Chip quick-amounts ── */
@@ -423,12 +538,19 @@
           inputAmt.value = chip.getAttribute('data-amt')
           document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
           chip.classList.add('active')
-          updatePreview()
+          renderSelectionArea()
         })
       })
       inputAmt.addEventListener('input', function() {
         document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
-        updatePreview()
+        renderSelectionArea()
+      })
+
+      /* ── Event delegation su #bet-slip (rimozione leg, svuota) ── */
+      document.getElementById('bet-slip').addEventListener('click', function(e) {
+        var rm = e.target.closest('.bet-slip-rm')
+        if (rm) { removeFromSlip(parseInt(rm.getAttribute('data-idx'))); return }
+        if (e.target.closest('#_btn-clear-slip')) clearSlip()
       })
 
       /* ── Tab switching ── */
@@ -465,11 +587,7 @@
         populateStagioneTab(_seasonId)
         populateGiornataTab(board)
         populateSpecialiTab(board)
-        _selected = null; selArea.hidden = true
-        btnConfirm.disabled = true
-        btnConfirm.textContent = 'Seleziona una scommessa'
-        document.querySelectorAll('.bet-cell.selected, .bet-speciale-card.selected')
-          .forEach(function(c){ c.classList.remove('selected') })
+        clearSlip()
       })
 
       /* ── Auth + wallet ── */
@@ -493,23 +611,41 @@
       overlay.addEventListener('click', function(e){ if (e.target === overlay) closeModal() })
       document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal() })
 
-      /* ── Confirm bet ── */
+      /* ── Confirm bet (singola o multipla) ── */
       btnConfirm.addEventListener('click', async function() {
         errBox.hidden = true; sucBox.hidden = true
-        if (!_selected) return
+        if (!_selections.length) return
         var amt = parseInt(inputAmt.value) || 0
         if (amt < 10)     { errBox.textContent = 'Importo minimo 10 Bossoli.'; errBox.hidden = false; return }
         if (amt > _wallet){ errBox.textContent = 'Saldo insufficiente (' + fmtC(_wallet) + ' Bossoli).'; errBox.hidden = false; return }
 
+        var baseQ  = _selections.reduce(function(acc, s){ return acc * s.quota }, 1)
+        var bonus  = getBonus(_selections.length)
+        var finalQ = _selections.length > 1 ? baseQ * bonus : baseQ
+        var nSel   = _selections.length
+
         btnConfirm.disabled = true; btnConfirm.textContent = 'Elaborazione…'
-        var res = await CSLAuth.placeBet(
-          _selected.season_id, _selected.bet_type, _selected.player_name,
-          amt, _selected.quota,
-          { giornata_date: _selected.giornata_date,
-            giornata_num:  _selected.giornata_num,
-            market_label:  _selected.market_label }
-        )
-        btnConfirm.disabled = false; btnConfirm.textContent = 'Conferma scommessa'
+
+        var res
+        if (_selections.length === 1) {
+          var s = _selections[0]
+          res = await CSLAuth.placeBet(
+            s.season_id, s.bet_type, s.player_name, amt, s.quota,
+            { giornata_date: s.giornata_date, giornata_num: s.giornata_num, market_label: s.market_label }
+          )
+        } else {
+          res = await CSLAuth.placeParlay(
+            _seasonId, _selPanel, _selections, amt,
+            Math.round(baseQ  * 10000) / 10000,
+            Math.round(bonus  * 10000) / 10000,
+            Math.round(finalQ * 10000) / 10000,
+            { giornata_date: _selPanel === 'giornata' ? _selections[0].giornata_date : null,
+              giornata_num:  _selPanel === 'giornata' ? _selections[0].giornata_num  : null }
+          )
+        }
+
+        btnConfirm.disabled = false
+        btnConfirm.textContent = nSel === 1 ? 'Conferma scommessa' : 'Conferma multipla (' + nSel + ' selezioni)'
 
         if (res && res.error) {
           errBox.textContent = res.error; errBox.hidden = false
@@ -517,10 +653,10 @@
           _wallet = (res && res.new_balance != null) ? res.new_balance : _wallet - amt
           document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
           document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
-          sucBox.textContent = '✅ Scommessa piazzata! Saldo: ' + fmtC(_wallet) + ' Bossoli.'
+          sucBox.textContent = '✅ ' + (nSel > 1 ? 'Multipla' : 'Scommessa') + ' piazzata! Saldo: ' + fmtC(_wallet) + ' Bossoli.'
           sucBox.hidden = false
+          clearSlip()
           inputAmt.value = ''
-          previewRow.hidden = true
           document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
         }
       })

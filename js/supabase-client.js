@@ -171,6 +171,45 @@ const CSLAuth = {
   },
 
   /**
+   * Piazza una scommessa multipla (parlay) — richiede 2+ selezioni.
+   * @param {string}   seasonId
+   * @param {string}   panel        'stagione' | 'giornata' | 'speciali'
+   * @param {object[]} legs         array delle singole selezioni
+   * @param {number}   importo      Bossoli puntati
+   * @param {number}   quotaBase    prodotto delle quote individuali
+   * @param {number}   bonusMult    moltiplicatore bonus (es. 1.10)
+   * @param {number}   quotaFinal   quotaBase × bonusMult
+   * @param {object}   [opts]       { giornata_date, giornata_num }
+   */
+  async placeParlay(seasonId, panel, legs, importo, quotaBase, bonusMult, quotaFinal, opts = {}) {
+    if (!_session) return { error: 'Non autenticato' }
+    const { data, error } = await _supa.rpc('place_parlay', {
+      p_season_id:    seasonId,
+      p_panel:        panel,
+      p_legs:         legs,
+      p_importo:      importo,
+      p_quota_base:   quotaBase,
+      p_bonus_mult:   bonusMult,
+      p_quota_final:  quotaFinal,
+      p_giornata_date: opts.giornata_date || null,
+      p_giornata_num:  opts.giornata_num  || null,
+    })
+    if (error) return { error: error.message }
+    return data
+  },
+
+  /** Ritorna le scommesse multiple dell'utente loggato. */
+  async getParlayBets() {
+    if (!_session) return []
+    const { data } = await _supa
+      .from('parlay_bets')
+      .select('*')
+      .eq('profile_id', _session.user.id)
+      .order('created_at', { ascending: false })
+    return data || []
+  },
+
+  /**
    * Risolve una scommessa (solo admin).
    * @param {string} bet_id  UUID della scommessa
    * @param {'vinta'|'persa'|'annullata'} status

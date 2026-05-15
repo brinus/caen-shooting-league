@@ -118,7 +118,7 @@ const CSLAuth = {
     if (!_session) return []
     let q = _supa
       .from('scommesse')
-      .select('id, season_id, bet_type, player_name, importo, quota, status, vincita_netta, created_at, resolved_at')
+      .select('id, season_id, bet_type, player_name, importo, quota, status, vincita_netta, created_at, resolved_at, giornata_date, giornata_num, market_label')
       .eq('profile_id', _session.user.id)
       .order('created_at', { ascending: false })
     if (seasonId) q = q.eq('season_id', seasonId)
@@ -128,19 +128,36 @@ const CSLAuth = {
 
   /**
    * Piazza una scommessa (RPC atomica).
+   * @param {object} [opts]  { giornata_date, giornata_num, market_label }
    * @returns {Promise<{success?:boolean, bet_id?:string, new_balance?:number, error?:string}>}
    */
-  async placeBet(season_id, bet_type, player_name, importo, quota) {
+  async placeBet(season_id, bet_type, player_name, importo, quota, opts) {
     if (!_session) return { error: 'Non autenticato' }
-    const { data, error } = await _supa.rpc('place_bet', {
+    const params = {
       p_season_id:   season_id,
       p_bet_type:    bet_type,
       p_player_name: player_name,
       p_importo:     importo,
       p_quota:       quota,
-    })
+    }
+    if (opts) {
+      if (opts.giornata_date != null) params.p_giornata_date = opts.giornata_date
+      if (opts.giornata_num  != null) params.p_giornata_num  = opts.giornata_num
+      if (opts.market_label  != null) params.p_market_label  = opts.market_label
+    }
+    const { data, error } = await _supa.rpc('place_bet', params)
     if (error) return { error: error.message }
-    return data  // { success, bet_id, new_balance } o { error }
+    return data
+  },
+
+  /**
+   * Cancella una scommessa propria entro 1h (e prima che il risultato esista).
+   */
+  async cancelBet(bet_id) {
+    if (!_session) return { error: 'Non autenticato' }
+    const { data, error } = await _supa.rpc('cancel_bet', { p_bet_id: bet_id })
+    if (error) return { error: error.message }
+    return data
   },
 
   /**

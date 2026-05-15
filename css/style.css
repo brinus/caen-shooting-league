@@ -2983,3 +2983,310 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   .wallet-breakdown { border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: 0.75rem; }
   .wallet-amount { font-size: 1.6rem; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   BET BOARD — 3-tab modal (sisal.html)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Modal dimensions */
+.bet-modal {
+  width: min(720px, 98vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.bet-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bet-modal-title { font-size: 1.15rem; margin: 0; }
+.bet-modal-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 1.1rem; cursor: pointer; line-height: 1; padding: 0.2rem 0.4rem;
+}
+.bet-modal-close:hover { color: var(--text); }
+.bet-modal-wallet {
+  font-size: 0.82rem; color: var(--text-muted);
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-card-2);
+  border-radius: 8px;
+}
+.bet-modal-wallet strong { color: var(--sisal-green); font-family: 'Orbitron', sans-serif; }
+
+/* ── Tabs ── */
+.bet-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.bet-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.18s, border-color 0.18s;
+  margin-bottom: -1px;
+}
+.bet-tab-btn:hover { color: var(--text); }
+.bet-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ── Tab panes ── */
+.bet-tab-pane { padding-top: 0.5rem; }
+
+/* ── Season row ── */
+.bet-season-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+/* ── Bet board table ── */
+.bet-board-wrap { max-height: 300px; overflow-y: auto; }
+.bet-board-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.bet-board-table thead th {
+  position: sticky; top: 0;
+  background: var(--bg-card-2);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.45rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.bet-board-table thead th:first-child { text-align: left; }
+.bet-th-label {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.bet-board-table tbody tr:hover { background: rgba(255,102,0,0.04); }
+.bet-board-table tbody tr + tr td { border-top: 1px solid rgba(255,255,255,0.04); }
+
+/* Player name cell */
+.bet-player-cell {
+  white-space: nowrap;
+  padding: 0.55rem 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.bet-player-ini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.62rem;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Quote cells */
+.bet-cell {
+  text-align: center;
+  padding: 0.45rem 0.35rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 4px;
+}
+.bet-cell:hover { background: var(--sisal-green-soft); }
+.bet-cell.selected {
+  background: rgba(255,102,0,0.18);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.bet-cell--na {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: default;
+}
+.bet-q {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--sisal-green);
+  display: block;
+}
+.bet-cell.selected .bet-q { color: var(--primary); }
+
+/* ── Giornata badge ── */
+.bet-giornata-info { margin-bottom: 0.5rem; }
+.bet-giornata-badge {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  background: rgba(73,210,155,0.12);
+  border: 1px solid rgba(73,210,155,0.3);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  color: var(--sisal-green);
+  font-weight: 600;
+}
+
+/* ── Speciali list ── */
+.bet-speciali-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.6rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.bet-speciale-card {
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.bet-speciale-card:hover { border-color: rgba(73,210,155,0.4); background: rgba(73,210,155,0.06); }
+.bet-speciale-card.selected {
+  border-color: var(--primary);
+  background: rgba(255,102,0,0.08);
+}
+.bet-speciale-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.35rem;
+}
+.bet-speciale-tag {
+  font-size: 0.68rem; font-weight: 700;
+  padding: 0.15rem 0.45rem; border-radius: 10px;
+  background: rgba(73,210,155,0.15); color: var(--sisal-green);
+}
+.bet-speciale-tag--season {
+  background: rgba(255,204,0,0.12); color: var(--secondary);
+}
+.bet-q--lg {
+  font-size: 1.05rem;
+}
+.bet-speciale-label {
+  font-size: 0.8rem; font-weight: 600; color: var(--text);
+  line-height: 1.3;
+}
+.bet-speciale-sub {
+  font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;
+}
+
+/* ── Selection + amount area ── */
+.bet-selection-area {
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.bet-selected-display {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,102,0,0.07);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 8px 8px 0;
+}
+.bet-sel-player { font-weight: 700; color: var(--text); }
+.bet-sel-market { color: var(--text-muted); font-size: 0.8rem; }
+
+.bet-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.bet-chip {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-card-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bet-chip:hover { border-color: var(--primary); color: var(--primary); }
+.bet-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.bet-amount-input { flex: 1; min-width: 100px; max-width: 180px; }
+
+.bet-preview-row {
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--sisal-green-soft);
+  border-radius: 8px;
+  color: var(--text);
+}
+.bet-preview-row strong { color: var(--sisal-green); font-family: 'Orbitron', sans-serif; }
+
+/* ── Profilo: cancel / giornata tags ── */
+.bet-g-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  background: rgba(73,210,155,0.14);
+  color: var(--sisal-green);
+  vertical-align: middle;
+  margin-right: 0.2rem;
+}
+.bet-row-actions {
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.btn-cancel-bet {
+  font-size: 0.73rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  color: #ef5350;
+  background: rgba(239,83,80,0.08);
+  border: 1px solid rgba(239,83,80,0.3);
+  border-radius: 8px;
+  padding: 0.25rem 0.65rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-cancel-bet:hover:not(:disabled) { background: rgba(239,83,80,0.18); }
+.btn-cancel-bet:disabled { opacity: 0.5; cursor: default; }
+.bet-cancel-expired {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.bet-cancel-err {
+  font-size: 0.72rem;
+  color: #ef5350;
+}
+
+@media (max-width: 600px) {
+  .bet-modal { padding: 1rem; }
+  .bet-tab-btn { font-size: 0.75rem; padding: 0.4rem 0.5rem; }
+  .bet-board-table { font-size: 0.75rem; }
+  .bet-speciali-list { grid-template-columns: 1fr; }
+  .bet-amount-input { max-width: 100%; width: 100%; }
+}

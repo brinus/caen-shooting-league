@@ -143,149 +143,336 @@
 
   <!-- ── Bet widget + modal ── -->
   <div id="bet-widget" class="bet-widget" hidden>
-    <span class="bet-widget-balance">
-      🪙 <strong id="bet-widget-amount">—</strong> Bossoli
-    </span>
-    <button class="btn-bet-open" id="btn-open-bet-modal" aria-label="Piazza scommessa">
-      🎰 Scommetti
-    </button>
+    <span class="bet-widget-balance">🪙 <strong id="bet-widget-amount">—</strong> Bossoli</span>
+    <button class="btn-bet-open" id="btn-open-bet-modal">🎰 Scommetti</button>
   </div>
 
-  <div id="bet-modal-overlay" class="bet-modal-overlay" hidden aria-modal="true" role="dialog">
+  <div id="bet-modal-overlay" class="bet-modal-overlay" hidden>
     <div class="bet-modal card">
+
       <div class="bet-modal-header">
         <h2 class="bet-modal-title">🎰 Piazza scommessa</h2>
         <button class="bet-modal-close" id="btn-close-bet-modal" aria-label="Chiudi">✕</button>
       </div>
 
       <div class="bet-modal-wallet">
-        🪙 Saldo disponibile: <strong id="bet-modal-balance">—</strong> Bossoli
+        🪙 Saldo: <strong id="bet-modal-balance">—</strong> Bossoli
       </div>
 
-      <div class="bet-modal-form">
-        <div class="form-group">
-          <label for="bet-select-season">Stagione</label>
-          <select class="form-input" id="bet-select-season"></select>
-        </div>
-        <div class="form-group">
-          <label for="bet-select-player">Giocatore</label>
-          <select class="form-input" id="bet-select-player">
-            <option value="">— seleziona stagione prima —</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="bet-select-type">Mercato</label>
-          <select class="form-input" id="bet-select-type">
-            <option value="titolo">🏆 Titolo</option>
-            <option value="podio">🥉 Podio</option>
-            <option value="top5">⭐ Top 5</option>
-            <option value="best_30">🎯 Best ≥30</option>
-            <option value="avg_18">📊 Media ≥18</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="bet-input-amount">Importo (min 10)</label>
-          <input type="number" class="form-input" id="bet-input-amount"
-                 min="10" step="10" placeholder="es. 50">
-        </div>
-
-        <div class="bet-modal-preview" id="bet-modal-preview" hidden>
-          Quota: <strong id="bet-preview-quota">—</strong>
-          &rarr; Potenziale vincita: <strong id="bet-preview-win">—</strong> 🪙
-        </div>
-
-        <div class="form-error"   id="bet-error"   hidden></div>
-        <div class="form-success" id="bet-success"  hidden></div>
-
-        <button class="btn-primary" id="btn-confirm-bet" style="width:100%;margin-top:0.5rem">
-          Conferma scommessa
-        </button>
+      <!-- Tab navigation -->
+      <div class="bet-tabs" role="tablist">
+        <button class="bet-tab-btn active" data-tab="stagione" role="tab">📅 Fine Stagione</button>
+        <button class="bet-tab-btn" data-tab="giornata" role="tab">⚡ Prossima G.</button>
+        <button class="bet-tab-btn" data-tab="speciali" role="tab">✨ Speciali</button>
       </div>
+
+      <!-- ── Tab: Fine Stagione ── -->
+      <div class="bet-tab-pane" id="bet-tab-stagione">
+        <div class="bet-season-row">
+          <label style="font-size:0.75rem;color:var(--text-muted)">Stagione</label>
+          <select id="bet-select-season" class="form-input" style="max-width:200px;padding:0.3rem 0.6rem;font-size:0.85rem"></select>
+        </div>
+        <div class="table-wrapper bet-board-wrap">
+          <table class="bet-board-table">
+            <thead>
+              <tr>
+                <th>Giocatore</th>
+                <th title="Vince il campionato">🏆<span class="bet-th-label">Titolo</span></th>
+                <th title="Podio (top 3)">🥉<span class="bet-th-label">Podio</span></th>
+                <th title="Top 5">⭐<span class="bet-th-label">Top 5</span></th>
+                <th title="Best ≥30 nella stagione">🎯<span class="bet-th-label">Best 30</span></th>
+                <th title="Media finale ≥18">📊<span class="bet-th-label">Avg 18</span></th>
+              </tr>
+            </thead>
+            <tbody id="bet-stagione-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Tab: Prossima Giornata ── -->
+      <div class="bet-tab-pane" id="bet-tab-giornata" hidden>
+        <div class="bet-giornata-info" id="bet-giornata-info"></div>
+        <div class="table-wrapper bet-board-wrap">
+          <table class="bet-board-table">
+            <thead>
+              <tr>
+                <th>Giocatore</th>
+                <th title="Vince la giornata">🥇<span class="bet-th-label">Vince</span></th>
+                <th title="Podio giornata">🥉<span class="bet-th-label">Podio</span></th>
+                <th title="Score over 25">🎯<span class="bet-th-label">&gt;25</span></th>
+                <th title="Score over 20">📊<span class="bet-th-label">&gt;20</span></th>
+              </tr>
+            </thead>
+            <tbody id="bet-giornata-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Tab: Speciali ── -->
+      <div class="bet-tab-pane" id="bet-tab-speciali" hidden>
+        <div id="bet-speciali-list" class="bet-speciali-list"></div>
+      </div>
+
+      <!-- ── Selezione + importo (comune a tutti i tab) ── -->
+      <div class="bet-selection-area" id="bet-selection-area" hidden>
+        <div class="bet-selected-display" id="bet-selected-display"></div>
+        <div class="bet-chips-row">
+          <button class="bet-chip" data-amt="50">50</button>
+          <button class="bet-chip" data-amt="100">100</button>
+          <button class="bet-chip" data-amt="200">200</button>
+          <button class="bet-chip" data-amt="500">500</button>
+          <input type="number" id="bet-input-amount" class="form-input bet-amount-input"
+                 min="10" step="10" placeholder="Altro…">
+        </div>
+        <div class="bet-preview-row" id="bet-preview-row" hidden>
+          Quota <strong id="bet-preview-quota">—</strong>
+          &rarr; vincita potenziale <strong id="bet-preview-win">—</strong> 🪙
+        </div>
+      </div>
+
+      <div class="form-error"  id="bet-error"   hidden></div>
+      <div class="form-success" id="bet-success" hidden></div>
+
+      <button class="btn-primary" id="btn-confirm-bet"
+              style="width:100%;margin-top:0.75rem" disabled>
+        Seleziona una scommessa
+      </button>
     </div>
   </div>
 
   <script>
-    /* ── SISAL — Bet widget script ── */
-    ;(function() {
-      var widget   = document.getElementById('bet-widget')
-      var overlay  = document.getElementById('bet-modal-overlay')
-      var btnOpen  = document.getElementById('btn-open-bet-modal')
-      var btnClose = document.getElementById('btn-close-bet-modal')
-      var selSeason = document.getElementById('bet-select-season')
-      var selPlayer = document.getElementById('bet-select-player')
-      var selType   = document.getElementById('bet-select-type')
-      var inputAmt  = document.getElementById('bet-input-amount')
-      var preview   = document.getElementById('bet-modal-preview')
-      var previewQ  = document.getElementById('bet-preview-quota')
-      var previewW  = document.getElementById('bet-preview-win')
-      var errBox    = document.getElementById('bet-error')
-      var sucBox    = document.getElementById('bet-success')
-      var btnConfirm = document.getElementById('btn-confirm-bet')
+    ;(function () {
+      /* ── State ── */
+      var _wallet   = 0
+      var _selected = null   // { bet_type, player_name, quota, market_label, season_id, giornata_date, giornata_num }
+      var _seasonId = null
 
-      var _wallet = 0
+      /* ── DOM refs ── */
+      var widget     = document.getElementById('bet-widget')
+      var overlay    = document.getElementById('bet-modal-overlay')
+      var btnOpen    = document.getElementById('btn-open-bet-modal')
+      var btnClose   = document.getElementById('btn-close-bet-modal')
+      var btnConfirm = document.getElementById('btn-confirm-bet')
+      var selSeason  = document.getElementById('bet-select-season')
+      var inputAmt   = document.getElementById('bet-input-amount')
+      var previewRow = document.getElementById('bet-preview-row')
+      var previewQ   = document.getElementById('bet-preview-quota')
+      var previewW   = document.getElementById('bet-preview-win')
+      var selArea    = document.getElementById('bet-selection-area')
+      var selDisplay = document.getElementById('bet-selected-display')
+      var errBox     = document.getElementById('bet-error')
+      var sucBox     = document.getElementById('bet-success')
 
       function fmtQ(n) { return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) }
       function fmtC(n) { return Number(n||0).toLocaleString('it-IT') }
-      function getQuota() {
-        var sId = selSeason.value
-        var pName = selPlayer.value
-        var bType = selType.value
-        var boards = CSL.sisal || []
-        var board = boards.find(function(b){ return b.season_id===sId })
-        if (!board) return null
-        var player = board.players.find(function(p){ return p.nome===pName })
-        if (!player) return null
-        var map = { titolo:'quote_titolo', podio:'quote_podio', top5:'quote_top5', best_30:'quote_best_30', avg_18:'quote_avg_18' }
-        return player[map[bType]] || null
+      function esc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+      /* ── Board cell factory ── */
+      function betCell(quota, bd) {
+        if (!quota) return '<td class="bet-cell bet-cell--na">—</td>'
+        return '<td class="bet-cell" data-bet=\'' + JSON.stringify(bd).replace(/'/g,'&#39;') + '\'>'
+          + '<span class="bet-q">' + fmtQ(quota) + '</span></td>'
       }
 
-      function updatePreview() {
-        var q = getQuota()
-        var amt = parseInt(inputAmt.value) || 0
-        if (q && amt >= 10) {
-          var win = Math.floor(amt * q)
-          previewQ.textContent = fmtQ(q)
-          previewW.textContent = fmtC(win)
-          preview.hidden = false
-        } else {
-          preview.hidden = true
-        }
+      /* ── Tab: Fine Stagione ── */
+      function populateStagioneTab(seasonId) {
+        var boards = CSL.sisal || []
+        var board  = boards.find(function(b){ return b.season_id === seasonId })
+        var tbody  = document.getElementById('bet-stagione-tbody')
+        if (!board || !tbody) return
+        tbody.innerHTML = board.players.map(function(p) {
+          var mkBd = function(bt, q, lbl) {
+            return { bet_type:bt, player_name:p.nome, quota:q, market_label:lbl,
+                     season_id:seasonId, giornata_date:null, giornata_num:null }
+          }
+          return '<tr>'
+            + '<td class="bet-player-cell">'
+            + '<span class="bet-player-ini">' + esc(p.iniziali || p.nome.slice(0,2)) + '</span>'
+            + esc(p.nome) + '</td>'
+            + betCell(p.quote_titolo,  mkBd('titolo',  p.quote_titolo,  '🏆 Titolo campionato'))
+            + betCell(p.quote_podio,   mkBd('podio',   p.quote_podio,   '🥉 Podio campionato'))
+            + betCell(p.quote_top5,    mkBd('top5',    p.quote_top5,    '⭐ Top 5'))
+            + betCell(p.quote_best_30, mkBd('best_30', p.quote_best_30, '🎯 Best ≥30 (stagione)'))
+            + betCell(p.quote_avg_18,  mkBd('avg_18',  p.quote_avg_18,  '📊 Media ≥18 (stagione)'))
+            + '</tr>'
+        }).join('')
+        attachBoardClicks(tbody)
       }
 
-      function populatePlayers() {
-        var sId = selSeason.value
-        var boards = CSL.sisal || []
-        var board = boards.find(function(b){ return b.season_id===sId })
-        selPlayer.innerHTML = ''
-        if (!board) {
-          selPlayer.innerHTML = '<option value="">— nessun dato —</option>'
+      /* ── Tab: Prossima Giornata ── */
+      function populateGiornataTab(board) {
+        var infoEl = document.getElementById('bet-giornata-info')
+        var tbody  = document.getElementById('bet-giornata-tbody')
+        if (!board || !board.next_matchday || !board.next_matchday.players) {
+          if (infoEl) infoEl.innerHTML = '<p class="text-muted" style="padding:0.5rem 0">Nessuna prossima giornata disponibile.</p>'
+          if (tbody)  tbody.innerHTML  = ''
           return
         }
-        board.players.forEach(function(p) {
-          var opt = document.createElement('option')
-          opt.value = p.nome; opt.textContent = p.nome
-          selPlayer.appendChild(opt)
-        })
-        updatePreview()
+        var nm  = board.next_matchday
+        var dtl = new Date(nm.data+'T00:00:00').toLocaleDateString('it-IT',{day:'numeric',month:'long'})
+        infoEl.innerHTML = '<div class="bet-giornata-badge">⚡ G' + nm.numero + ' · ' + esc(nm.giorno) + ' ' + dtl + '</div>'
+        tbody.innerHTML = nm.players.map(function(p) {
+          var mkBd = function(bt, q, lbl) {
+            return { bet_type:bt, player_name:p.nome, quota:q, market_label:lbl,
+                     season_id:_seasonId, giornata_date:nm.data, giornata_num:nm.numero }
+          }
+          return '<tr>'
+            + '<td class="bet-player-cell">'
+            + '<span class="bet-player-ini">' + esc(p.iniziali || (p.nome||'').slice(0,2)) + '</span>'
+            + esc(p.nome) + '</td>'
+            + betCell(p.quote_vittoria, mkBd('giornata_win',     p.quote_vittoria, '🥇 Vince G' + nm.numero))
+            + betCell(p.quote_podio,    mkBd('giornata_podio',   p.quote_podio,    '🥉 Podio G' + nm.numero))
+            + betCell(p.quote_over_25,  mkBd('giornata_over_25', p.quote_over_25,  '🎯 Over 25 G' + nm.numero))
+            + betCell(p.quote_over_20,  mkBd('giornata_over_20', p.quote_over_20,  '📊 Over 20 G' + nm.numero))
+            + '</tr>'
+        }).join('')
+        attachBoardClicks(tbody)
       }
 
-      // Populate season select
+      /* ── Tab: Speciali ── */
+      function populateSpecialiTab(board) {
+        var listEl = document.getElementById('bet-speciali-list')
+        if (!listEl) return
+        var items = []
+        if (board && board.next_matchday) {
+          ;(board.next_matchday.highlights || []).forEach(function(h) {
+            items.push({ label:h.label, sub:h.market, player:h.player, quota:h.quota,
+                         giornata_date:board.next_matchday.data, giornata_num:board.next_matchday.numero })
+          })
+          ;(board.next_matchday.specials || []).forEach(function(s) {
+            items.push({ label:s.label, sub:s.note||'', player:'—', quota:s.quota,
+                         giornata_date:board.next_matchday.data, giornata_num:board.next_matchday.numero })
+          })
+        }
+        if (board) {
+          ;(board.highlights || []).forEach(function(h) {
+            items.push({ label:h.label, sub:h.market, player:h.player, quota:h.quota,
+                         giornata_date:null, giornata_num:null })
+          })
+        }
+        if (!items.length) {
+          listEl.innerHTML = '<p class="text-muted">Nessun mercato speciale disponibile.</p>'
+          return
+        }
+        listEl.innerHTML = items.map(function(item, idx) {
+          var lbl = item.sub ? item.label + ' — ' + item.sub : item.label
+          var bd  = { bet_type:'speciale', player_name:item.player||'—', quota:item.quota,
+                      market_label:lbl, season_id:_seasonId,
+                      giornata_date:item.giornata_date||null, giornata_num:item.giornata_num||null }
+          var tag = item.giornata_num
+            ? '<span class="bet-speciale-tag">⚡ G' + item.giornata_num + '</span>'
+            : '<span class="bet-speciale-tag bet-speciale-tag--season">📅 Stagione</span>'
+          return '<div class="bet-speciale-card" data-bet=\'' + JSON.stringify(bd).replace(/'/g,'&#39;') + '\'>'
+            + '<div class="bet-speciale-top">' + tag
+            + '<span class="bet-q bet-q--lg">' + fmtQ(item.quota) + '</span></div>'
+            + '<div class="bet-speciale-label">' + esc(item.label) + '</div>'
+            + (item.sub ? '<div class="bet-speciale-sub">' + esc(item.sub) + '</div>' : '')
+            + '</div>'
+        }).join('')
+        listEl.querySelectorAll('.bet-speciale-card').forEach(function(card) {
+          card.addEventListener('click', function() {
+            listEl.querySelectorAll('.bet-speciale-card').forEach(function(c){ c.classList.remove('selected') })
+            card.classList.add('selected')
+            selectBet(JSON.parse(card.getAttribute('data-bet').replace(/&#39;/g,"'")))
+          })
+        })
+      }
+
+      /* ── Board click delegation ── */
+      function attachBoardClicks(tbody) {
+        tbody.querySelectorAll('.bet-cell[data-bet]').forEach(function(cell) {
+          cell.addEventListener('click', function() {
+            document.querySelectorAll('.bet-cell.selected, .bet-speciale-card.selected')
+              .forEach(function(c){ c.classList.remove('selected') })
+            cell.classList.add('selected')
+            selectBet(JSON.parse(cell.getAttribute('data-bet').replace(/&#39;/g,"'")))
+          })
+        })
+      }
+
+      /* ── Select a bet ── */
+      function selectBet(bd) {
+        _selected = bd
+        selArea.hidden = false
+        var tag = bd.giornata_num ? ' · G' + bd.giornata_num : ''
+        selDisplay.innerHTML = '<span class="bet-sel-player">' + esc(bd.player_name) + '</span>'
+          + ' <span class="bet-sel-market">' + esc(bd.market_label) + esc(tag) + '</span>'
+          + ' <span class="bet-q">@' + fmtQ(bd.quota) + '</span>'
+        updatePreview()
+        btnConfirm.disabled = false
+        btnConfirm.textContent = 'Conferma scommessa'
+        errBox.hidden = true; sucBox.hidden = true
+      }
+
+      /* ── Preview ── */
+      function updatePreview() {
+        if (!_selected) return
+        var amt = parseInt(inputAmt.value) || 0
+        if (amt >= 10) {
+          previewQ.textContent = fmtQ(_selected.quota)
+          previewW.textContent = fmtC(Math.floor(amt * _selected.quota))
+          previewRow.hidden = false
+        } else {
+          previewRow.hidden = true
+        }
+      }
+
+      /* ── Chip quick-amounts ── */
+      document.querySelectorAll('.bet-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+          inputAmt.value = chip.getAttribute('data-amt')
+          document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
+          chip.classList.add('active')
+          updatePreview()
+        })
+      })
+      inputAmt.addEventListener('input', function() {
+        document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
+        updatePreview()
+      })
+
+      /* ── Tab switching ── */
+      document.querySelectorAll('.bet-tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.bet-tab-btn').forEach(function(b){ b.classList.remove('active') })
+          btn.classList.add('active')
+          document.querySelectorAll('.bet-tab-pane').forEach(function(p){ p.hidden = true })
+          document.getElementById('bet-tab-' + btn.getAttribute('data-tab')).hidden = false
+        })
+      })
+
+      /* ── Init on DOMContentLoaded ── */
       document.addEventListener('DOMContentLoaded', function() {
         var boards = CSL.sisal || []
+        if (!boards.length) return
         boards.slice().reverse().forEach(function(b) {
           var opt = document.createElement('option')
           opt.value = b.season_id; opt.textContent = b.season_label
           selSeason.appendChild(opt)
         })
-        if (boards.length) populatePlayers()
+        // default: last (most recent) board
+        _seasonId = boards[boards.length - 1].season_id
+        selSeason.value = _seasonId
+        var defaultBoard = boards.find(function(b){ return b.season_id === _seasonId }) || boards[boards.length - 1]
+        populateStagioneTab(_seasonId)
+        populateGiornataTab(defaultBoard)
+        populateSpecialiTab(defaultBoard)
       })
 
-      selSeason.addEventListener('change', populatePlayers)
-      selPlayer.addEventListener('change', updatePreview)
-      selType.addEventListener('change', updatePreview)
-      inputAmt.addEventListener('input', updatePreview)
+      selSeason.addEventListener('change', function() {
+        _seasonId = selSeason.value
+        var board = (CSL.sisal || []).find(function(b){ return b.season_id === _seasonId })
+        populateStagioneTab(_seasonId)
+        populateGiornataTab(board)
+        populateSpecialiTab(board)
+        _selected = null; selArea.hidden = true
+        btnConfirm.disabled = true
+        btnConfirm.textContent = 'Seleziona una scommessa'
+        document.querySelectorAll('.bet-cell.selected, .bet-speciale-card.selected')
+          .forEach(function(c){ c.classList.remove('selected') })
+      })
 
-      // Init widget visibility after auth
+      /* ── Auth + wallet ── */
       document.addEventListener('csl:auth-ready', async function() {
         if (!CSLAuth.isLoggedIn()) return
         widget.hidden = false
@@ -295,48 +482,46 @@
         document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
       })
 
+      /* ── Modal open / close ── */
       btnOpen.addEventListener('click', function() {
         errBox.hidden = true; sucBox.hidden = true
         overlay.hidden = false
         document.body.style.overflow = 'hidden'
-        updatePreview()
       })
-
-      function closeModal() {
-        overlay.hidden = true
-        document.body.style.overflow = ''
-      }
+      function closeModal() { overlay.hidden = true; document.body.style.overflow = '' }
       btnClose.addEventListener('click', closeModal)
-      overlay.addEventListener('click', function(e) { if (e.target===overlay) closeModal() })
-      document.addEventListener('keydown', function(e) { if (e.key==='Escape') closeModal() })
+      overlay.addEventListener('click', function(e){ if (e.target === overlay) closeModal() })
+      document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal() })
 
+      /* ── Confirm bet ── */
       btnConfirm.addEventListener('click', async function() {
         errBox.hidden = true; sucBox.hidden = true
-        var sId   = selSeason.value
-        var pName = selPlayer.value
-        var bType = selType.value
-        var amt   = parseInt(inputAmt.value) || 0
-        var q     = getQuota()
-
-        if (!sId || !pName) { errBox.textContent='Seleziona stagione e giocatore.'; errBox.hidden=false; return }
-        if (amt < 10) { errBox.textContent='Importo minimo 10 Bossoli.'; errBox.hidden=false; return }
-        if (amt > _wallet) { errBox.textContent='Saldo insufficiente ('+fmtC(_wallet)+' Bossoli disponibili).'; errBox.hidden=false; return }
-        if (!q) { errBox.textContent='Quota non disponibile per questa selezione.'; errBox.hidden=false; return }
+        if (!_selected) return
+        var amt = parseInt(inputAmt.value) || 0
+        if (amt < 10)     { errBox.textContent = 'Importo minimo 10 Bossoli.'; errBox.hidden = false; return }
+        if (amt > _wallet){ errBox.textContent = 'Saldo insufficiente (' + fmtC(_wallet) + ' Bossoli).'; errBox.hidden = false; return }
 
         btnConfirm.disabled = true; btnConfirm.textContent = 'Elaborazione…'
-        var res = await CSLAuth.placeBet(sId, bType, pName, amt, q)
+        var res = await CSLAuth.placeBet(
+          _selected.season_id, _selected.bet_type, _selected.player_name,
+          amt, _selected.quota,
+          { giornata_date: _selected.giornata_date,
+            giornata_num:  _selected.giornata_num,
+            market_label:  _selected.market_label }
+        )
         btnConfirm.disabled = false; btnConfirm.textContent = 'Conferma scommessa'
 
         if (res && res.error) {
           errBox.textContent = res.error; errBox.hidden = false
         } else {
-          _wallet = res.new_balance || (_wallet - amt)
+          _wallet = (res && res.new_balance != null) ? res.new_balance : _wallet - amt
           document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
           document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
-          sucBox.textContent = '✅ Scommessa piazzata! Saldo: '+fmtC(_wallet)+' Bossoli.'
+          sucBox.textContent = '✅ Scommessa piazzata! Saldo: ' + fmtC(_wallet) + ' Bossoli.'
           sucBox.hidden = false
           inputAmt.value = ''
-          preview.hidden = true
+          previewRow.hidden = true
+          document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
         }
       })
     })()

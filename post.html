@@ -196,12 +196,34 @@
       errBox.hidden = true
       const content = input.value.trim()
       if (!content) return
+      if (_hasProfanity(content)) {
+        errBox.textContent = 'Il commento contiene linguaggio non consentito. Modifica il testo e riprova.'
+        errBox.hidden = false; return
+      }
       const uid = CSLAuth.getSession().user.id
       const { error } = await CSLAuth.client.from('comments').insert({ post_id: _postId, user_id: uid, content })
       if (error) { errBox.textContent = error.message; errBox.hidden = false; return }
       input.value = ''
       count.textContent = '0 / 1000'
       await loadComments()
+    })
+  }
+
+  // ── Filtro anti-violenza ───────────────────────────────────────
+  const _BAD_WORDS = [
+    // italiano
+    'cazzo','vaffanculo','stronzo','stronza','bastardo','bastarda','puttana','minchia',
+    'coglione','cogliona','fanculo','affanculo','cornuto','cornuta','troia','imbecille',
+    'deficiente','negro','negra','frocio','ricchione','porco dio','pezzo di merda',
+    // inglese
+    'fuck','shit','asshole','bitch','bastard','cunt','dick','motherfucker',
+    'nigger','faggot','whore','slut','retard'
+  ]
+  function _hasProfanity(text) {
+    const t = text.toLowerCase()
+    return _BAD_WORDS.some(w => {
+      const re = new RegExp('(?:^|[\\s,.!?;:\'"]|\\b)' + w.replace(/\s+/g,'\\s+') + '(?:$|[\\s,.!?;:\'"]|\\b)', 'i')
+      return re.test(t)
     })
   }
 

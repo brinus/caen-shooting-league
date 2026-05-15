@@ -2550,3 +2550,119 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   .profile-giornata-row { flex-direction: column; align-items: flex-start; }
   .profile-giornata-pos { margin-left: 0; }
 }
+
+/* ── Profile — stat card icons & color variants ────────────── */
+.profile-stat-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+.profile-stat-sub {
+  display: inline;
+  font-family: sans-serif;
+  font-size: 0.68rem;
+  opacity: 0.65;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.profile-stat-card--primary {
+  border-left: 3px solid var(--primary);
+}
+.profile-stat-card--gold {
+  border-left: 3px solid var(--secondary);
+}
+.profile-stat-value small {
+  font-size: 0.5em;
+  opacity: 0.5;
+  font-family: 'Exo 2', sans-serif;
+  vertical-align: super;
+}
+
+/* ── Profile — sparkline section ───────────────────────────── */
+.profile-sparkline-card {
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+.profile-sparkline-card .sparkline-wrap {
+  background: transparent;
+  padding: 0.25rem 0;
+}
+
+/* ── Profile — SISAL section ────────────────────────────────── */
+.profile-sisal-card {
+  padding: 1.2rem 1.5rem;
+}
+.profile-sisal-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.profile-sisal-conf-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.profile-sisal-conf-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.profile-sisal-giornate {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.profile-sisal-quotes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+}
+.profile-sisal-quote-item {
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.6rem;
+  text-align: center;
+}
+.profile-sisal-quote-item--featured {
+  border-color: rgba(73, 210, 155, 0.3);
+  background: rgba(73, 210, 155, 0.07);
+}
+.profile-sisal-quote-label {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.35rem;
+}
+.profile-sisal-quote-val {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.profile-sisal-quote-item--featured .profile-sisal-quote-val {
+  color: var(--sisal-green);
+  font-size: 1.25rem;
+}
+.profile-sisal-note {
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  border-left: 2px solid var(--border-bright);
+  padding-left: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.profile-sisal-disclaimer {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 480px) {
+  .profile-sisal-quotes { grid-template-columns: repeat(3, 1fr); }
+  .profile-sisal-giornate { margin-left: 0; }
+}

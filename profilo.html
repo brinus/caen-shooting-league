@@ -60,9 +60,49 @@
         </section>
 
         <!-- Storico giornate -->
-        <section style="margin-top:2rem;margin-bottom:3rem">
+        <section style="margin-top:2rem">
           <h2 class="section-title">📅 Giornate disputate</h2>
           <div class="profile-giornate" id="profile-giornate"></div>
+        </section>
+
+        <!-- Grafico andamento punteggi -->
+        <section id="profile-sparkline-section" style="margin-top:2rem" hidden>
+          <h2 class="section-title">📈 Andamento punteggi</h2>
+          <div class="card profile-sparkline-card">
+            <div class="profile-sparkline-wrap sparkline-wrap"></div>
+          </div>
+        </section>
+
+        <!-- Quote SISAL -->
+        <section id="profile-sisal-section" style="margin-top:2rem" hidden>
+          <h2 class="section-title">📊 Quote SISAL</h2>
+          <div class="card profile-sisal-card">
+            <div id="profile-sisal-content"></div>
+          </div>
+        </section>
+
+        <!-- Cambio password (solo profilo proprio) -->
+        <section id="profile-password-section" style="margin-top:2rem;margin-bottom:3rem" hidden>
+          <h2 class="section-title">🔒 Cambia password</h2>
+          <div class="card" style="max-width:460px">
+            <form id="form-change-password">
+              <div class="form-group" style="margin-bottom:1rem">
+                <label>Nuova password</label>
+                <input type="password" class="form-input" id="pw-new"
+                       placeholder="Minimo 8 caratteri" minlength="8" required>
+              </div>
+              <div class="form-group" style="margin-bottom:1.25rem">
+                <label>Conferma nuova password</label>
+                <input type="password" class="form-input" id="pw-confirm"
+                       placeholder="Ripeti la nuova password" required>
+              </div>
+              <div class="form-error"   id="pw-error"   hidden></div>
+              <div class="form-success" id="pw-success" hidden></div>
+              <button type="submit" class="btn-primary" id="btn-change-password" style="margin-top:0.75rem">
+                Aggiorna password
+              </button>
+            </form>
+          </div>
         </section>
 
       </div>
@@ -79,28 +119,24 @@
   <script src="js/ranking.js"></script>
   <script src="data/data.js"></script>
   <script src="data/classifica.js"></script>
+  <script src="data/sisal.js"></script>
   <script src="js/app.js"></script>
   <script>
     document.addEventListener('csl:auth-ready', async function () {
       const params = new URLSearchParams(window.location.search)
-      const playerParam = params.get('giocatore')  // visualizza profilo pubblico di un altro
-
-      // Determina quale profilo mostrare
+      const playerParam = params.get('giocatore')
       let targetPlayerName = null
       let isOwnProfile = false
 
       if (playerParam) {
-        // Profilo pubblico di un altro giocatore (URL: profilo.html?giocatore=Nome+Cognome)
         targetPlayerName = decodeURIComponent(playerParam)
       } else if (CSLAuth.isLoggedIn()) {
-        // Profilo proprio — usa profile se già caricato, altrimenti legge da JWT user_metadata
         const profile = CSLAuth.getProfile()
         const meta = CSLAuth.getSession()?.user?.user_metadata
         targetPlayerName = profile?.player_name || profile?.display_name
           || meta?.player_name || meta?.display_name
         isOwnProfile = true
       } else {
-        // Non loggato e nessun param → richiede login
         document.getElementById('profile-loading').hidden = true
         document.getElementById('profile-login-required').hidden = false
         return
@@ -115,32 +151,25 @@
       await renderProfile(targetPlayerName, isOwnProfile)
     })
 
-    function escHtml(s) {
-      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    }
-
+    function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+    function escHtml(s) { return _esc(s) }
     function formatDate(dateStr) {
-      const d = new Date(dateStr + 'T00:00:00')
-      return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
+    }
+    function fmtQ(n) {
+      return Number(n||0).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 })
     }
 
     async function renderProfile(playerName, isOwnProfile) {
-      // Cerca il giocatore in CSL.stagioni (dati statici o da Supabase via ranking.js)
-      // Se Supabase è configurato usa dati live, altrimenti usa statici
       let stagioni = CSL.stagioni
-
-      if (window.CSLRanking && typeof CSLAuth !== 'undefined' && CSLAuth.isLoggedIn()) {
+      if (window.CSLRanking && CSLAuth.isLoggedIn()) {
         try {
           await new Promise(resolve => {
-            CSLRanking.loadStagioniFromSupabase(data => {
-              if (data) stagioni = data
-              resolve()
-            })
+            CSLRanking.loadStagioniFromSupabase(data => { if (data) stagioni = data; resolve() })
           })
-        } catch (e) { /* usa dati statici */ }
+        } catch(e) {}
       }
 
-      // Cerca il giocatore nella stagione attiva
       const seasonAttiva = stagioni.find(s => s.status === 'attiva') || stagioni[stagioni.length - 1]
       if (!seasonAttiva) {
         document.getElementById('profile-loading').hidden = true
@@ -148,10 +177,7 @@
         return
       }
 
-      const playerData = seasonAttiva.classifica?.find(p =>
-        p.nome.toLowerCase() === playerName.toLowerCase()
-      )
-
+      const playerData = seasonAttiva.classifica?.find(p => p.nome.toLowerCase() === playerName.toLowerCase())
       document.getElementById('profile-loading').hidden = true
 
       if (!playerData && !stagioni.some(s => s.classifica?.some(p => p.nome.toLowerCase() === playerName.toLowerCase()))) {
@@ -160,121 +186,195 @@
       }
 
       document.getElementById('profile-content').hidden = false
-      document.title = `${escHtml(playerName)} — CSL`
+      document.title = playerName + ' — CSL'
 
-      // Header
-      const initiali = playerData?.iniziali || playerName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+      // ── Header ──────────────────────────────────────────────
+      const initiali = playerData?.iniziali || playerName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2)
       document.getElementById('profile-avatar').textContent = initiali
-      document.getElementById('profile-name').textContent = playerName
-
+      document.getElementById('profile-name').textContent   = playerName
       const roleBadge = document.getElementById('profile-role-badge')
-      if (isOwnProfile && CSLAuth.isAdmin()) {
-        roleBadge.textContent = 'Admin'
-        roleBadge.classList.add('badge-admin')
-      } else {
-        roleBadge.textContent = 'Partecipante'
-        roleBadge.classList.add('badge-participant')
-      }
+      roleBadge.textContent = (isOwnProfile && CSLAuth.isAdmin()) ? 'Admin' : 'Partecipante'
+      roleBadge.classList.add((isOwnProfile && CSLAuth.isAdmin()) ? 'badge-admin' : 'badge-participant')
+      document.getElementById('profile-season-label').textContent = seasonAttiva.nome + ' ' + seasonAttiva.anno
 
-      document.getElementById('profile-season-label').textContent =
-        `${seasonAttiva.nome} ${seasonAttiva.anno}`
-
-      // Stats grid
+      // ── Stats grid (migliorato) ──────────────────────────────
       const statsGrid = document.getElementById('profile-stats-grid')
       if (playerData) {
-        statsGrid.innerHTML = `
-          <div class="profile-stat-card card">
-            <div class="profile-stat-value">#${playerData.posizione}</div>
-            <div class="profile-stat-label">Posizione</div>
-          </div>
-          <div class="profile-stat-card card">
-            <div class="profile-stat-value">${playerData.punti_campionato}</div>
-            <div class="profile-stat-label">Punti campionato</div>
-          </div>
-          <div class="profile-stat-card card">
-            <div class="profile-stat-value">${playerData.record}</div>
-            <div class="profile-stat-label">Record</div>
-          </div>
-          <div class="profile-stat-card card">
-            <div class="profile-stat-value">${playerData.media_tiro.toFixed(1)}</div>
-            <div class="profile-stat-label">Media tiro</div>
-          </div>
-          <div class="profile-stat-card card">
-            <div class="profile-stat-value">${playerData.vittorie}</div>
-            <div class="profile-stat-label">Vittorie</div>
-          </div>
-          <div class="profile-stat-card card">
-            <div class="profile-stat-value">${playerData.partite}</div>
-            <div class="profile-stat-label">Giornate</div>
-          </div>
-        `
+        const winRate = playerData.partite > 0 ? Math.round(playerData.vittorie / playerData.partite * 100) : 0
+        const posLabel = playerData.posizione <= 3
+          ? ['🥇','🥈','🥉'][playerData.posizione - 1]
+          : '#' + playerData.posizione
+        const recHtml = playerData.recuperi_usati > 0
+          ? '<span class="recupero-counter recupero-counter--used" title="Recuperi usati">' + playerData.recuperi_usati + '/' + playerData.recuperi_max + 'R</span>'
+          : ''
+        statsGrid.innerHTML = [
+          { icon:'📍', val: posLabel,                             label: 'Posizione',   extra:'', cls:'profile-stat-card--pos' },
+          { icon:'⚡', val: playerData.punti_campionato,          label: 'Punti camp.', extra:'', cls:'profile-stat-card--primary', color:'var(--primary)' },
+          { icon:'🎯', val: playerData.record + '<small>/50</small>', label: 'Record',  extra:'', cls:'profile-stat-card--gold',    color:'var(--secondary)' },
+          { icon:'📊', val: playerData.media_tiro.toFixed(1),     label: 'Media tiro',  extra:'', cls:'' },
+          { icon:'🏆', val: playerData.vittorie,                  label: 'Vittorie',    extra:'<span class="profile-stat-sub">(' + winRate + '%)</span>', cls:'' },
+          { icon:'📅', val: playerData.partite,                   label: 'Giornate',    extra: recHtml, cls:'' },
+        ].map(function(s) {
+          return '<div class="profile-stat-card card ' + s.cls + '">' +
+            '<div class="profile-stat-icon">' + s.icon + '</div>' +
+            '<div class="profile-stat-value"' + (s.color ? ' style="color:' + s.color + '"' : '') + '>' + s.val + '</div>' +
+            '<div class="profile-stat-label">' + s.label + (s.extra ? ' ' + s.extra : '') + '</div>' +
+          '</div>'
+        }).join('')
       } else {
         statsGrid.innerHTML = '<p class="text-muted">Nessuna statistica disponibile per questa stagione.</p>'
       }
 
-      // Rank card
+      // ── Rank card ────────────────────────────────────────────
       const rankCard = document.getElementById('profile-rank-card')
       if (playerData) {
-        const posBadge = playerData.posizione <= 3
-          ? ['🥇','🥈','🥉'][playerData.posizione - 1]
-          : `#${playerData.posizione}`
-        rankCard.innerHTML = `
-          <div class="rank-summary">
-            <span class="rank-position-big">${posBadge}</span>
-            <div class="rank-details">
-              <div><strong>${playerData.punti_campionato}</strong> punti campionato</div>
-              <div><strong>${playerData.punti_tiro}</strong> punti tiro</div>
-              <div>Recuperi: ${playerData.recuperi_usati}/${playerData.recuperi_max}</div>
-            </div>
-          </div>
-        `
+        const posBadge = playerData.posizione <= 3 ? ['🥇','🥈','🥉'][playerData.posizione-1] : '#'+playerData.posizione
+        rankCard.innerHTML = '<div class="rank-summary">' +
+          '<span class="rank-position-big">' + posBadge + '</span>' +
+          '<div class="rank-details">' +
+            '<div><strong>' + playerData.punti_campionato + '</strong> punti campionato</div>' +
+            '<div><strong>' + playerData.punti_tiro + '</strong> punti tiro</div>' +
+            '<div>Recuperi: ' + playerData.recuperi_usati + '/' + playerData.recuperi_max + '</div>' +
+          '</div></div>'
       } else {
         rankCard.innerHTML = '<p class="text-muted">Giocatore non in classifica nella stagione corrente.</p>'
       }
 
-      // Storico giornate
+      // ── Storico giornate ─────────────────────────────────────
       const giornateEl = document.getElementById('profile-giornate')
       const giornatePersonali = (seasonAttiva.giornate || [])
-        .map(g => ({
-          ...g,
-          risultato: g.risultati.find(r => r.nome.toLowerCase() === playerName.toLowerCase())
-        }))
-        .filter(g => g.risultato)
-        .sort((a, b) => b.data.localeCompare(a.data))
+        .map(function(g) { return Object.assign({}, g, { risultato: g.risultati.find(function(r) { return r.nome.toLowerCase() === playerName.toLowerCase() }) }) })
+        .filter(function(g) { return g.risultato })
+        .sort(function(a, b) { return b.data.localeCompare(a.data) })
 
       if (!giornatePersonali.length) {
         giornateEl.innerHTML = '<p class="text-muted">Nessuna giornata registrata.</p>'
       } else {
-        giornateEl.innerHTML = giornatePersonali.map(g => {
+        giornateEl.innerHTML = giornatePersonali.map(function(g) {
           const r = g.risultato
-          return `
-            <div class="profile-giornata-row card">
-              <div class="profile-giornata-date">
-                <span class="giornata-num">G${g.numero}</span>
-                <span class="giornata-day">${g.giorno}</span>
-                <span class="giornata-date-str">${formatDate(g.data)}</span>
-                ${r.recupero ? '<span class="badge-recupero">recupero</span>' : ''}
-              </div>
-              <div class="profile-giornata-tentativi">
-                ${[r.t1, r.t2, r.t3].map(t =>
-                  t === -1
-                    ? `<span class="attempt attempt-skipped">—</span>`
-                    : `<span class="attempt">${t}</span>`
-                ).join('')}
-              </div>
-              <div class="profile-giornata-best">
-                <span class="attempt-best">${r.punteggio}</span>
-              </div>
-              <div class="profile-giornata-pos">
-                <span class="rank-badge rank-badge-${r.posizione <= 3 ? r.posizione : 'other'}">
-                  ${r.posizione <= 3 ? ['🥇','🥈','🥉'][r.posizione-1] : `#${r.posizione}`}
-                </span>
-                <span class="camp-pts camp-pts-${r.punti_campionato}">${r.punti_campionato} pt</span>
-              </div>
-            </div>
-          `
+          const attempts = [r.t1, r.t2, r.t3].map(function(t) {
+            return t === -1 ? '<span class="attempt attempt-skipped">—</span>' : '<span class="attempt">' + t + '</span>'
+          }).join('')
+          return '<div class="profile-giornata-row card">' +
+            '<div class="profile-giornata-date">' +
+              '<span class="giornata-num">G' + g.numero + '</span>' +
+              '<span class="giornata-day">' + _esc(g.giorno) + '</span>' +
+              '<span class="giornata-date-str">' + formatDate(g.data) + '</span>' +
+              (r.recupero ? '<span class="badge-recupero">recupero</span>' : '') +
+            '</div>' +
+            '<div class="profile-giornata-tentativi">' + attempts + '</div>' +
+            '<div class="profile-giornata-best"><span class="attempt-best">' + r.punteggio + '</span></div>' +
+            '<div class="profile-giornata-pos">' +
+              '<span class="rank-badge rank-badge-' + (r.posizione <= 3 ? r.posizione : 'other') + '">' +
+                (r.posizione <= 3 ? ['🥇','🥈','🥉'][r.posizione-1] : '#'+r.posizione) +
+              '</span>' +
+              '<span class="camp-pts camp-pts-' + r.punti_campionato + '">' + r.punti_campionato + ' pt</span>' +
+            '</div>' +
+          '</div>'
         }).join('')
       }
+
+      // ── Sparkline ────────────────────────────────────────────
+      if (giornatePersonali.length >= 2 && typeof buildSparkline !== 'undefined') {
+        const timeline = giornatePersonali.slice()
+          .sort(function(a,b) { return a.data.localeCompare(b.data) })
+          .map(function(g) { return { data: g.data, punteggio: g.risultato.punteggio, recupero: g.risultato.recupero || false } })
+        const sparkSection = document.getElementById('profile-sparkline-section')
+        sparkSection.hidden = false
+        const sparkWrap = sparkSection.querySelector('.profile-sparkline-wrap')
+        sparkWrap.innerHTML = buildSparkline(timeline) + '<div class="sparkline-tooltip" style="display:none"></div>'
+        const tip = sparkWrap.querySelector('.sparkline-tooltip')
+        sparkWrap.querySelectorAll('.spark-dot').forEach(function(dot) {
+          dot.addEventListener('mouseenter', function() {
+            const d = new Date(dot.getAttribute('data-date') + 'T00:00:00')
+            const label = d.toLocaleDateString('it-IT', { day:'numeric', month:'short' })
+            const recLabel = dot.getAttribute('data-recupero') === '1' ? ' [R]' : ''
+            tip.textContent = label + recLabel + ' — ' + dot.getAttribute('data-score') + ' pt'
+            tip.style.display = 'block'
+            const wRect = sparkWrap.getBoundingClientRect()
+            const dRect = dot.getBoundingClientRect()
+            tip.style.left = Math.min(Math.max(dRect.left - wRect.left + dRect.width / 2, 28), sparkWrap.offsetWidth - 28) + 'px'
+          })
+          dot.addEventListener('mouseleave', function() { tip.style.display = 'none' })
+        })
+      }
+
+      // ── Quote SISAL ──────────────────────────────────────────
+      if (window.CSL && CSL.sisal && CSL.sisal.length) {
+        const board = CSL.sisal.find(function(b) { return b.season_id === seasonAttiva.id }) || CSL.sisal[CSL.sisal.length - 1]
+        if (board) {
+          const sp = board.players.find(function(p) { return p.nome.toLowerCase() === playerName.toLowerCase() })
+          if (sp) {
+            const sisalSection = document.getElementById('profile-sisal-section')
+            sisalSection.hidden = false
+            renderSisalProfile(sp, board, document.getElementById('profile-sisal-content'))
+          }
+        }
+      }
+
+      // ── Cambio password (solo profilo proprio) ───────────────
+      if (isOwnProfile) initPasswordForm()
+    }
+
+    function renderSisalProfile(p, board, container) {
+      const trendClass = p.trend === 'Caldo' ? 'sisal-chip--hot' : p.trend === 'Freddo' ? 'sisal-chip--cold' : 'sisal-chip--steady'
+      const trendIcon  = p.trend === 'Caldo' ? '🔥' : p.trend === 'Freddo' ? '🧊' : '→'
+      const quotes = [
+        { label:'Titolo',    val:p.quote_titolo,  icon:'🏆', featured:true  },
+        { label:'Podio',     val:p.quote_podio,   icon:'🥉', featured:false },
+        { label:'Top 5',     val:p.quote_top5,    icon:'⭐', featured:false },
+        { label:'Best ≥30',  val:p.quote_best_30, icon:'🎯', featured:false },
+        { label:'Media ≥18', val:p.quote_avg_18,  icon:'📊', featured:false },
+      ]
+      container.innerHTML =
+        '<div class="profile-sisal-meta">' +
+          '<span class="sisal-chip ' + trendClass + '">' + trendIcon + ' ' + _esc(p.trend) + '</span>' +
+          '<span class="profile-sisal-conf-wrap">' +
+            '<span class="sisal-confidence-bar" style="width:100px"><span class="sisal-confidence-fill" style="width:' + p.confidence + '%"></span></span>' +
+            '<span class="profile-sisal-conf-label">conf. ' + p.confidence + '%</span>' +
+          '</span>' +
+          '<span class="profile-sisal-giornate">G' + board.giornate_giocate + '/' + board.giornate_totali + ' giocate</span>' +
+        '</div>' +
+        '<div class="profile-sisal-quotes">' +
+          quotes.map(function(q) {
+            return '<div class="profile-sisal-quote-item' + (q.featured ? ' profile-sisal-quote-item--featured' : '') + '">' +
+              '<div class="profile-sisal-quote-label">' + q.icon + ' ' + _esc(q.label) + '</div>' +
+              '<div class="' + (q.featured ? 'sisal-quote--featured' : 'sisal-quote') + ' profile-sisal-quote-val">' + fmtQ(q.val) + '</div>' +
+            '</div>'
+          }).join('') +
+        '</div>' +
+        (p.note ? '<div class="profile-sisal-note">&#8220;' + _esc(p.note) + '&#8221;</div>' : '') +
+        '<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — ' + _esc(board.season_label) + '</p>'
+    }
+
+    function initPasswordForm() {
+      const section = document.getElementById('profile-password-section')
+      if (!section) return
+      section.hidden = false
+      const form   = document.getElementById('form-change-password')
+      const errBox = document.getElementById('pw-error')
+      const sucBox = document.getElementById('pw-success')
+      const btn    = document.getElementById('btn-change-password')
+
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault()
+        errBox.hidden = true; sucBox.hidden = true
+        const newPw  = document.getElementById('pw-new').value
+        const confPw = document.getElementById('pw-confirm').value
+        if (newPw.length < 8) {
+          errBox.textContent = 'La password deve essere di almeno 8 caratteri.'
+          errBox.hidden = false; return
+        }
+        if (newPw !== confPw) {
+          errBox.textContent = 'Le due password non coincidono.'
+          errBox.hidden = false; return
+        }
+        btn.disabled = true; btn.textContent = 'Aggiornamento…'
+        const { error } = await CSLAuth.updatePassword(newPw)
+        btn.disabled = false; btn.textContent = 'Aggiorna password'
+        if (error) { errBox.textContent = error; errBox.hidden = false }
+        else { sucBox.textContent = '✓ Password aggiornata con successo.'; sucBox.hidden = false; form.reset() }
+      })
     }
   </script>
 </body>

@@ -205,17 +205,24 @@
     })
   }
 
-  // ── Init ───────────────────────────────────────────────────────
-  document.addEventListener('csl:post-loaded', async e => {
-    _postId = e.detail.postId
-    document.getElementById('post-interactions').hidden = false
-    await Promise.all([loadReactions(), loadComments()])
-    initCommentForm()
-  })
+  // ── Init (indipendente da app.js) ─────────────────────────────
+  // Legge lo slug dall'URL e recupera l'id del post da Supabase,
+  // senza dipendere dall'evento csl:post-loaded di app.js.
+  async function _initInteractions() {
+    const slug = new URLSearchParams(window.location.search).get('slug')
+    if (!slug) return
+    try {
+      const { data: post } = await CSLAuth.client
+        .from('posts').select('id').eq('slug', slug).maybeSingle()
+      if (!post?.id) return
+      _postId = post.id
+      document.getElementById('post-interactions').hidden = false
+      await Promise.all([loadReactions(), loadComments()])
+      initCommentForm()
+    } catch (e) { /* silenzioso se Supabase non disponibile */ }
+  }
 
-  document.addEventListener('csl:auth-ready', () => {
-    if (_postId) initCommentForm()
-  })
+  document.addEventListener('csl:auth-ready', _initInteractions, { once: true })
   </script>
 </body>
 </html>

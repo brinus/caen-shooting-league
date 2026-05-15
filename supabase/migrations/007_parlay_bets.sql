@@ -99,3 +99,49 @@ BEGIN
   );
 END;
 $$;
+
+-- ── RPC: cancella multipla (utente, entro 1h) ────────────────────────────────
+CREATE OR REPLACE FUNCTION public.cancel_parlay(
+  p_bet_id UUID
+) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_uid  UUID := auth.uid();
+  v_bet  RECORD;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN json_build_object('error', 'Non autenticato');
+  END IF;
+
+  SELECT * INTO v_bet
+    FROM public.parlay_bets
+    WHERE id = p_bet_id AND profile_id = v_uid AND status = 'attiva';
+  IF NOT FOUND THEN
+    RETURN json_build_object('error', 'Schedina non trovata');
+  END IF;
+
+  -- Finestra di 1 ora
+  IF NOW() > v_bet.created_at + INTERVAL '1 hour' THEN
+    RETURN json_build_object('error', 'Finestra di cancellazione scaduta (1 ora dal piazzamento)');
+  END IF;
+
+  -- Per schedine su giornata: bloccata se esiste già un risultato
+  IF v_bet.giornata_date IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1 FROM public.risultati WHERE data = v_bet.giornata_date
+    ) THEN
+      RETURN json_build_object('error', 'Risultato già registrato per questa giornata: schedina non cancellabile');
+    END IF;
+  END IF;
+
+  -- Rimborso
+  UPDATE public.wallets
+    SET bet_coins = bet_coins + v_bet.importo, updated_at = NOW()
+    WHERE profile_id = v_uid;
+
+  UPDATE public.parlay_bets
+    SET status = 'annullata', vincita_netta = 0, resolved_at = NOW()
+    WHERE id = p_bet_id;
+
+  RETURN json_build_object('success', true, 'refunded', v_bet.importo);
+END;
+$$;

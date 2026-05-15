@@ -198,6 +198,14 @@ const CSLAuth = {
     return data
   },
 
+  /** Cancella una schedina multipla propria entro 1h. */
+  async cancelParlay(bet_id) {
+    if (!_session) return { error: 'Non autenticato' }
+    const { data, error } = await _supa.rpc('cancel_parlay', { p_bet_id: bet_id })
+    if (error) return { error: error.message }
+    return data
+  },
+
   /** Ritorna le scommesse multiple dell'utente loggato. */
   async getParlayBets() {
     if (!_session) return []

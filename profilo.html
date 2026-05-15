@@ -625,7 +625,7 @@
       var statusLabel = { attiva:'⏳ Attiva', vinta:'✅ Vinta', persa:'❌ Persa', annullata:'↩ Annullata' }
       var statusCls   = { attiva:'bet-status--active', vinta:'bet-status--won', persa:'bet-status--lost', annullata:'bet-status--cancelled' }
       var panelLabel  = { stagione:'📅 Stagione', giornata:'⚡ Giornata', speciali:'✨ Speciali' }
-      container.innerHTML = '<div class="bets-list">'
+      container.innerHTML = '<div class="bets-list" id="parlay-bets-list">'
         + parlays.map(function(p) {
           var legs      = Array.isArray(p.legs) ? p.legs : []
           var potential = Math.floor(p.importo * p.quota_final)
@@ -640,7 +640,14 @@
               + _esc(l.market_label || l.bet_type)
               + ' <em>@'+fmtQ(l.quota)+'</em></div>'
           }).join('')
-          return '<div class="bet-row card parlay-row">'
+          var cancelHtml = ''
+          if (p.status === 'attiva') {
+            var ci = _cancelInfo(p.created_at)
+            cancelHtml = ci.canCancel
+              ? '<button class="btn-cancel-bet btn-cancel-parlay" data-pid="'+_esc(p.id)+'">✕ Cancella ('+ci.label+')</button>'
+              : '<span class="bet-cancel-expired">🔒 Non cancellabile</span>'
+          }
+          return '<div class="bet-row card parlay-row" id="prow-'+_esc(p.id)+'">'
             +'<div class="bet-row-info">'
             +'<span class="bet-parlay-badge">'+_esc(panelLabel[p.panel]||p.panel)+'</span>'
             +'<span class="bet-row-quota">'+legs.length+' selezioni → @'+fmtQ(p.quota_final)
@@ -655,9 +662,37 @@
               : profitHtml)
             +'<span class="bet-row-date">'+dateStr+'</span>'
             +'</div>'
+            +(cancelHtml ? '<div class="bet-row-actions">'+cancelHtml+'</div>' : '')
             +'</div>'
         }).join('')
         +'</div>'
+      // Cancellazione via event delegation
+      container.addEventListener('click', async function(e) {
+        var btn = e.target.closest('.btn-cancel-parlay')
+        if (!btn) return
+        var pid = btn.getAttribute('data-pid')
+        btn.disabled = true; btn.textContent = 'Annullamento…'
+        var res = await CSLAuth.cancelParlay(pid)
+        if (res && res.error) {
+          btn.disabled = false; btn.textContent = '✕ Cancella'
+          var row = document.getElementById('prow-'+pid)
+          if (row) {
+            var errEl = row.querySelector('.bet-cancel-err') || document.createElement('span')
+            errEl.className = 'bet-cancel-err'
+            errEl.textContent = ' — ' + res.error
+            row.querySelector('.bet-row-actions').appendChild(errEl)
+          }
+        } else {
+          var row = document.getElementById('prow-'+pid)
+          if (row) row.remove()
+          var w = await CSLAuth.getWallet()
+          var tot = w.total
+          var hdEl = document.getElementById('wallet-balance-header')
+          var totEl = document.getElementById('wallet-total-amount')
+          if (hdEl)  hdEl.textContent  = fmtCoins(tot)
+          if (totEl) totEl.textContent = fmtCoins(tot) + ' 🪙'
+        }
+      })
     }
 
     // ── Sidebar tab switching ─────────────────────────────────────

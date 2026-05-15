@@ -68,6 +68,12 @@ a {
 }
 a:hover { color: var(--secondary); }
 
+/* ── Main content area ──────────────────────────────────────── */
+main {
+  padding-top: 2.5rem;
+  padding-bottom: 4rem;
+}
+
 /* ── Navigation ────────────────────────────────────────────── */
 .nav {
   position: sticky;

@@ -142,12 +142,15 @@ def import_risultati():
             if len(rows) > 3:
                 print(f"    ... e altre {len(rows)-3}")
         else:
-            # Cancella risultati esistenti per la stagione, poi inserisce
-            supabase.table("risultati").delete().eq("stagione_id", sid).execute()
-            # Inserisce a batch di 500
+            # UPSERT: aggiorna le righe esistenti, inserisce solo quelle nuove.
+            # In questo modo il trigger award_coins_on_result si attiva SOLO
+            # per righe genuinamente nuove, non ad ogni ri-importazione.
             batch_size = 500
             for i in range(0, len(rows), batch_size):
-                supabase.table("risultati").insert(rows[i:i+batch_size]).execute()
+                supabase.table("risultati").upsert(
+                    rows[i:i+batch_size],
+                    on_conflict="stagione_id,data,giocatore"
+                ).execute()
 
         total += len(rows)
 

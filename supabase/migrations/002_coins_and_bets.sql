@@ -34,10 +34,20 @@ CREATE INDEX IF NOT EXISTS scommesse_season_idx  ON public.scommesse(season_id);
 CREATE INDEX IF NOT EXISTS scommesse_status_idx  ON public.scommesse(status);
 
 -- ── Trigger: crea wallet automaticamente ad ogni profilo ─────
+-- Calcola retroattivamente i coin dalle giornate già giocate.
 CREATE OR REPLACE FUNCTION public.handle_new_wallet()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_giornate INT := 0;
 BEGIN
-  INSERT INTO public.wallets (profile_id) VALUES (NEW.id) ON CONFLICT DO NOTHING;
+  IF NEW.player_name IS NOT NULL THEN
+    SELECT COUNT(*) INTO v_giornate
+      FROM public.risultati WHERE giocatore ILIKE NEW.player_name;
+  END IF;
+
+  INSERT INTO public.wallets (profile_id, base_coins)
+    VALUES (NEW.id, v_giornate * 100)
+    ON CONFLICT DO NOTHING;
   RETURN NEW;
 END;
 $$;
@@ -185,10 +195,10 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS risultati_award_coins ON public.risultati;
--- NB: attivare solo DOPO aver eseguito sync_all_wallets una volta (per non doppiare i coins retroattivi)
--- CREATE TRIGGER risultati_award_coins
---   AFTER INSERT ON public.risultati
---   FOR EACH ROW EXECUTE FUNCTION public.award_coins_on_result();
+-- Attivo: premia +100 Bossoli ad ogni nuovo risultato inserito.
+CREATE TRIGGER risultati_award_coins
+  AFTER INSERT ON public.risultati
+  FOR EACH ROW EXECUTE FUNCTION public.award_coins_on_result();
 
 -- ── RLS ─────────────────────────────────────────────────────
 ALTER TABLE public.wallets   ENABLE ROW LEVEL SECURITY;

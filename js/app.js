@@ -1607,12 +1607,13 @@ async function _loadPostsFromSupabase() {
   try {
     var res = await CSLAuth.client
       .from('posts')
-      .select('slug, titolo, data, autore, tags, excerpt, content, published')
+      .select('id, slug, titolo, data, autore, tags, excerpt, content, published')
       .eq('published', true)
       .order('data', { ascending: false });
     if (res.error || !res.data) return CSL.posts || [];
     return res.data.map(function(p) {
       return {
+        id:      p.id,
         slug:    p.slug,
         titolo:  p.titolo,
         data:    p.data,

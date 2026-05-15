@@ -66,31 +66,27 @@ CREATE TRIGGER risultati_award_guest_coins
   AFTER INSERT ON public.risultati
   FOR EACH ROW EXECUTE FUNCTION public.award_guest_coins_on_new_giornata();
 
--- Backfill: assegna retroattivamente i Bossoli ai guest già esistenti
--- per tutte le giornate già registrate.
+-- Backfill: imposta i wallet dei guest al valore corretto e popola il log.
+-- Usa reset diretto (non somma incrementale) per essere idempotente
+-- anche se il wallet esisteva già con un saldo errato.
 DO $$
 DECLARE
-  v_guest         RECORD;
-  v_date          RECORD;
-  v_rows_inserted INT;
+  v_guest  RECORD;
+  v_target INT;
 BEGIN
-  FOR v_guest IN SELECT id FROM public.profiles WHERE role = 'guest' LOOP
-    -- Assicura wallet
-    INSERT INTO public.wallets (profile_id, base_coins)
-      VALUES (v_guest.id, 0)
-      ON CONFLICT (profile_id) DO NOTHING;
+  SELECT COUNT(DISTINCT data) * 100 INTO v_target FROM public.risultati;
 
-    FOR v_date IN SELECT DISTINCT data FROM public.risultati LOOP
-      INSERT INTO public.giornata_coins_log (profile_id, data)
-        VALUES (v_guest.id, v_date.data)
-        ON CONFLICT (profile_id, data) DO NOTHING;
-      GET DIAGNOSTICS v_rows_inserted = ROW_COUNT;
-      IF v_rows_inserted = 1 THEN
-        UPDATE public.wallets
-          SET base_coins = base_coins + 100, updated_at = NOW()
-          WHERE profile_id = v_guest.id;
-      END IF;
-    END LOOP;
+  FOR v_guest IN SELECT id FROM public.profiles WHERE role = 'guest' LOOP
+    -- Crea o corregge il wallet al valore esatto
+    INSERT INTO public.wallets (profile_id, base_coins)
+      VALUES (v_guest.id, v_target)
+      ON CONFLICT (profile_id) DO UPDATE
+        SET base_coins = EXCLUDED.base_coins, updated_at = NOW();
+
+    -- Popola il log (idempotente, non aggiunge coin — quelli sono già nel wallet)
+    INSERT INTO public.giornata_coins_log (profile_id, data)
+      SELECT DISTINCT v_guest.id, data FROM public.risultati
+      ON CONFLICT (profile_id, data) DO NOTHING;
   END LOOP;
 END $$;
 
@@ -169,23 +165,18 @@ BEGIN
 
   UPDATE public.profiles SET role = p_role WHERE id = p_profile_id;
 
-  -- Quando si promuove a guest: crea wallet e backfilla i Bossoli per le giornate passate
+  -- Quando si promuove a guest: imposta wallet al valore corretto e popola il log
   IF p_role = 'guest' THEN
-    INSERT INTO public.wallets (profile_id, base_coins)
-      VALUES (p_profile_id, 0)
-      ON CONFLICT (profile_id) DO NOTHING;
+    SELECT COUNT(DISTINCT data) * 100 INTO v_rows FROM public.risultati;
 
-    FOR v_date IN SELECT DISTINCT data FROM public.risultati LOOP
-      INSERT INTO public.giornata_coins_log (profile_id, data)
-        VALUES (p_profile_id, v_date)
-        ON CONFLICT (profile_id, data) DO NOTHING;
-      GET DIAGNOSTICS v_rows = ROW_COUNT;
-      IF v_rows = 1 THEN
-        UPDATE public.wallets
-          SET base_coins = base_coins + 100, updated_at = NOW()
-          WHERE profile_id = p_profile_id;
-      END IF;
-    END LOOP;
+    INSERT INTO public.wallets (profile_id, base_coins)
+      VALUES (p_profile_id, v_rows)
+      ON CONFLICT (profile_id) DO UPDATE
+        SET base_coins = EXCLUDED.base_coins, updated_at = NOW();
+
+    INSERT INTO public.giornata_coins_log (profile_id, data)
+      SELECT DISTINCT p_profile_id, data FROM public.risultati
+      ON CONFLICT (profile_id, data) DO NOTHING;
   END IF;
 
   RETURN json_build_object('success', true);

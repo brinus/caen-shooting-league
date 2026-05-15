@@ -29,6 +29,10 @@ CREATE INDEX IF NOT EXISTS parlay_bets_status_idx  ON public.parlay_bets(status)
 -- ── RLS ──────────────────────────────────────────────────────────────────────
 ALTER TABLE public.parlay_bets ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "parlay_select_self_or_admin" ON public.parlay_bets;
+DROP POLICY IF EXISTS "parlay_insert_self"           ON public.parlay_bets;
+DROP POLICY IF EXISTS "parlay_update_admin"          ON public.parlay_bets;
+
 CREATE POLICY "parlay_select_self_or_admin"
   ON public.parlay_bets FOR SELECT
   USING (profile_id = auth.uid() OR public.is_admin());

@@ -16,6 +16,7 @@ document.addEventListener('csl:auth-ready', function () {
   loadRegolamentoTab()
   loadUtentiTab()
   loadStagioniTab()
+  loadCommentiTab()
 })
 
 // ── Tabs ───────────────────────────────────────────────────────
@@ -391,6 +392,53 @@ async function loadStagioniList() {
       <span class="text-muted">${escHtml(s.inizio)} → ${escHtml(s.fine)}</span>
     </div>`
   }).join('')
+}
+
+// ── TAB: Commenti ────────────────────────────────────────
+
+async function loadCommentiTab() {
+  await loadAllComments()
+}
+
+async function loadAllComments() {
+  const listEl = document.getElementById('admin-comments-list')
+  listEl.textContent = 'Caricamento…'
+
+  const { data, error } = await CSLAuth.client
+    .from('comments')
+    .select('id, content, created_at, post_id, profiles(display_name, username), posts(titolo, slug)')
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (error) { listEl.textContent = 'Errore: ' + error.message; return }
+  if (!data?.length) { listEl.innerHTML = '<p class="text-muted">Nessun commento ancora.</p>'; return }
+
+  listEl.innerHTML = data.map(function (c) {
+    const author = c.profiles?.display_name || c.profiles?.username || '?'
+    const postTitle = c.posts?.titolo || c.post_id
+    const postLink = c.posts?.slug
+      ? `<a href="post.html?slug=${escHtml(c.posts.slug)}" target="_blank" class="btn-link-sm">${escHtml(postTitle)}</a>`
+      : escHtml(postTitle)
+    const date = new Date(c.created_at).toLocaleString('it-IT', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    return `<div class="admin-list-row admin-comment-row" data-id="${escHtml(c.id)}">
+      <div class="admin-comment-meta">
+        <strong>${escHtml(author)}</strong>
+        <span class="text-muted">${date}</span>
+        <span>su ${postLink}</span>
+      </div>
+      <div class="admin-comment-body">${escHtml(c.content)}</div>
+      <button class="btn-icon btn-remove-row admin-comment-del" data-id="${escHtml(c.id)}" title="Elimina commento">✕</button>
+    </div>`
+  }).join('')
+
+  listEl.querySelectorAll('.admin-comment-del').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      if (!confirm('Eliminare questo commento?')) return
+      const { error: delErr } = await CSLAuth.client.from('comments').delete().eq('id', btn.dataset.id)
+      if (delErr) { alert('Errore: ' + delErr.message); return }
+      await loadAllComments()
+    })
+  })
 }
 
 async function populateSeasonSelect(selectId) {

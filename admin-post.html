@@ -97,6 +97,43 @@
             </div>
           </div>
 
+          <!-- Poll editor -->
+          <div class="card" style="padding:1.5rem;margin-top:1.5rem" id="poll-card">
+            <div class="poll-editor-hdr">
+              <h3 style="margin:0;font-size:1rem">📊 Sondaggio</h3>
+              <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer">
+                <input type="checkbox" id="poll-enabled">
+                Includi nel post
+              </label>
+            </div>
+
+            <div id="poll-editor" hidden style="margin-top:1rem;display:flex;flex-direction:column;gap:0.85rem">
+              <div class="form-group" style="margin:0">
+                <label>Domanda</label>
+                <input type="text" class="form-input" id="poll-question"
+                       placeholder="es. Chi vincerà la prossima giornata?" maxlength="300">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Chiude il <small class="text-muted">(opzionale)</small></label>
+                <input type="datetime-local" class="form-input" id="poll-closes-at" style="max-width:240px">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Scelte <small class="text-muted">(min. 2)</small></label>
+                <div id="poll-choices-editor" style="display:flex;flex-direction:column;gap:0.45rem;margin-bottom:0.5rem"></div>
+                <button type="button" id="btn-add-poll-choice"
+                        class="btn-secondary" style="font-size:0.82rem;padding:0.35rem 0.85rem">
+                  + Aggiungi scelta
+                </button>
+              </div>
+              <div>
+                <button type="button" id="btn-delete-poll"
+                        class="btn-poll-danger" hidden>
+                  🗑 Rimuovi sondaggio dal post
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="form-error"   id="post-error"   hidden style="margin-top:1rem"></div>
           <div class="form-success" id="post-success" hidden style="margin-top:1rem"></div>
 
@@ -122,6 +159,120 @@
   <script src="js/app.js"></script>
   <script>
     let editingPostId = null
+    let _pollId            = null   // UUID poll esistente, null se nuovo
+    let _deletedChoiceIds  = []     // IDs da eliminare al salvataggio
+    let _choiceCounter     = 0
+
+    // ── Poll editor helpers ───────────────────────────────────────
+    function _pEsc(s) { return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+    function initPollEditor() {
+      document.getElementById('poll-enabled').addEventListener('change', function () {
+        document.getElementById('poll-editor').hidden = !this.checked
+      })
+      document.getElementById('btn-add-poll-choice').addEventListener('click', () => addChoiceRow(null, ''))
+      document.getElementById('btn-delete-poll').addEventListener('click', deletePoll)
+      addChoiceRow(null, '')
+      addChoiceRow(null, '')
+    }
+
+    function addChoiceRow(dbId, text) {
+      const idx = ++_choiceCounter
+      const row = document.createElement('div')
+      row.className = 'poll-choice-row'
+      row.setAttribute('data-db-id', dbId || '')
+      row.innerHTML = '<input type="text" class="form-input poll-choice-input" value="'
+        + _pEsc(text || '') + '" placeholder="Opzione ' + idx + '" maxlength="200">'
+        + '<button type="button" class="btn-poll-del-choice" title="Rimuovi">✕</button>'
+      row.querySelector('.btn-poll-del-choice').addEventListener('click', function () {
+        const id = row.getAttribute('data-db-id')
+        if (id) _deletedChoiceIds.push(id)
+        row.remove()
+      })
+      document.getElementById('poll-choices-editor').appendChild(row)
+    }
+
+    async function loadPollForEdit(postId) {
+      const { data } = await CSLAuth.client
+        .from('polls')
+        .select('id, question, closes_at, poll_choices(id, text, sort_order)')
+        .eq('post_id', postId)
+        .maybeSingle()
+      if (!data) return
+      _pollId = data.id
+      document.getElementById('poll-enabled').checked = true
+      document.getElementById('poll-editor').hidden   = false
+      document.getElementById('btn-delete-poll').hidden = false
+      document.getElementById('poll-question').value  = data.question || ''
+      if (data.closes_at)
+        document.getElementById('poll-closes-at').value = data.closes_at.slice(0, 16)
+      // Sostituisce le 2 righe di default con le scelte esistenti
+      document.getElementById('poll-choices-editor').innerHTML = ''
+      const sorted = [...(data.poll_choices || [])].sort((a, b) => a.sort_order - b.sort_order)
+      sorted.forEach(c => addChoiceRow(c.id, c.text))
+    }
+
+    async function savePoll(postId) {
+      if (!document.getElementById('poll-enabled').checked) return
+      const question   = document.getElementById('poll-question').value.trim()
+      const closesRaw  = document.getElementById('poll-closes-at').value
+      const closesAt   = closesRaw ? new Date(closesRaw).toISOString() : null
+      const errEl      = document.getElementById('post-error')
+
+      if (!question) {
+        errEl.textContent = 'Il sondaggio richiede una domanda.'; errEl.hidden = false; return
+      }
+      const rows = [...document.getElementById('poll-choices-editor').querySelectorAll('.poll-choice-row')]
+      const active = rows
+        .map((r, i) => ({ dbId: r.getAttribute('data-db-id') || null, text: r.querySelector('.poll-choice-input').value.trim(), ord: i }))
+        .filter(c => c.text)
+      if (active.length < 2) {
+        errEl.textContent = 'Il sondaggio richiede almeno 2 scelte.'; errEl.hidden = false; return
+      }
+
+      if (_pollId) {
+        await CSLAuth.client.from('polls').update({ question, closes_at: closesAt }).eq('id', _pollId)
+        for (const id of _deletedChoiceIds)
+          await CSLAuth.client.from('poll_choices').delete().eq('id', id)
+        _deletedChoiceIds = []
+        for (const c of active) {
+          if (c.dbId)
+            await CSLAuth.client.from('poll_choices').update({ text: c.text, sort_order: c.ord }).eq('id', c.dbId)
+          else
+            await CSLAuth.client.from('poll_choices').insert({ poll_id: _pollId, text: c.text, sort_order: c.ord })
+        }
+      } else {
+        const { data: np, error } = await CSLAuth.client
+          .from('polls').insert({ post_id: postId, question, closes_at: closesAt }).select('id').single()
+        if (!error && np) {
+          _pollId = np.id
+          await CSLAuth.client.from('poll_choices').insert(
+            active.map(c => ({ poll_id: np.id, text: c.text, sort_order: c.ord }))
+          )
+          document.getElementById('btn-delete-poll').hidden = false
+        }
+      }
+    }
+
+    async function deletePoll() {
+      if (!_pollId) {
+        document.getElementById('poll-enabled').checked = false
+        document.getElementById('poll-editor').hidden = true
+        return
+      }
+      if (!confirm('Eliminare il sondaggio? Tutti i voti saranno persi.')) return
+      const { error } = await CSLAuth.client.from('polls').delete().eq('id', _pollId)
+      if (!error) {
+        _pollId = null; _deletedChoiceIds = []; _choiceCounter = 0
+        document.getElementById('poll-enabled').checked   = false
+        document.getElementById('poll-editor').hidden     = true
+        document.getElementById('btn-delete-poll').hidden = true
+        document.getElementById('poll-question').value   = ''
+        document.getElementById('poll-closes-at').value  = ''
+        document.getElementById('poll-choices-editor').innerHTML = ''
+        addChoiceRow(null, ''); addChoiceRow(null, '')
+      }
+    }
 
     document.addEventListener('csl:auth-ready', async function () {
       if (!CSLAuth.isAdmin()) {
@@ -129,19 +280,17 @@
         return
       }
       document.getElementById('post-editor-content').hidden = false
-
-      // Imposta data di default a oggi
       document.getElementById('post-data').value = new Date().toISOString().split('T')[0]
-
-      // Imposta autore di default dal profilo
       const profile = CSLAuth.getProfile()
       if (profile) document.getElementById('post-autore').value = profile.display_name || profile.username
 
-      // Carica post esistente se si sta modificando
+      initPollEditor()
+
       const params = new URLSearchParams(window.location.search)
       const postId = params.get('id')
       if (postId) {
         await loadPost(postId)
+        await loadPollForEdit(postId)
       }
     })
 
@@ -229,14 +378,24 @@
           .from('posts').update(payload).eq('id', editingPostId))
       } else {
         payload.created_by = profile?.id
-        ;({ error } = await CSLAuth.client.from('posts').insert(payload))
+        const { data: newPost, error: insertError } = await CSLAuth.client
+          .from('posts').insert(payload).select('id').single()
+        error = insertError
+        if (newPost) {
+          editingPostId = newPost.id
+          const url = new URL(window.location)
+          url.searchParams.set('id', newPost.id)
+          window.history.replaceState({}, '', url)
+        }
       }
 
       if (error) {
         showError('post-error', error.message)
       } else {
+        await savePoll(editingPostId)
+        if (!document.getElementById('post-error').hidden) return  // poll validation failed
         showSuccess('post-success', editingPostId ? 'Post aggiornato!' : 'Post pubblicato!')
-        if (!editingPostId) {
+        if (!new URLSearchParams(window.location.search).get('id')) {
           setTimeout(() => window.location.href = 'admin.html', 1200)
         }
       }

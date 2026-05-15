@@ -151,6 +151,16 @@ const CSLAuth = {
   },
 
   /**
+   * Vota (o cambia voto) in un sondaggio di un post.
+   */
+  async castVote(poll_id, choice_id) {
+    if (!_session) return { error: 'Non autenticato' }
+    const { data, error } = await _supa.rpc('cast_vote', { p_poll_id: poll_id, p_choice_id: choice_id })
+    if (error) return { error: error.message }
+    return data
+  },
+
+  /**
    * Cancella una scommessa propria entro 1h (e prima che il risultato esista).
    */
   async cancelBet(bet_id) {

@@ -36,6 +36,9 @@
 
       <div class="post-content" id="post-content"></div>
 
+      <!-- Sondaggio (se presente nel post) -->
+      <div id="poll-section" class="poll-section" hidden></div>
+
       <!-- Reactions + Comments (visibili dopo il caricamento del post) -->
       <div id="post-interactions" class="post-interactions" hidden>
 
@@ -209,6 +212,102 @@
     })
   }
 
+  // ── Sondaggio ──────────────────────────────────────────────────
+  async function loadPoll() {
+    if (!_postId) return
+    const { data: poll } = await CSLAuth.client
+      .from('polls')
+      .select('id, question, closes_at, poll_choices(id, text, sort_order)')
+      .eq('post_id', _postId)
+      .maybeSingle()
+    if (!poll) return
+
+    const { data: votes } = await CSLAuth.client
+      .from('poll_votes').select('choice_id, user_id').eq('poll_id', poll.id)
+    const uid = CSLAuth.getSession()?.user?.id
+    const myChoiceId = uid ? ((votes || []).find(v => v.user_id === uid)?.choice_id || null) : null
+    renderPoll(poll, votes || [], myChoiceId)
+  }
+
+  function renderPoll(poll, allVotes, myChoiceId) {
+    const el = document.getElementById('poll-section')
+    if (!el) return
+    const isClosed  = poll.closes_at && new Date(poll.closes_at) < new Date()
+    const loggedIn  = CSLAuth.isLoggedIn()
+    const hasVoted  = !!myChoiceId
+    const showBars  = hasVoted || isClosed || !loggedIn
+    const choices   = [...(poll.poll_choices || [])].sort((a, b) => a.sort_order - b.sort_order)
+    const total     = allVotes.length
+    const counts    = {}
+    allVotes.forEach(v => { counts[v.choice_id] = (counts[v.choice_id] || 0) + 1 })
+
+    function choicesHtml() {
+      if (showBars) {
+        return choices.map(c => {
+          const cnt  = counts[c.id] || 0
+          const pct  = total ? Math.round(cnt / total * 100) : 0
+          const mine = c.id === myChoiceId
+          return '<div class="poll-result' + (mine ? ' poll-result--mine' : '') + '">'
+            + '<div class="poll-result-bar" style="--pct:' + pct + '%">'
+            + '<div class="poll-result-fill"></div>'
+            + '<span class="poll-result-text">' + _esc(c.text) + (mine ? ' ✓' : '') + '</span>'
+            + '<span class="poll-result-pct">' + pct + '%</span>'
+            + '</div>'
+            + '<span class="poll-result-cnt">' + cnt + '</span>'
+            + '</div>'
+        }).join('')
+      }
+      return choices.map(c =>
+        '<button class="poll-choice-btn" data-choice-id="' + _esc(c.id) + '">' + _esc(c.text) + '</button>'
+      ).join('')
+    }
+
+    const badgeHtml = isClosed
+      ? '<span class="poll-badge poll-badge--closed">Chiuso</span>'
+      : (!loggedIn || hasVoted ? '' : '<span class="poll-badge poll-badge--live">Votazione aperta</span>')
+
+    let footerHtml = '<span class="poll-total">' + total + ' ' + (total === 1 ? 'voto' : 'voti') + '</span>'
+    if (!loggedIn && !isClosed)
+      footerHtml += '<a href="login.html" class="poll-login-hint">Accedi per votare</a>'
+    else if (hasVoted && !isClosed)
+      footerHtml += '<button class="poll-change-vote" id="btn-change-vote">Cambia voto</button>'
+
+    el.innerHTML = '<div class="poll-widget card">'
+      + '<div class="poll-hdr"><span class="poll-label">📊 Sondaggio</span>' + badgeHtml + '</div>'
+      + '<div class="poll-question">' + _esc(poll.question) + '</div>'
+      + '<div class="poll-choices-wrap" id="poll-choices-wrap">' + choicesHtml() + '</div>'
+      + '<div class="poll-footer">' + footerHtml + '</div>'
+      + '</div>'
+    el.hidden = false
+
+    function attachVoteBtns() {
+      el.querySelectorAll('.poll-choice-btn').forEach(btn => {
+        btn.addEventListener('click', async function () {
+          el.querySelectorAll('.poll-choice-btn').forEach(b => b.disabled = true)
+          const res = await CSLAuth.castVote(poll.id, btn.dataset.choiceId)
+          if (res && res.error) {
+            el.querySelectorAll('.poll-choice-btn').forEach(b => b.disabled = false)
+          } else {
+            await loadPoll()
+          }
+        })
+      })
+    }
+    attachVoteBtns()
+
+    const changeBtn = document.getElementById('btn-change-vote')
+    if (changeBtn) {
+      changeBtn.addEventListener('click', function () {
+        const wrap = document.getElementById('poll-choices-wrap')
+        wrap.innerHTML = choices.map(c =>
+          '<button class="poll-choice-btn" data-choice-id="' + _esc(c.id) + '">' + _esc(c.text) + '</button>'
+        ).join('')
+        changeBtn.remove()
+        attachVoteBtns()
+      })
+    }
+  }
+
   // ── Filtro anti-violenza ───────────────────────────────────────
   const _BAD_WORDS = [
     // italiano
@@ -239,7 +338,7 @@
       if (!post?.id) return
       _postId = post.id
       document.getElementById('post-interactions').hidden = false
-      await Promise.all([loadReactions(), loadComments()])
+      await Promise.all([loadPoll(), loadReactions(), loadComments()])
       initCommentForm()
     } catch (e) { /* silenzioso se Supabase non disponibile */ }
   }

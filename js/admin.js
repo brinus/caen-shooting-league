@@ -74,11 +74,12 @@ async function loadGiornateTab() {
   document.getElementById('btn-add-player-row').addEventListener('click', addPlayerRow)
   document.getElementById('btn-clear-giornata').addEventListener('click', clearGiornataForm)
   document.getElementById('form-giornata').addEventListener('submit', saveGiornata)
+  document.getElementById('giornata-stagione').addEventListener('change', loadExistingGiornata)
   addPlayerRow()  // riga iniziale
   await loadGiornateList()
 }
 
-function onGiornataDateChange() {
+async function onGiornataDateChange() {
   const dateVal = document.getElementById('giornata-data').value
   if (!dateVal) return
   const d = new Date(dateVal + 'T00:00:00')
@@ -92,6 +93,40 @@ function onGiornataDateChange() {
     banner.textContent = `⚠ ${['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'][day]} — questa data verrà trattata come recupero/allenamento`
   }
   banner.hidden = false
+  await loadExistingGiornata()
+}
+
+/**
+ * Carica i risultati esistenti per la data+stagione selezionata e precompila il form.
+ * Se non ci sono dati esistenti, lascia il form com'è.
+ */
+async function loadExistingGiornata() {
+  const stagioneId = document.getElementById('giornata-stagione').value
+  const dateVal    = document.getElementById('giornata-data').value
+  if (!stagioneId || !dateVal) return
+
+  const { data, error } = await CSLAuth.client
+    .from('risultati')
+    .select('giocatore, iniziali, t1, t2, t3')
+    .eq('stagione_id', stagioneId)
+    .eq('data', dateVal)
+    .order('giocatore')
+
+  if (error || !data?.length) return  // nessun dato esistente: lascia il form com'è
+
+  const container = document.getElementById('giornata-rows-container')
+  container.innerHTML = ''
+  data.forEach(function (r) {
+    addPlayerRow(
+      r.giocatore,
+      r.iniziali,
+      r.t1 >= 0 ? r.t1 : undefined,
+      r.t2 >= 0 ? r.t2 : undefined,
+      r.t3 >= 0 ? r.t3 : undefined
+    )
+  })
+  showMsg('giornata-success',
+    `✓ Caricati ${data.length} risultati esistenti per questa data — modifica e salva per aggiornare.`, false)
 }
 
 function addPlayerRow(nome, iniziali, t1, t2, t3) {
@@ -169,6 +204,21 @@ async function saveGiornata(e) {
   const btn = document.getElementById('btn-save-giornata')
   btn.disabled = true
   btn.textContent = 'Salvataggio…'
+
+  // Elimina le righe esistenti per questa data+stagione, poi inserisce le nuove
+  // (upsert tramite delete+insert per gestire modifiche a tentativi parziali)
+  const { error: delErr } = await CSLAuth.client
+    .from('risultati')
+    .delete()
+    .eq('stagione_id', stagioneId)
+    .eq('data', dataVal)
+
+  if (delErr) {
+    showMsg('giornata-error', 'Errore durante l\'aggiornamento: ' + delErr.message, true)
+    btn.disabled = false
+    btn.textContent = 'Salva giornata'
+    return
+  }
 
   const { error } = await CSLAuth.client.from('risultati').insert(rows)
 

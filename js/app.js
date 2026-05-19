@@ -1928,67 +1928,380 @@ function renderSisalBoard(seasonId) {
 function renderSisalCharts(board) {
   var el = document.getElementById('sisal-charts-container');
   if (!el || !board || !board.players || !board.players.length) return;
-  var players = board.players.slice(0, 8);
+  var allP = board.players.slice(0, 10);
 
-  // Chart 1: Title probability (normalized implied probability)
-  var rawProbs = players.map(function(p) { return 1 / (p.quote_titolo || 99); });
-  var totalProb = rawProbs.reduce(function(a, b) { return a + b; }, 0) || 1;
-  var normProbs = rawProbs.map(function(p) { return p / totalProb; });
-  var maxNorm = Math.max.apply(null, normProbs) || 1;
-
-  var chart1 = players.map(function(p, i) {
-    var pct = Math.round((normProbs[i] / maxNorm) * 100);
-    var prob = Math.round(normProbs[i] * 100);
-    var colorClass = prob > 28 ? 'sisal-bar-fill--green' : prob > 14 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
-    return '<div class="sisal-bar-row">' +
-      '<span class="sisal-bar-name">' + escapeHtml(p.nome.split(' ')[0]) + '</span>' +
-      '<div class="sisal-bar-track"><div class="sisal-bar-fill ' + colorClass + '" data-pct="' + pct + '"></div></div>' +
-      '<span class="sisal-bar-val">@' + formatQuote(p.quote_titolo) + '</span>' +
+  // ── helpers ──────────────────────────────────────────────────────
+  function _nProbs(quotes) {
+    var raw = quotes.map(function(q) { return 1 / Math.max(q, 0.01); });
+    var tot = raw.reduce(function(a, b) { return a + b; }, 0) || 1;
+    return raw.map(function(r) { return r / tot; });
+  }
+  function _bPct(val, max) { return Math.max(0, Math.min(100, Math.round((val / (max || 1)) * 100))); }
+  function _bRow(name, pct, val, cc, tip) {
+    return '<div class="sisal-bar-row" title="' + (tip ? escapeHtml(tip) : '') + '">' +
+      '<span class="sisal-bar-name">' + escapeHtml(name) + '</span>' +
+      '<div class="sisal-bar-track"><div class="sisal-bar-fill ' + cc + '" data-pct="' + pct + '"></div></div>' +
+      '<span class="sisal-bar-val">' + val + '</span>' +
     '</div>';
+  }
+
+  // ── 1. Probabilità Titolo ────────────────────────────────────────
+  var tProbs = _nProbs(allP.map(function(p) { return p.quote_titolo || 99; }));
+  var maxTP  = Math.max.apply(null, tProbs) || 1;
+  var chart1 = allP.map(function(p, i) {
+    var prob = Math.round(tProbs[i] * 100);
+    var cc   = prob > 25 ? 'sisal-bar-fill--green' : prob > 12 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
+    return _bRow(p.nome.split(' ')[0], _bPct(tProbs[i], maxTP), '@' + formatQuote(p.quote_titolo), cc, p.nome + ' — prob. ' + prob + '%');
   }).join('');
 
-  // Chart 2: Expected score / current average
-  var srcPlayers = (board.next_matchday && board.next_matchday.players && board.next_matchday.players.length)
-    ? board.next_matchday.players.slice(0, 8)
-    : players;
-  var scores = srcPlayers.map(function(p) { return p.expected_score || p.media_tiro || 0; });
-  var maxScore = Math.max.apply(null, scores) || 1;
-  var nextLabel = board.next_matchday
-    ? '⚡ Score atteso G' + board.next_matchday.numero
-    : '📊 Media corrente';
-
-  var chart2 = srcPlayers.map(function(p, i) {
+  // ── 2. Score atteso prossima giornata ────────────────────────────
+  var nmP = (board.next_matchday && board.next_matchday.players && board.next_matchday.players.length)
+    ? board.next_matchday.players.slice(0, 8) : allP.slice(0, 8);
+  var scores   = nmP.map(function(p) { return p.expected_score || p.media_tiro || 0; });
+  var maxSc    = Math.max.apply(null, scores) || 1;
+  var nmLabel  = board.next_matchday ? '⚡ Score atteso G' + board.next_matchday.numero : '📊 Media corrente';
+  var chart2   = nmP.map(function(p, i) {
     var val = scores[i];
-    var pct = Math.round((val / maxScore) * 100);
-    var colorClass = val >= 22 ? 'sisal-bar-fill--green' : val >= 17 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
-    return '<div class="sisal-bar-row">' +
-      '<span class="sisal-bar-name">' + escapeHtml(p.nome.split(' ')[0]) + '</span>' +
-      '<div class="sisal-bar-track"><div class="sisal-bar-fill ' + colorClass + '" data-pct="' + pct + '"></div></div>' +
-      '<span class="sisal-bar-val">' + val.toFixed(1) + '</span>' +
-    '</div>';
+    var cc  = val >= 22 ? 'sisal-bar-fill--green' : val >= 17 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
+    return _bRow(p.nome.split(' ')[0], _bPct(val, maxSc), val.toFixed(1), cc, p.nome + ' — atteso ' + val.toFixed(1));
   }).join('');
 
+  // ── 3. Media vs Record grouped ──────────────────────────────────
+  var maxMR = Math.max.apply(null, allP.map(function(p) { return Math.max(p.media_tiro || 0, p.record || 0); })) || 1;
+  var chart3 =
+    '<div class="sisal-bar-row sisal-bar-row--legend">' +
+      '<span class="sisal-bar-name"></span>' +
+      '<div class="sisal-bar-group">' +
+        '<span class="sisal-bar-legend-item"><span class="sisal-bar-legend-dot" style="background:var(--sisal-green)"></span>media</span>' +
+        '<span class="sisal-bar-legend-item"><span class="sisal-bar-legend-dot" style="background:var(--primary)"></span>record</span>' +
+      '</div>' +
+      '<span class="sisal-bar-val"></span>' +
+    '</div>' +
+    allP.map(function(p) {
+      return '<div class="sisal-bar-row sisal-bar-row--grouped" title="' + escapeHtml(p.nome) + ' media ' + (p.media_tiro || 0).toFixed(1) + ' / record ' + (p.record || 0) + '">' +
+        '<span class="sisal-bar-name">' + escapeHtml(p.nome.split(' ')[0]) + '</span>' +
+        '<div class="sisal-bar-group">' +
+          '<div class="sisal-bar-track sisal-bar-track--sm"><div class="sisal-bar-fill sisal-bar-fill--green" data-pct="' + _bPct(p.media_tiro || 0, maxMR) + '"></div></div>' +
+          '<div class="sisal-bar-track sisal-bar-track--sm"><div class="sisal-bar-fill sisal-bar-fill--orange" data-pct="' + _bPct(p.record || 0, maxMR) + '"></div></div>' +
+        '</div>' +
+        '<span class="sisal-bar-val">' + (p.media_tiro || 0).toFixed(1) + '&nbsp;/&nbsp;' + (p.record || 0) + '</span>' +
+      '</div>';
+    }).join('');
+
+  // ── 4. Quote multi-mercato per giocatore ────────────────────────
+  var markets4 = [
+    { key: 'quote_titolo',  label: 'Titolo' },
+    { key: 'quote_podio',   label: 'Podio'  },
+    { key: 'quote_best_30', label: '30+'    },
+    { key: 'quote_avg_18',  label: '18+'    }
+  ];
+  var chart4 =
+    '<div class="sisal-mkt-header">' +
+      '<span class="sisal-mkt-col-name"></span>' +
+      markets4.map(function(m) { return '<span class="sisal-mkt-col-label">' + m.label + '</span>'; }).join('') +
+    '</div>' +
+    allP.map(function(p) {
+      var rank = p.posizione_attuale;
+      var rnk  = (rank <= 3) ? 'sisal-mkt-rank--' + rank : 'sisal-mkt-rank--other';
+      return '<div class="sisal-mkt-row">' +
+        '<span class="sisal-mkt-name">' +
+          '<span class="sisal-mkt-rank ' + rnk + '">' + (rank || '—') + '</span>' +
+          escapeHtml(p.nome.split(' ')[0]) +
+        '</span>' +
+        markets4.map(function(m) {
+          var q  = p[m.key] || 99;
+          return '<span class="sisal-mkt-q ' + getSisalQuoteClass(q) + '" title="' + m.label + ': @' + q.toFixed(2) + '">@' + formatQuote(q) + '</span>';
+        }).join('') +
+      '</div>';
+    }).join('');
+
+  // ── 5. Fiducia algoritmo (gauge verticali) ──────────────────────
+  var chart5 =
+    '<div class="sisal-gauge-wrap">' +
+    allP.slice(0, 8).map(function(p) {
+      var conf = p.confidence || 0;
+      var ci   = conf > 65 ? '#49d29b' : conf > 40 ? '#ffcc00' : '#ff6600';
+      return '<div class="sisal-gauge-col" title="' + escapeHtml(p.nome) + ' — fiducia ' + conf + '%">' +
+        '<div class="sisal-gauge-bar-wrap">' +
+          '<div class="sisal-gauge-bar"><div class="sisal-gauge-fill" data-conf="' + conf + '" style="background:' + ci + '"></div></div>' +
+          '<div class="sisal-gauge-label">' + conf + '%</div>' +
+        '</div>' +
+        '<div class="sisal-gauge-name">' + escapeHtml((p.nome.split(' ')[0] || '').substring(0, 6)) + '</div>' +
+      '</div>';
+    }).join('') +
+    '</div>';
+
+  // ── 6. Radar Canvas — profilo giocatore ─────────────────────────
+  window._sisalRadarData = allP.slice(0, 6).map(function(p) {
+    return {
+      nome: p.nome.split(' ')[0],
+      dims: [
+        1 / (p.quote_titolo  || 99),
+        1 / (p.quote_podio   || 99),
+        1 / (p.quote_best_30 || 99),
+        1 / (p.quote_avg_18  || 99),
+        (p.confidence || 0) / 100
+      ]
+    };
+  });
+  var radarTabs = window._sisalRadarData.map(function(p, i) {
+    return '<button class="sisal-radar-tab' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '">' + escapeHtml(p.nome) + '</button>';
+  }).join('');
+  var chart6 = '<div class="sisal-radar-tabs">' + radarTabs + '</div>' +
+    '<canvas id="sisal-radar-canvas" width="320" height="250"></canvas>';
+
+  // ── 7. Scatter SVG: Media × Record ──────────────────────────────
+  var svgW = 320, svgH = 220, pL = 34, pR = 12, pT = 10, pB = 28;
+  var plotW = svgW - pL - pR, plotH = svgH - pT - pB;
+  var medias  = allP.map(function(p) { return p.media_tiro || 0; });
+  var records = allP.map(function(p) { return p.record || 0; });
+  var minM = Math.max(0, Math.min.apply(null, medias)  - 2), maxM = Math.max.apply(null, medias)  + 2;
+  var minR = Math.max(0, Math.min.apply(null, records) - 2), maxR = Math.max.apply(null, records) + 2;
+  var rColors = ['#ffd700', '#c0c0c0', '#cd7f32', '#49d29b', '#ff6600', '#64b5f6', '#ce93d8', '#ef9a9a'];
+  var svgGrid = '';
+  for (var gi = 0; gi <= 4; gi++) {
+    var gx = pL + (gi / 4) * plotW, gy = pT + (gi / 4) * plotH;
+    svgGrid += '<line x1="' + gx.toFixed(1) + '" y1="' + pT + '" x2="' + gx.toFixed(1) + '" y2="' + (pT + plotH) + '" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
+    svgGrid += '<line x1="' + pL + '" y1="' + gy.toFixed(1) + '" x2="' + (pL + plotW) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
+    svgGrid += '<text x="' + gx.toFixed(1) + '" y="' + (pT + plotH + 14) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.3)">' + (minM + gi * (maxM - minM) / 4).toFixed(0) + '</text>';
+  }
+  for (var yi = 0; yi <= 3; yi++) {
+    var gyy = pT + (yi / 3) * plotH, yLbl = Math.round(maxR - yi * (maxR - minR) / 3);
+    svgGrid += '<text x="' + (pL - 4) + '" y="' + (gyy + 3).toFixed(1) + '" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.3)">' + yLbl + '</text>';
+  }
+  var svgDots = allP.map(function(p, i) {
+    var px   = pL + ((p.media_tiro || 0) - minM) / (maxM - minM) * plotW;
+    var py   = pT + (1 - ((p.record || 0) - minR) / (maxR - minR)) * plotH;
+    var r    = 4 + Math.round((p.confidence || 50) / 100 * 4);
+    var fill = rColors[Math.min(rColors.length - 1, (p.posizione_attuale || 9) - 1)];
+    var init = p.iniziali || p.nome.substring(0, 2).toUpperCase();
+    return '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="' + r + '" fill="' + fill + '" fill-opacity="0.82" stroke="rgba(0,0,0,0.35)" stroke-width="1" class="sisal-scatter-dot">' +
+        '<title>' + escapeHtml(p.nome) + '\nMedia: ' + (p.media_tiro || 0).toFixed(1) + ' | Record: ' + (p.record || 0) + ' | Fiducia: ' + (p.confidence || 0) + '%</title>' +
+      '</circle>' +
+      '<text x="' + (px + r + 2).toFixed(1) + '" y="' + (py + 3).toFixed(1) + '" font-size="8" fill="rgba(255,255,255,0.55)">' + escapeHtml(init) + '</text>';
+  }).join('');
+  var chart7 = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" style="width:100%;height:auto">' +
+    '<rect x="' + pL + '" y="' + pT + '" width="' + plotW + '" height="' + plotH + '" fill="rgba(255,255,255,0.02)" rx="2"/>' +
+    svgGrid + svgDots +
+    '<text x="' + (pL + plotW / 2) + '" y="' + (svgH - 2) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.35)">Media tiro →</text>' +
+    '<text x="10" y="' + (pT + plotH / 2) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.35)" transform="rotate(-90 10 ' + (pT + plotH / 2) + ')">Record →</text>' +
+  '</svg>';
+
+  // ── 8. Simulatore quota ──────────────────────────────────────────
+  var simOpts = allP.map(function(p, i) {
+    return '<option value="' + i + '">' + escapeHtml(p.nome) + '</option>';
+  }).join('');
+  var chart8 =
+    '<div class="sisal-sim-wrap">' +
+      '<div class="sisal-sim-row">' +
+        '<label class="sisal-sim-label">Giocatore</label>' +
+        '<select id="sisal-sim-player" class="sisal-sim-select">' + simOpts + '</select>' +
+      '</div>' +
+      '<div class="sisal-sim-row">' +
+        '<label class="sisal-sim-label">Media tiro <span id="sisal-sim-media-val"></span></label>' +
+        '<input type="range" id="sisal-sim-media" min="5" max="40" step="0.5" class="sisal-sim-range">' +
+      '</div>' +
+      '<div class="sisal-sim-row">' +
+        '<label class="sisal-sim-label">Record personale <span id="sisal-sim-record-val"></span></label>' +
+        '<input type="range" id="sisal-sim-record" min="5" max="50" step="1" class="sisal-sim-range">' +
+      '</div>' +
+      '<div class="sisal-sim-result">' +
+        '<div class="sisal-sim-result-label">Quota Titolo simulata</div>' +
+        '<div class="sisal-sim-result-value" id="sisal-sim-result">—</div>' +
+        '<div class="sisal-sim-result-delta" id="sisal-sim-delta"></div>' +
+      '</div>' +
+    '</div>';
+
+  // ── Assemble ─────────────────────────────────────────────────────
   el.innerHTML =
     '<div class="sisal-charts-grid">' +
-      '<div class="sisal-chart-card sisal-reveal">' +
-        '<div class="sisal-chart-title">🏆 Probabilità Titolo — top 8</div>' +
-        chart1 +
-      '</div>' +
-      '<div class="sisal-chart-card sisal-reveal">' +
-        '<div class="sisal-chart-title">' + nextLabel + ' — top 8</div>' +
-        chart2 +
-      '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🏆 Probabilità Titolo</div>' + chart1 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">' + nmLabel + '</div>' + chart2 + '</div>' +
+    '</div>' +
+    '<div class="sisal-charts-grid">' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">📊 Media vs Record</div>' + chart3 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">📋 Quote multi-mercato</div>' + chart4 + '</div>' +
+    '</div>' +
+    '<div class="sisal-charts-grid sisal-charts-grid--3">' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🌡 Fiducia algoritmo</div>' + chart5 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal sisal-chart-radar-card"><div class="sisal-chart-title">🕸 Radar — profilo</div>' + chart6 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">✦ Media × Record</div>' + chart7 + '</div>' +
+    '</div>' +
+    '<div class="sisal-charts-grid sisal-charts-grid--halfleft">' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🎛 Simulatore quota titolo</div>' + chart8 + '</div>' +
     '</div>';
 
+  // ── Animate + init interactive ───────────────────────────────────
   setTimeout(function() {
     el.querySelectorAll('.sisal-bar-fill[data-pct]').forEach(function(bar) {
       bar.style.width = bar.getAttribute('data-pct') + '%';
     });
-    el.querySelectorAll('.sisal-reveal').forEach(function(card, idx) {
-      setTimeout(function() { card.classList.add('visible'); }, idx * 120);
+    el.querySelectorAll('.sisal-gauge-fill[data-conf]').forEach(function(fill) {
+      fill.style.height = fill.getAttribute('data-conf') + '%';
     });
+    el.querySelectorAll('.sisal-reveal').forEach(function(card, idx) {
+      setTimeout(function() { card.classList.add('visible'); }, idx * 90);
+    });
+    _drawSisalRadar(el, 0);
+    el.querySelectorAll('.sisal-radar-tab').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        el.querySelectorAll('.sisal-radar-tab').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        _drawSisalRadar(el, parseInt(btn.getAttribute('data-idx') || '0'));
+      });
+    });
+    _initSisalSimulatore(el, allP, board);
   }, 200);
 }
+
+/** Draw radar pentagon chart on canvas for player at playerIdx */
+function _drawSisalRadar(container, playerIdx) {
+  var canvas = container.querySelector('#sisal-radar-canvas');
+  if (!canvas || !window._sisalRadarData) return;
+  var data   = window._sisalRadarData;
+  var player = data[playerIdx] || data[0];
+  if (!player) return;
+
+  // Normalize each dimension: max value across all players = 1
+  var maxD = [0, 0, 0, 0, 0];
+  data.forEach(function(p) { p.dims.forEach(function(v, di) { if (v > maxD[di]) maxD[di] = v; }); });
+  var normD = player.dims.map(function(v, di) { return maxD[di] > 0 ? v / maxD[di] : 0; });
+
+  var W = canvas.width, H = canvas.height;
+  var cx = W / 2, cy = H / 2 + 4;
+  var R  = Math.min(W, H) / 2 - 42;
+  var labels = ['Titolo', 'Podio', 'Best 30+', 'Med. 18+', 'Fiducia'];
+  var n = 5;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  // Background rings
+  for (var ri = 1; ri <= 4; ri++) {
+    ctx.beginPath();
+    for (var ai = 0; ai < n; ai++) {
+      var ang = (Math.PI * 2 * ai / n) - Math.PI / 2;
+      var rr  = (ri / 4) * R;
+      var xx  = cx + rr * Math.cos(ang), yy = cy + rr * Math.sin(ang);
+      if (ai === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (ri === 4 ? '0.13' : '0.06') + ')';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    if (ri === 4) { ctx.fillStyle = 'rgba(255,255,255,0.02)'; ctx.fill(); }
+  }
+
+  // Axis lines
+  for (var ai = 0; ai < n; ai++) {
+    var ang = (Math.PI * 2 * ai / n) - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(ang), cy + R * Math.sin(ang));
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Label
+    var lx = cx + (R + 20) * Math.cos(ang), ly = cy + (R + 20) * Math.sin(ang);
+    ctx.font = '9px Orbitron, monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.textAlign = 'center';
+    ctx.fillText(labels[ai], lx, ly + 3);
+  }
+
+  // Player polygon
+  ctx.beginPath();
+  for (var di = 0; di < n; di++) {
+    var ang = (Math.PI * 2 * di / n) - Math.PI / 2;
+    var rr  = normD[di] * R;
+    var xx  = cx + rr * Math.cos(ang), yy = cy + rr * Math.sin(ang);
+    if (di === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(73,210,155,0.18)';
+  ctx.fill();
+  ctx.strokeStyle = '#49d29b';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Vertex dots
+  for (var di = 0; di < n; di++) {
+    var ang = (Math.PI * 2 * di / n) - Math.PI / 2;
+    var rr  = normD[di] * R;
+    ctx.beginPath();
+    ctx.arc(cx + rr * Math.cos(ang), cy + rr * Math.sin(ang), 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#49d29b';
+    ctx.fill();
+  }
+
+  // Player name in center
+  ctx.font = 'bold 11px Orbitron, monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.textAlign = 'center';
+  ctx.fillText(player.nome, cx, cy + 4);
+}
+
+/** Initialise the simulatore sliders and live odds recalculation */
+function _initSisalSimulatore(container, allP, board) {
+  var playerSel    = container.querySelector('#sisal-sim-player');
+  var mediaSlider  = container.querySelector('#sisal-sim-media');
+  var recordSlider = container.querySelector('#sisal-sim-record');
+  var mediaValEl   = container.querySelector('#sisal-sim-media-val');
+  var recordValEl  = container.querySelector('#sisal-sim-record-val');
+  var resultEl     = container.querySelector('#sisal-sim-result');
+  var deltaEl      = container.querySelector('#sisal-sim-delta');
+  if (!playerSel || !mediaSlider || !recordSlider) return;
+
+  var MARGIN    = 0.08;
+  var totalR    = board.giornate_totali  || 8;
+  var played    = board.giornate_giocate || 1;
+  var remaining = Math.max(1, totalR - played);
+
+  function recalc() {
+    var idx    = parseInt(playerSel.value) || 0;
+    var media  = parseFloat(mediaSlider.value);
+    var record = parseInt(recordSlider.value);
+    if (mediaValEl)  mediaValEl.textContent  = media.toFixed(1);
+    if (recordValEl) recordValEl.textContent = record;
+
+    var simP = allP.map(function(pl, i) {
+      return { media: i === idx ? media : (pl.media_tiro || 0), record: i === idx ? record : (pl.record || 0) };
+    });
+    var strengths = simP.map(function(pl) { return 0.65 * pl.media + 0.35 * pl.record; });
+    var totalStr  = strengths.reduce(function(a, b) { return a + b; }, 0) || 1;
+    var pT = Math.max(0.005, Math.min(0.95, (strengths[idx] / totalStr) * (0.4 + 0.6 * remaining / totalR)));
+    var q  = Math.round((1 / pT) * (1 + MARGIN) * 100) / 100;
+    var origQ = allP[idx].quote_titolo || q;
+    var delta = origQ - q;
+
+    if (resultEl) resultEl.textContent = '@' + q.toFixed(2).replace('.', ',');
+    if (deltaEl) {
+      if (Math.abs(delta) < 0.05) {
+        deltaEl.textContent = 'invariata rispetto alla quota attuale';
+        deltaEl.style.color = 'rgba(255,255,255,0.35)';
+      } else if (delta > 0) {
+        deltaEl.textContent = '▲ migliore di ' + delta.toFixed(2) + ' vs @' + formatQuote(origQ) + ' attuale';
+        deltaEl.style.color = 'var(--sisal-green)';
+      } else {
+        deltaEl.textContent = '▼ peggiore di ' + Math.abs(delta).toFixed(2) + ' vs @' + formatQuote(origQ) + ' attuale';
+        deltaEl.style.color = 'var(--primary)';
+      }
+    }
+  }
+
+  function syncToPlayer() {
+    var idx = parseInt(playerSel.value) || 0;
+    var p   = allP[idx];
+    mediaSlider.value  = (p.media_tiro || 15).toFixed(1);
+    recordSlider.value = (p.record || 20);
+    recalc();
+  }
+
+  playerSel.addEventListener('change', syncToPlayer);
+  mediaSlider.addEventListener('input', recalc);
+  recordSlider.addEventListener('input', recalc);
+  syncToPlayer();
+}
+
 
 /** Activate IntersectionObserver-based scroll reveal for .sisal-reveal elements */
 function _initScrollReveal() {

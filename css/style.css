@@ -4131,3 +4131,296 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   .sisal-section-name { font-size: 0.9rem; }
 }
 
+/* ════════════════════════════════════════════════
+   Extended charts
+   ════════════════════════════════════════════════ */
+
+/* 3-column layout for radar row */
+.sisal-charts-grid--3 {
+  grid-template-columns: 1fr 1.4fr 1fr;
+}
+
+/* Half-left layout for standalone cards */
+.sisal-charts-grid--halfleft {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Grouped bar (media vs record) */
+.sisal-bar-row--grouped {
+  margin-bottom: 0.5rem;
+  align-items: flex-start;
+}
+
+.sisal-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sisal-bar-track--sm { height: 5px; }
+
+.sisal-bar-row--legend {
+  margin-bottom: 0.45rem;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.sisal-bar-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.69rem;
+  color: var(--text-muted);
+  margin-right: 0.75rem;
+}
+
+.sisal-bar-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Multi-market quote matrix */
+.sisal-mkt-header {
+  display: grid;
+  grid-template-columns: 88px repeat(4, 1fr);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.59rem;
+  color: var(--text-muted);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sisal-mkt-col-name  { }
+.sisal-mkt-col-label { text-align: center; }
+
+.sisal-mkt-row {
+  display: grid;
+  grid-template-columns: 88px repeat(4, 1fr);
+  align-items: center;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.sisal-mkt-row:hover { background: rgba(255, 255, 255, 0.035); }
+
+.sisal-mkt-name {
+  font-size: 0.75rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  overflow: hidden;
+}
+
+.sisal-mkt-rank {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.56rem;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sisal-mkt-rank--1     { background: rgba(255, 215, 0,   0.15); color: #ffd700; }
+.sisal-mkt-rank--2     { background: rgba(192, 192, 192, 0.15); color: #c0c0c0; }
+.sisal-mkt-rank--3     { background: rgba(205, 127, 50,  0.15); color: #cd7f32; }
+.sisal-mkt-rank--other { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+
+.sisal-mkt-q {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.64rem;
+  text-align: center;
+  cursor: default;
+}
+
+.sisal-mkt-q.sisal-quote--fav     { color: var(--sisal-green); }
+.sisal-mkt-q.sisal-quote--mid     { color: var(--secondary); }
+.sisal-mkt-q.sisal-quote--long    { color: var(--primary); }
+.sisal-mkt-q.sisal-quote--extreme { color: var(--text-muted); }
+
+/* Confidence gauges (vertical) */
+.sisal-gauge-wrap {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  height: 160px;
+  padding-top: 0.25rem;
+}
+
+.sisal-gauge-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  cursor: default;
+}
+
+.sisal-gauge-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  justify-content: flex-end;
+  gap: 0.15rem;
+}
+
+.sisal-gauge-bar {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px 4px 0 0;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.sisal-gauge-fill {
+  width: 100%;
+  height: 0%;
+  border-radius: 4px 4px 0 0;
+  transition: height 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sisal-gauge-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.57rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.sisal-gauge-name {
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+  margin-top: 0.2rem;
+}
+
+/* Radar chart */
+.sisal-chart-radar-card { overflow: hidden; }
+
+.sisal-radar-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.sisal-radar-tab {
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-family: 'Orbitron', monospace;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.sisal-radar-tab:hover, .sisal-radar-tab.active {
+  border-color: var(--sisal-green);
+  background: rgba(73, 210, 155, 0.10);
+  color: var(--sisal-green);
+}
+
+#sisal-radar-canvas {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* Scatter plot SVG */
+.sisal-scatter-dot { cursor: pointer; }
+
+/* Simulatore */
+.sisal-sim-wrap { display: flex; flex-direction: column; gap: 1rem; }
+
+.sisal-sim-row { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.sisal-sim-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+.sisal-sim-label span {
+  color: var(--text);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.82rem;
+}
+
+.sisal-sim-select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.65rem;
+  font-size: 0.82rem;
+  width: 100%;
+}
+
+.sisal-sim-range {
+  width: 100%;
+  accent-color: var(--sisal-green);
+  cursor: pointer;
+}
+
+.sisal-sim-result {
+  background: rgba(73, 210, 155, 0.06);
+  border: 1px solid rgba(73, 210, 155, 0.18);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  text-align: center;
+}
+
+.sisal-sim-result-label {
+  font-size: 0.6rem;
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.sisal-sim-result-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 2.2rem;
+  color: var(--sisal-green);
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.sisal-sim-result-delta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-height: 1.2em;
+}
+
+/* Responsive extended charts */
+@media (max-width: 860px) {
+  .sisal-charts-grid--3       { grid-template-columns: 1fr 1fr; }
+  .sisal-charts-grid--halfleft { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 580px) {
+  .sisal-charts-grid--3 { grid-template-columns: 1fr; }
+  .sisal-mkt-header     { grid-template-columns: 72px repeat(4, 1fr); }
+  .sisal-mkt-row        { grid-template-columns: 72px repeat(4, 1fr); }
+}

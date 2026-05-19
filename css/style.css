@@ -2365,6 +2365,86 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 .badge-persa     { background: rgba(255,80,80,0.12); color: #ff6060; border: 1px solid rgba(255,80,80,0.25); }
 .badge-attiva-bet{ background: rgba(100,120,255,0.12); color: #8899ff; border: 1px solid rgba(100,120,255,0.25); }
 .badge-annullata { background: rgba(150,150,150,0.1); color: var(--text-muted); border: 1px solid rgba(150,150,150,0.2); }
+.badge-expired   { background: rgba(255,170,0,0.15); color: #ffaa00; border: 1px solid rgba(255,170,0,0.35); }
+.badge-bet-type  { background: rgba(255,102,0,0.1); color: var(--primary); border: 1px solid rgba(255,102,0,0.25); font-size: 0.72rem; }
+
+/* ── Admin Bet Cards ────────────────────────────────────────── */
+.admin-bet-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin-bottom: 0.85rem;
+  font-size: 0.85rem;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.admin-bet-summary--warn {
+  background: rgba(255,170,0,0.08);
+  border-color: rgba(255,170,0,0.3);
+  color: #ffaa00;
+}
+
+.admin-bet-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  margin-bottom: 0.45rem;
+}
+.admin-bet-card--expired {
+  border-left: 3px solid #ffaa00;
+  background: rgba(255,170,0,0.04);
+}
+.bet-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.bet-card-date   { color: var(--text-muted); font-size: 0.79rem; white-space: nowrap; }
+.bet-card-user   { font-size: 0.92rem; }
+.bet-card-badges { display: flex; gap: 0.35rem; align-items: center; margin-left: auto; flex-wrap: wrap; }
+
+.bet-card-context { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; padding: 0.3rem 0; border-top: 1px solid var(--border); }
+.bet-ctx-player  { font-size: 0.85rem; color: var(--text); }
+.bet-ctx-date    { font-size: 0.82rem; color: var(--text-muted); }
+.bet-ctx-date--past { color: #ffaa00; }
+.bet-ctx-warn    { font-size: 0.8rem; color: #ff6060; }
+.bet-ctx-label   { font-size: 0.83rem; color: var(--text); font-style: italic; }
+
+.bet-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 0.35rem;
+}
+.bet-card-amount { font-size: 0.88rem; }
+.bet-card-amount strong { color: var(--success); }
+.bet-card-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-left: auto; }
+
+/* Parlay legs */
+.bet-legs-list { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.3rem 0; border-top: 1px solid var(--border); }
+.bet-leg-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.81rem;
+}
+.bet-leg-num    { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.72rem; color: var(--text-muted); font-family: 'Orbitron', monospace; }
+.bet-leg-type   { color: var(--text); }
+.bet-leg-player { color: var(--primary); }
+.bet-leg-quota  { margin-left: auto; font-size: 0.78rem; white-space: nowrap; }
 /* Admin tab groups */
 .admin-tab-group-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 0.25rem; align-self: center; }
 .admin-tab-sep { width: 1px; background: var(--border); align-self: stretch; margin: 0 0.25rem; }

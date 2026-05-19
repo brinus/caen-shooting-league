@@ -572,7 +572,7 @@ async function reloadScommesse() {
 async function loadScommesseSingole() {
   const listEl = document.getElementById('scommesse-singole-list')
   const statusFilter = document.getElementById('scommesse-filtro-status').value
-  listEl.textContent = 'Caricamento…'
+  listEl.innerHTML = '<p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>'
 
   let q = CSLAuth.client
     .from('scommesse')
@@ -585,32 +585,113 @@ async function loadScommesseSingole() {
   if (error) { listEl.textContent = 'Errore: ' + error.message; return }
   if (!data?.length) { listEl.innerHTML = '<p class="text-muted" style="padding:1rem 0">Nessuna scommessa.</p>'; return }
 
-  const betTypeLabel = {
-    titolo: 'Titolo', podio: 'Podio', top5: 'Top 5',
-    best_30: 'Best 30+', avg_18: 'Media ≥18',
-    giornata_win: 'Vincente gg.', giornata_podio: 'Podio gg.',
-    giornata_over_20: 'Over 20', giornata_over_25: 'Over 25',
-    giornata_over_30: 'Over 30', speciale: 'Speciale',
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+
+  // Separa scadute (attive con data passata) da attive normali e risolte
+  const expiredActive  = data.filter(s => s.status === 'attiva' && s.giornata_date && new Date(s.giornata_date + 'T00:00:00') < today)
+  const pendingActive  = data.filter(s => s.status === 'attiva' && !(s.giornata_date && new Date(s.giornata_date + 'T00:00:00') < today))
+  const resolved       = data.filter(s => s.status !== 'attiva')
+
+  // Banner riepilogativo
+  let summaryHtml = ''
+  if (expiredActive.length > 0) {
+    summaryHtml = `<div class="admin-bet-summary admin-bet-summary--warn">
+      <span>⚠ <strong>${expiredActive.length}</strong> scommess${expiredActive.length === 1 ? 'a' : 'e'} scadut${expiredActive.length === 1 ? 'a' : 'e'} (data passata, ancora attiv${expiredActive.length === 1 ? 'a' : 'e'})</span>
+      <button id="btn-mark-expired-lost" class="btn-secondary" style="padding:0.25rem 0.85rem;font-size:0.8rem;white-space:nowrap">✗ Segna tutte come perse</button>
+    </div>`
+  } else if (statusFilter === 'attiva' || statusFilter === 'tutte') {
+    summaryHtml = `<div class="admin-bet-summary">
+      <span>📊 ${pendingActive.length + resolved.length} scommesse — ${pendingActive.length} attive${resolved.length ? ', ' + resolved.length + ' risolte' : ''}</span>
+    </div>`
   }
 
-  listEl.innerHTML = data.map(function (s) {
-    const user = s.profiles?.display_name || s.profiles?.username || '?'
-    const tipo = betTypeLabel[s.bet_type] || s.bet_type
-    const potWin = Math.floor(s.importo * s.quota)
-    const dateStr = new Date(s.created_at).toLocaleString('it-IT', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  const BET_LABEL = {
+    titolo:           '🏆 Titolo stagione',
+    podio:            '🥉 Podio stagione',
+    top5:             '🔝 Top 5 stagione',
+    best_30:          '🎯 Best 30+',
+    avg_18:           '📈 Media ≥18',
+    giornata_win:     '🥇 Vincitore giornata',
+    giornata_podio:   '🏅 Podio giornata',
+    giornata_over_20: '🎯 Sopra 20 punti',
+    giornata_over_25: '🎯 Sopra 25 punti',
+    giornata_over_30: '🎯 Sopra 30 punti',
+    speciale:         '⭐ Speciale',
+  }
+
+  // Ordine: scadute prime, poi attive, poi risolte
+  const sorted = [...expiredActive, ...pendingActive, ...resolved]
+
+  const rowsHtml = sorted.map(function (s) {
+    const user    = s.profiles?.display_name || s.profiles?.username || '?'
+    const tipo    = BET_LABEL[s.bet_type] || s.bet_type
+    const potWin  = Math.floor(s.importo * s.quota)
+    const isGiornata = s.bet_type.startsWith('giornata_')
+    const isSpeciale = s.bet_type === 'speciale'
+    const isExpired  = s.status === 'attiva' && s.giornata_date && new Date(s.giornata_date + 'T00:00:00') < today
+
+    const createdStr = new Date(s.created_at).toLocaleString('it-IT', {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
     })
-    const actions = s.status === 'attiva' ? betActionButtons(s.id, 'singola') : ''
-    return `<div class="admin-list-row admin-bet-row" style="flex-wrap:wrap;gap:0.5rem" data-id="${escHtml(s.id)}">
-      <span class="admin-list-date" style="min-width:110px">${dateStr}</span>
-      <strong style="min-width:100px">${escHtml(user)}</strong>
-      <span class="badge badge-participant" style="font-size:0.7rem">${escHtml(tipo)}</span>
-      <span style="min-width:100px">${escHtml(s.player_name)}</span>
-      <span style="min-width:110px">${s.importo} → <strong>${potWin}</strong> 🪙 <span class="text-muted">×${s.quota}</span></span>
-      ${betStatusBadge(s.status)}
-      <span style="display:flex;gap:0.35rem;flex-wrap:wrap">${actions}</span>
+
+    // Riga di contesto: cosa/quando/chi
+    const ctx = []
+    if (s.player_name && s.player_name !== '—' && s.player_name.trim() !== '') {
+      ctx.push(`<span class="bet-ctx-player">🎯 ${escHtml(s.player_name)}</span>`)
+    }
+    if (s.giornata_date) {
+      const ggDate   = new Date(s.giornata_date + 'T00:00:00')
+      const ggFmt    = ggDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      const ggNum    = s.giornata_num ? ` — GG${s.giornata_num}` : ''
+      const expired  = isExpired ? ' bet-ctx-date--past' : ''
+      ctx.push(`<span class="bet-ctx-date${expired}">📅 ${ggFmt}${ggNum}</span>`)
+    } else if (isGiornata) {
+      ctx.push(`<span class="bet-ctx-warn">⚠ Giornata di riferimento non specificata</span>`)
+    }
+    if (isSpeciale) {
+      const label = s.market_label ? escHtml(s.market_label) : '<em class="text-muted">Nessuna descrizione disponibile</em>'
+      ctx.push(`<span class="bet-ctx-label">💬 ${label}</span>`)
+    }
+
+    const contextHtml = ctx.length ? `<div class="bet-card-context">${ctx.join('')}</div>` : ''
+    const expiredBadge = isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : ''
+    const cardClass    = isExpired ? 'admin-bet-card admin-bet-card--expired' : 'admin-bet-card'
+    const actions      = s.status === 'attiva' ? betActionButtons(s.id, 'singola') : ''
+
+    return `<div class="${cardClass}" data-id="${escHtml(s.id)}">
+      <div class="bet-card-header">
+        <span class="bet-card-date">${createdStr}</span>
+        <strong class="bet-card-user">${escHtml(user)}</strong>
+        <span class="badge badge-bet-type">${escHtml(tipo)}</span>
+        <div class="bet-card-badges">${betStatusBadge(s.status)}${expiredBadge}</div>
+      </div>
+      ${contextHtml}
+      <div class="bet-card-footer">
+        <span class="bet-card-amount">${s.importo} 🪙 → <strong>${potWin} 🪙</strong> <span class="text-muted">(×${s.quota})</span></span>
+        ${actions ? `<div class="bet-card-actions">${actions}</div>` : ''}
+      </div>
     </div>`
   }).join('')
+
+  listEl.innerHTML = summaryHtml + rowsHtml
+
+  // Pulsante bulk "segna scadute come perse"
+  const bulkBtn = document.getElementById('btn-mark-expired-lost')
+  if (bulkBtn) {
+    bulkBtn.addEventListener('click', async function () {
+      if (!confirm(`Segnare ${expiredActive.length} scommess${expiredActive.length === 1 ? 'a' : 'e'} scadut${expiredActive.length === 1 ? 'a' : 'e'} come perse?`)) return
+      bulkBtn.disabled = true
+      bulkBtn.textContent = 'Elaborazione…'
+      let ok = 0, fail = 0
+      for (const s of expiredActive) {
+        const { data: r, error: e } = await CSLAuth.client.rpc('resolve_bet', { p_bet_id: s.id, p_status: 'persa' })
+        if (e || r?.error) fail++; else ok++
+      }
+      showMsg('scommesse-success', `✓ ${ok} scommess${ok === 1 ? 'a' : 'e'} segnate come perse${fail ? ` (${fail} errori)` : ''}.`, fail > 0)
+      document.getElementById('scommesse-error').hidden = true
+      await reloadScommesse()
+    })
+  }
 
   attachBetListeners(listEl, 'singola')
 }
@@ -618,7 +699,7 @@ async function loadScommesseSingole() {
 async function loadScommesseMultiple() {
   const listEl = document.getElementById('scommesse-multiple-list')
   const statusFilter = document.getElementById('scommesse-filtro-status').value
-  listEl.textContent = 'Caricamento…'
+  listEl.innerHTML = '<p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>'
 
   let q = CSLAuth.client
     .from('parlay_bets')
@@ -631,30 +712,111 @@ async function loadScommesseMultiple() {
   if (error) { listEl.textContent = 'Errore: ' + error.message; return }
   if (!data?.length) { listEl.innerHTML = '<p class="text-muted" style="padding:1rem 0">Nessuna schedina multipla.</p>'; return }
 
-  listEl.innerHTML = data.map(function (s) {
-    const user = s.profiles?.display_name || s.profiles?.username || '?'
-    const legs = Array.isArray(s.legs) ? s.legs : []
-    const potWin = Math.floor(s.importo * s.quota_final)
-    const dateStr = new Date(s.created_at).toLocaleString('it-IT', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+
+  const BET_LABEL = {
+    titolo:           '🏆 Titolo stagione',
+    podio:            '🥉 Podio stagione',
+    top5:             '🔝 Top 5 stagione',
+    best_30:          '🎯 Best 30+',
+    avg_18:           '📈 Media ≥18',
+    giornata_win:     '🥇 Vincitore gg.',
+    giornata_podio:   '🏅 Podio gg.',
+    giornata_over_20: '🎯 Sopra 20pt.',
+    giornata_over_25: '🎯 Sopra 25pt.',
+    giornata_over_30: '🎯 Sopra 30pt.',
+    speciale:         '⭐ Speciale',
+  }
+  const PANEL_LABEL = { stagione: 'Stagione', giornata: 'Giornata', speciali: 'Speciali' }
+
+  const expiredActive = data.filter(s => s.status === 'attiva' && s.giornata_date && new Date(s.giornata_date + 'T00:00:00') < today)
+
+  let summaryHtml = ''
+  if (expiredActive.length > 0) {
+    summaryHtml = `<div class="admin-bet-summary admin-bet-summary--warn">
+      <span>⚠ <strong>${expiredActive.length}</strong> schedin${expiredActive.length === 1 ? 'a' : 'e'} scadut${expiredActive.length === 1 ? 'a' : 'e'} da risolvere</span>
+      <button id="btn-mark-parlay-expired-lost" class="btn-secondary" style="padding:0.25rem 0.85rem;font-size:0.8rem;white-space:nowrap">✗ Segna tutte come perse</button>
+    </div>`
+  }
+
+  const pendingActive = data.filter(s => s.status === 'attiva' && !(s.giornata_date && new Date(s.giornata_date + 'T00:00:00') < today))
+  const resolved      = data.filter(s => s.status !== 'attiva')
+  const sorted        = [...expiredActive, ...pendingActive, ...resolved]
+
+  const rowsHtml = sorted.map(function (s) {
+    const user    = s.profiles?.display_name || s.profiles?.username || '?'
+    const legs    = Array.isArray(s.legs) ? s.legs : []
+    const potWin  = Math.floor(s.importo * s.quota_final)
+    const panel   = PANEL_LABEL[s.panel] || s.panel
+    const isExpired = s.status === 'attiva' && s.giornata_date && new Date(s.giornata_date + 'T00:00:00') < today
+
+    const createdStr = new Date(s.created_at).toLocaleString('it-IT', {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
     })
-    const legsHtml = legs.map(function (l) {
-      return `<span class="text-muted" style="font-size:0.75rem">• ${escHtml(l.player_name || '?')} <em>${escHtml(l.bet_type || '')}</em> ×${l.quota}</span>`
-    }).join(' ')
-    const actions = s.status === 'attiva' ? betActionButtons(s.id, 'multipla') : ''
-    return `<div class="admin-list-row admin-bet-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem" data-id="${escHtml(s.id)}">
-      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;width:100%">
-        <span class="admin-list-date" style="min-width:110px">${dateStr}</span>
-        <strong style="min-width:100px">${escHtml(user)}</strong>
-        <span class="badge badge-participant" style="font-size:0.7rem">${escHtml(s.panel)}</span>
-        <span class="text-muted">${legs.length} gamb${legs.length === 1 ? 'a' : 'e'}</span>
-        <span>${s.importo} → <strong>${potWin}</strong> 🪙 <span class="text-muted">×${Number(s.quota_final).toFixed(2)}</span></span>
-        ${betStatusBadge(s.status)}
-        <span style="display:flex;gap:0.35rem;flex-wrap:wrap">${actions}</span>
+
+    // Data giornata (per parlay di tipo giornata)
+    let dateRefHtml = ''
+    if (s.giornata_date) {
+      const ggDate  = new Date(s.giornata_date + 'T00:00:00')
+      const ggFmt   = ggDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      const ggNum   = s.giornata_num ? ` — GG${s.giornata_num}` : ''
+      const cls     = isExpired ? 'bet-ctx-date bet-ctx-date--past' : 'bet-ctx-date'
+      dateRefHtml   = `<div class="bet-card-context"><span class="${cls}">📅 ${ggFmt}${ggNum}</span></div>`
+    }
+
+    // Gambe (legs)
+    const legsHtml = legs.map(function (l, i) {
+      const lTipo   = BET_LABEL[l.bet_type] || l.bet_type || '?'
+      const lPlayer = (l.player_name && l.player_name !== '—') ? escHtml(l.player_name) : ''
+      const lLabel  = l.market_label ? `<em class="text-muted"> — ${escHtml(l.market_label)}</em>` : ''
+      return `<div class="bet-leg-row">
+        <span class="bet-leg-num">${i + 1}</span>
+        <span class="bet-leg-type">${escHtml(lTipo)}</span>
+        ${lPlayer ? `<span class="bet-leg-player">🎯 ${lPlayer}</span>` : ''}
+        ${lLabel}
+        <span class="bet-leg-quota text-muted">×${Number(l.quota).toFixed(2)}</span>
+      </div>`
+    }).join('')
+
+    const expiredBadge = isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : ''
+    const cardClass    = isExpired ? 'admin-bet-card admin-bet-card--expired' : 'admin-bet-card'
+    const actions      = s.status === 'attiva' ? betActionButtons(s.id, 'multipla') : ''
+
+    return `<div class="${cardClass}" data-id="${escHtml(s.id)}">
+      <div class="bet-card-header">
+        <span class="bet-card-date">${createdStr}</span>
+        <strong class="bet-card-user">${escHtml(user)}</strong>
+        <span class="badge badge-bet-type">📋 ${escHtml(panel)}</span>
+        <span class="text-muted" style="font-size:0.8rem">${legs.length} gamb${legs.length === 1 ? 'a' : 'e'}</span>
+        <div class="bet-card-badges">${betStatusBadge(s.status)}${expiredBadge}</div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;padding-left:0.5rem">${legsHtml}</div>
+      ${dateRefHtml}
+      <div class="bet-legs-list">${legsHtml}</div>
+      <div class="bet-card-footer">
+        <span class="bet-card-amount">${s.importo} 🪙 → <strong>${potWin} 🪙</strong> <span class="text-muted">(×${Number(s.quota_final).toFixed(2)})</span></span>
+        ${actions ? `<div class="bet-card-actions">${actions}</div>` : ''}
+      </div>
     </div>`
   }).join('')
+
+  listEl.innerHTML = summaryHtml + rowsHtml
+
+  const bulkBtn = document.getElementById('btn-mark-parlay-expired-lost')
+  if (bulkBtn) {
+    bulkBtn.addEventListener('click', async function () {
+      if (!confirm(`Segnare ${expiredActive.length} schedin${expiredActive.length === 1 ? 'a' : 'e'} scadut${expiredActive.length === 1 ? 'a' : 'e'} come perse?`)) return
+      bulkBtn.disabled = true
+      bulkBtn.textContent = 'Elaborazione…'
+      let ok = 0, fail = 0
+      for (const s of expiredActive) {
+        const { data: r, error: e } = await CSLAuth.client.rpc('resolve_parlay', { p_bet_id: s.id, p_status: 'persa' })
+        if (e || r?.error) fail++; else ok++
+      }
+      showMsg('scommesse-success', `✓ ${ok} schedin${ok === 1 ? 'a' : 'e'} segnate come perse${fail ? ` (${fail} errori)` : ''}.`, fail > 0)
+      document.getElementById('scommesse-error').hidden = true
+      await reloadScommesse()
+    })
+  }
 
   attachBetListeners(listEl, 'multipla')
 }

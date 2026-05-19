@@ -714,6 +714,246 @@ function buildPlayerStats(seasons) {
   }).sort(compareCampionatoPlayers);
 }
 
+function renderStatsAnalysis(players) {
+  var el = document.getElementById('stats-analysis-section');
+  if (!el || !players || !players.length) { if (el) el.innerHTML = ''; return; }
+
+  // Gather all individual scores
+  var allScores = [];
+  players.forEach(function(p) {
+    p.scores_timeline.forEach(function(s) { allScores.push(s.punteggio); });
+  });
+  if (allScores.length < 3) { el.innerHTML = ''; return; }
+
+  // ── 1. Distribuzione punteggi (histogram) ─────────────────────────
+  var buckets = [
+    { label: '0\u20139',   min: 0,  max: 9  },
+    { label: '10\u201314', min: 10, max: 14 },
+    { label: '15\u201319', min: 15, max: 19 },
+    { label: '20\u201324', min: 20, max: 24 },
+    { label: '25\u201329', min: 25, max: 29 },
+    { label: '30+',   min: 30, max: 99 }
+  ];
+  var counts  = buckets.map(function(b) {
+    return allScores.filter(function(s) { return s >= b.min && s <= b.max; }).length;
+  });
+  var maxCount = Math.max.apply(null, counts) || 1;
+  var bColors  = ['rgba(100,181,246,0.72)', 'rgba(73,210,155,0.65)', 'rgba(73,210,155,0.85)',
+                  'rgba(255,204,0,0.78)',   'rgba(255,102,0,0.78)',  'rgba(255,80,80,0.82)'];
+  var svgW = 320, svgH = 155, padL = 26, padR = 6, padT = 10, padB = 28;
+  var plotW = svgW - padL - padR, plotH = svgH - padT - padB;
+  var barW  = plotW / buckets.length;
+
+  var histBars = buckets.map(function(b, i) {
+    var bh  = (counts[i] / maxCount) * plotH;
+    var x   = padL + i * barW + barW * 0.08;
+    var y   = padT + plotH - bh;
+    var w   = barW * 0.84;
+    var pct = allScores.length ? (counts[i] / allScores.length * 100).toFixed(1) : 0;
+    return '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + Math.max(bh, 0).toFixed(1) + '" fill="' + bColors[i] + '" rx="2">' +
+        '<title>' + b.label + ': ' + counts[i] + ' risultati (' + pct + '%)</title>' +
+      '</rect>' +
+      (counts[i] > 0 ? '<text x="' + (x + w / 2).toFixed(1) + '" y="' + (y - 3).toFixed(1) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.5)">' + counts[i] + '</text>' : '') +
+      '<text x="' + (x + w / 2).toFixed(1) + '" y="' + (padT + plotH + 14).toFixed(1) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.32)">' + b.label + '</text>';
+  }).join('');
+
+  var histYAxis = [0, 0.5, 1].map(function(frac) {
+    var val = Math.round(frac * maxCount);
+    var gy  = padT + plotH - frac * plotH;
+    return '<text x="' + (padL - 3) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end" font-size="7" fill="rgba(255,255,255,0.22)">' + val + '</text>' +
+      '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + plotW) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>';
+  }).join('');
+
+  var chart1Svg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" style="width:100%;height:auto">' +
+    histYAxis + histBars + '</svg>';
+
+  // ── 2. Scatter: media_tiro × win_rate (bolla = numero giornate) ───
+  var sc2W = 320, sc2H = 200, sc2PL = 34, sc2PR = 12, sc2PT = 10, sc2PB = 28;
+  var sc2PlotW = sc2W - sc2PL - sc2PR, sc2PlotH = sc2H - sc2PT - sc2PB;
+  var medias2  = players.map(function(p) { return p.media_tiro || 0; });
+  var minM2 = Math.max(0, Math.min.apply(null, medias2) - 2), maxM2 = Math.max.apply(null, medias2) + 2;
+  var maxParts = Math.max.apply(null, players.map(function(p) { return p.partite || 1; })) || 1;
+  var scColors = ['#ffd700','#c0c0c0','#cd7f32','#49d29b','#ff6600','#64b5f6','#ce93d8','#ef9a9a','#a5d6a7','#ffcc80'];
+
+  var sc2Grid = '';
+  for (var gi2 = 0; gi2 <= 4; gi2++) {
+    var gx2 = sc2PL + (gi2 / 4) * sc2PlotW;
+    var gy2 = sc2PT + (gi2 / 4) * sc2PlotH;
+    sc2Grid += '<line x1="' + gx2.toFixed(1) + '" y1="' + sc2PT + '" x2="' + gx2.toFixed(1) + '" y2="' + (sc2PT + sc2PlotH) + '" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>';
+    sc2Grid += '<line x1="' + sc2PL + '" y1="' + gy2.toFixed(1) + '" x2="' + (sc2PL + sc2PlotW) + '" y2="' + gy2.toFixed(1) + '" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>';
+    sc2Grid += '<text x="' + gx2.toFixed(1) + '" y="' + (sc2PT + sc2PlotH + 13) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.25)">' + (minM2 + gi2 * (maxM2 - minM2) / 4).toFixed(0) + '</text>';
+    sc2Grid += '<text x="' + (sc2PL - 4) + '" y="' + (gy2 + 3).toFixed(1) + '" text-anchor="end" font-size="7" fill="rgba(255,255,255,0.25)">' + Math.round((1 - gi2 / 4) * 100) + '%</text>';
+  }
+  var sc2Dots = players.map(function(p, i) {
+    var px2  = sc2PL + ((p.media_tiro || 0) - minM2) / (maxM2 - minM2 || 1) * sc2PlotW;
+    var py2  = sc2PT + (1 - (p.win_rate || 0) / 100) * sc2PlotH;
+    var r2   = 4 + Math.round((p.partite || 1) / maxParts * 5);
+    var fill = scColors[Math.min(scColors.length - 1, i)];
+    var init = p.iniziali || p.nome.substring(0, 2).toUpperCase();
+    return '<circle cx="' + px2.toFixed(1) + '" cy="' + py2.toFixed(1) + '" r="' + r2 + '" fill="' + fill + '" fill-opacity="0.8" stroke="rgba(0,0,0,0.3)" stroke-width="1">' +
+        '<title>' + escapeHtml(p.nome) + '\nMedia: ' + (p.media_tiro || 0).toFixed(1) + ' | Win%: ' + (p.win_rate || 0) + '% | Giornate: ' + p.partite + '</title>' +
+      '</circle>' +
+      '<text x="' + (px2 + r2 + 2).toFixed(1) + '" y="' + (py2 + 3).toFixed(1) + '" font-size="8" fill="rgba(255,255,255,0.48)">' + escapeHtml(init) + '</text>';
+  }).join('');
+  var chart2Svg = '<svg viewBox="0 0 ' + sc2W + ' ' + sc2H + '" style="width:100%;height:auto">' +
+    '<rect x="' + sc2PL + '" y="' + sc2PT + '" width="' + sc2PlotW + '" height="' + sc2PlotH + '" fill="rgba(255,255,255,0.015)" rx="2"/>' +
+    sc2Grid + sc2Dots +
+    '<text x="' + (sc2PL + sc2PlotW / 2) + '" y="' + (sc2H - 1) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.28)">Media tiro \u2192</text>' +
+    '<text x="10" y="' + (sc2PT + sc2PlotH / 2) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.28)" transform="rotate(-90 10 ' + (sc2PT + sc2PlotH / 2) + ')">Win% \u2192</text>' +
+  '</svg>';
+
+  // ── 3. Stacked bar: vittorie / altri podi / fuori podio ───────────
+  var maxPartite = Math.max.apply(null, players.map(function(p) { return p.partite || 1; })) || 1;
+  var chart3Html = players.slice(0, 8).map(function(p) {
+    var w1 = (p.vittorie / maxPartite * 100).toFixed(1);
+    var w2 = ((p.podi - p.vittorie) / maxPartite * 100).toFixed(1);
+    var w3 = ((p.partite - p.podi) / maxPartite * 100).toFixed(1);
+    return '<div class="stats-stacked-row">' +
+      '<span class="stats-stacked-name">' + escapeHtml(p.nome) + '</span>' +
+      '<div class="stats-stacked-bar">' +
+        '<div class="stats-stacked-seg stats-stacked-seg--vitt"  style="width:' + w1 + '%" title="Vittorie: ' + p.vittorie + '"></div>' +
+        '<div class="stats-stacked-seg stats-stacked-seg--pod"   style="width:' + w2 + '%" title="Altri podi: ' + (p.podi - p.vittorie) + '"></div>' +
+        '<div class="stats-stacked-seg stats-stacked-seg--other" style="width:' + w3 + '%" title="Fuori podio: ' + (p.partite - p.podi) + '"></div>' +
+      '</div>' +
+      '<span class="stats-stacked-val">' + p.vittorie + 'V / ' + p.podi + 'P</span>' +
+    '</div>';
+  }).join('');
+  var chart3Legend =
+    '<div class="stats-stacked-legend">' +
+      '<span><span class="stats-stacked-dot stats-stacked-dot--vitt"></span>Vittorie</span>' +
+      '<span><span class="stats-stacked-dot stats-stacked-dot--pod"></span>Podi</span>' +
+      '<span><span class="stats-stacked-dot stats-stacked-dot--other"></span>Fuori podio</span>' +
+    '</div>';
+
+  // ── 4. Trend punteggi nel tempo (top 5, SVG polyline) ─────────────
+  var trendPlayers = players.slice(0, 5);
+  var trendColors  = ['#ffd700', '#c0c0c0', '#cd7f32', '#49d29b', '#ff6600'];
+  var dateSet = {};
+  players.forEach(function(p) {
+    p.scores_timeline.forEach(function(s) { dateSet[s.data] = true; });
+  });
+  var allDates = Object.keys(dateSet).sort();
+  var trendW = 320, trendH = 155, trendPL = 28, trendPR = 8, trendPT = 10, trendPB = 28;
+  var trendPlotW = trendW - trendPL - trendPR, trendPlotH = trendH - trendPT - trendPB;
+  var trendSvg = '';
+
+  if (allDates.length >= 2) {
+    var allSc2 = [];
+    players.forEach(function(p) { p.scores_timeline.forEach(function(s) { allSc2.push(s.punteggio); }); });
+    var minSc = Math.max(0, Math.min.apply(null, allSc2) - 2), maxSc = Math.max.apply(null, allSc2) + 2;
+
+    var trendGrid = '';
+    for (var ti = 0; ti <= 3; ti++) {
+      var ty  = trendPT + (ti / 3) * trendPlotH;
+      var tyl = Math.round(maxSc - ti * (maxSc - minSc) / 3);
+      trendGrid += '<line x1="' + trendPL + '" y1="' + ty.toFixed(1) + '" x2="' + (trendPL + trendPlotW) + '" y2="' + ty.toFixed(1) + '" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>';
+      trendGrid += '<text x="' + (trendPL - 3) + '" y="' + (ty + 3).toFixed(1) + '" text-anchor="end" font-size="7" fill="rgba(255,255,255,0.22)">' + tyl + '</text>';
+    }
+    var trendLines = trendPlayers.map(function(p, pi) {
+      var byDate = {};
+      p.scores_timeline.forEach(function(s) { byDate[s.data] = s.punteggio; });
+      var pts = allDates.map(function(d, di) {
+        if (byDate[d] === undefined) return null;
+        var px3 = trendPL + (di / (allDates.length - 1)) * trendPlotW;
+        var py3 = trendPT + (1 - (byDate[d] - minSc) / (maxSc - minSc || 1)) * trendPlotH;
+        return { x: px3, y: py3, sc: byDate[d] };
+      }).filter(function(pt) { return pt !== null; });
+      if (pts.length < 2) return '';
+      var pathD = pts.map(function(pt, pti) {
+        return (pti === 0 ? 'M' : 'L') + pt.x.toFixed(1) + ',' + pt.y.toFixed(1);
+      }).join(' ');
+      return '<path d="' + pathD + '" stroke="' + trendColors[pi] + '" stroke-width="1.5" fill="none" opacity="0.8"/>' +
+        pts.map(function(pt) {
+          return '<circle cx="' + pt.x.toFixed(1) + '" cy="' + pt.y.toFixed(1) + '" r="2.5" fill="' + trendColors[pi] + '" fill-opacity="0.9"><title>' + escapeHtml(p.nome) + ': ' + pt.sc + '</title></circle>';
+        }).join('');
+    }).join('');
+    var xLabels = [0, Math.floor((allDates.length - 1) / 2), allDates.length - 1].map(function(ii) {
+      if (ii < 0 || ii >= allDates.length) return '';
+      var x3 = trendPL + (ii / (allDates.length - 1)) * trendPlotW;
+      var d   = new Date(allDates[ii] + 'T00:00:00');
+      return '<text x="' + x3.toFixed(1) + '" y="' + (trendPT + trendPlotH + 13) + '" text-anchor="middle" font-size="7" fill="rgba(255,255,255,0.25)">' + d.getDate() + '/' + (d.getMonth() + 1) + '</text>';
+    }).join('');
+    trendSvg = '<svg viewBox="0 0 ' + trendW + ' ' + trendH + '" style="width:100%;height:auto">' +
+      '<rect x="' + trendPL + '" y="' + trendPT + '" width="' + trendPlotW + '" height="' + trendPlotH + '" fill="rgba(255,255,255,0.015)" rx="2"/>' +
+      trendGrid + trendLines + xLabels + '</svg>';
+  } else {
+    trendSvg = '<p style="font-size:0.78rem;color:var(--text-muted);padding:1rem 0">Dati insufficienti per il grafico di tendenza.</p>';
+  }
+  var trendLegendHtml = '<div class="stats-trend-legend">' +
+    trendPlayers.map(function(p, pi) {
+      return '<span class="stats-trend-legend-item"><span style="display:inline-block;width:14px;height:2px;background:' + trendColors[pi] + ';vertical-align:middle;border-radius:1px;margin-right:4px"></span>' + escapeHtml(p.nome) + '</span>';
+    }).join('') +
+  '</div>';
+
+  // ── 5. Statistiche descrittive (tabella) ──────────────────────────
+  var statsRows = players.map(function(p) {
+    var scores = p.scores_timeline.map(function(s) { return s.punteggio; });
+    var n = scores.length || 1;
+    var mean = scores.reduce(function(a, b) { return a + b; }, 0) / n;
+    var variance = scores.reduce(function(acc, s) { return acc + Math.pow(s - mean, 2); }, 0) / n;
+    var stdDev = Math.sqrt(variance).toFixed(1);
+    var sorted2 = scores.slice().sort(function(a, b) { return a - b; });
+    var median = sorted2.length % 2 === 0
+      ? ((sorted2[sorted2.length / 2 - 1] + sorted2[sorted2.length / 2]) / 2).toFixed(1)
+      : sorted2[Math.floor(sorted2.length / 2)].toFixed(1);
+    return '<tr>' +
+      '<td>' + escapeHtml(p.nome) + '</td>' +
+      '<td>' + mean.toFixed(1) + '</td>' +
+      '<td>' + stdDev + '</td>' +
+      '<td>' + median + '</td>' +
+      '<td>' + (scores.length ? Math.min.apply(null, scores) : '\u2014') + '</td>' +
+      '<td>' + (scores.length ? Math.max.apply(null, scores) : '\u2014') + '</td>' +
+      '<td>' + p.consistenza + '%</td>' +
+    '</tr>';
+  }).join('');
+  var statsTable = '<div class="table-wrapper">' +
+    '<table><thead><tr>' +
+      '<th>Giocatore</th><th>Media</th><th>Dev.Std.</th><th>Mediana</th><th>Min</th><th>Max</th><th>Costanza</th>' +
+    '</tr></thead><tbody>' + statsRows + '</tbody></table>' +
+  '</div>';
+
+  // ── Assemble ──────────────────────────────────────────────────────
+  el.innerHTML =
+    '<div class="stats-analysis-header">' +
+      '<span class="stats-analysis-icon">\ud83d\udd2c</span>' +
+      '<div>' +
+        '<div class="stats-analysis-kicker">Analisi statistica approfondita</div>' +
+        '<div class="stats-analysis-title">Indagini & Grafici</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="stats-analysis-body">' +
+      '<div class="stats-analysis-grid">' +
+        '<div class="stats-analysis-card">' +
+          '<div class="stats-analysis-card-title">\ud83d\udcca Distribuzione punteggi</div>' +
+          '<div class="stats-analysis-card-sub">Frequenza dei risultati \u2014 tutte le stagioni selezionate (' + allScores.length + ' risultati)</div>' +
+          chart1Svg +
+        '</div>' +
+        '<div class="stats-analysis-card">' +
+          '<div class="stats-analysis-card-title">\u2726 Media \u00d7 Win rate</div>' +
+          '<div class="stats-analysis-card-sub">Dimensione bolla = numero giornate disputate</div>' +
+          chart2Svg +
+        '</div>' +
+      '</div>' +
+      '<div class="stats-analysis-grid">' +
+        '<div class="stats-analysis-card">' +
+          '<div class="stats-analysis-card-title">\ud83c\udfc5 Vittorie & Podi</div>' +
+          '<div class="stats-analysis-card-sub">Composizione dei risultati per giocatore (top 8)</div>' +
+          chart3Legend + chart3Html +
+        '</div>' +
+        '<div class="stats-analysis-card">' +
+          '<div class="stats-analysis-card-title">\ud83d\udcc8 Trend punteggi nel tempo</div>' +
+          '<div class="stats-analysis-card-sub">Top 5 per campionato \u2014 andamento sessione per sessione</div>' +
+          trendSvg + trendLegendHtml +
+        '</div>' +
+      '</div>' +
+      '<div class="stats-analysis-card stats-analysis-card--full">' +
+        '<div class="stats-analysis-card-title">\ud83d\udcd0 Statistiche descrittive</div>' +
+        '<div class="stats-analysis-card-sub">Media, deviazione standard, mediana, minimo, massimo e costanza per giocatore</div>' +
+        statsTable +
+      '</div>' +
+    '</div>';
+}
+
 function initStats() {
   var select = document.getElementById('stats-season-select');
   if (!select) return;
@@ -766,6 +1006,7 @@ function initStats() {
     } else {
       renderStatsGrid(players);
     }
+    renderStatsAnalysis(players);
     // Scroll + highlight se arrivati da ?player=...
     var urlParams = new URLSearchParams(window.location.search);
     var target = urlParams.get('player');
@@ -1147,6 +1388,11 @@ function renderStatsGrid(players) {
             '<div class="sparkline-tooltip" style="display:none"></div>' +
           '</div>'
         : '') +
+      // Mini radar
+      '<div class="stats-radar-mini">' +
+        '<div class="stats-radar-title">Profilo giocatore</div>' +
+        '<canvas class="stats-radar-canvas" width="200" height="160"></canvas>' +
+      '</div>' +
     '</div>';
   }).join('');
 
@@ -1158,6 +1404,9 @@ function renderStatsGrid(players) {
       });
       container.querySelectorAll('.stat-rate-fill').forEach(function(el) {
         el.style.width = el.getAttribute('data-w');
+      });
+      container.querySelectorAll('.stat-player-card').forEach(function(card, idx) {
+        if (players[idx]) _drawStatsRadar(card, players[idx], players);
       });
     });
   });
@@ -1951,7 +2200,7 @@ function renderSisalCharts(board) {
   var chart1 = allP.map(function(p, i) {
     var prob = Math.round(tProbs[i] * 100);
     var cc   = prob > 25 ? 'sisal-bar-fill--green' : prob > 12 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
-    return _bRow(p.nome.split(' ')[0], _bPct(tProbs[i], maxTP), '@' + formatQuote(p.quote_titolo), cc, p.nome + ' — prob. ' + prob + '%');
+    return _bRow(p.nome, _bPct(tProbs[i], maxTP), '@' + formatQuote(p.quote_titolo), cc, p.nome + ' — prob. ' + prob + '%');
   }).join('');
 
   // ── 2. Score atteso prossima giornata ────────────────────────────
@@ -1963,7 +2212,7 @@ function renderSisalCharts(board) {
   var chart2   = nmP.map(function(p, i) {
     var val = scores[i];
     var cc  = val >= 22 ? 'sisal-bar-fill--green' : val >= 17 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
-    return _bRow(p.nome.split(' ')[0], _bPct(val, maxSc), val.toFixed(1), cc, p.nome + ' — atteso ' + val.toFixed(1));
+    return _bRow(p.nome, _bPct(val, maxSc), val.toFixed(1), cc, p.nome + ' — atteso ' + val.toFixed(1));
   }).join('');
 
   // ── 3. Media vs Record grouped ──────────────────────────────────
@@ -1979,7 +2228,7 @@ function renderSisalCharts(board) {
     '</div>' +
     allP.map(function(p) {
       return '<div class="sisal-bar-row sisal-bar-row--grouped" title="' + escapeHtml(p.nome) + ' media ' + (p.media_tiro || 0).toFixed(1) + ' / record ' + (p.record || 0) + '">' +
-        '<span class="sisal-bar-name">' + escapeHtml(p.nome.split(' ')[0]) + '</span>' +
+        '<span class="sisal-bar-name">' + escapeHtml(p.nome) + '</span>' +
         '<div class="sisal-bar-group">' +
           '<div class="sisal-bar-track sisal-bar-track--sm"><div class="sisal-bar-fill sisal-bar-fill--green" data-pct="' + _bPct(p.media_tiro || 0, maxMR) + '"></div></div>' +
           '<div class="sisal-bar-track sisal-bar-track--sm"><div class="sisal-bar-fill sisal-bar-fill--orange" data-pct="' + _bPct(p.record || 0, maxMR) + '"></div></div>' +
@@ -1988,48 +2237,28 @@ function renderSisalCharts(board) {
       '</div>';
     }).join('');
 
-  // ── 4. Quote multi-mercato per giocatore ────────────────────────
-  var markets4 = [
-    { key: 'quote_titolo',  label: 'Titolo' },
-    { key: 'quote_podio',   label: 'Podio'  },
-    { key: 'quote_best_30', label: '30+'    },
-    { key: 'quote_avg_18',  label: '18+'    }
-  ];
-  var chart4 =
-    '<div class="sisal-mkt-header">' +
-      '<span class="sisal-mkt-col-name"></span>' +
-      markets4.map(function(m) { return '<span class="sisal-mkt-col-label">' + m.label + '</span>'; }).join('') +
-    '</div>' +
-    allP.map(function(p) {
-      var rank = p.posizione_attuale;
-      var rnk  = (rank <= 3) ? 'sisal-mkt-rank--' + rank : 'sisal-mkt-rank--other';
-      return '<div class="sisal-mkt-row">' +
-        '<span class="sisal-mkt-name">' +
-          '<span class="sisal-mkt-rank ' + rnk + '">' + (rank || '—') + '</span>' +
-          escapeHtml(p.nome.split(' ')[0]) +
-        '</span>' +
-        markets4.map(function(m) {
-          var q  = p[m.key] || 99;
-          return '<span class="sisal-mkt-q ' + getSisalQuoteClass(q) + '" title="' + m.label + ': @' + q.toFixed(2) + '">@' + formatQuote(q) + '</span>';
-        }).join('') +
-      '</div>';
-    }).join('');
+  // ── 4. Temperatura mercato (probabilità cumulata su tutti i mercati) ─────────────
+  var tempScores = allP.map(function(p) {
+    return (1 / Math.max(p.quote_titolo  || 99, 0.01)) +
+           (1 / Math.max(p.quote_podio   || 99, 0.01)) +
+           (1 / Math.max(p.quote_best_30 || 99, 0.01)) +
+           (1 / Math.max(p.quote_avg_18  || 99, 0.01));
+  });
+  var maxTemp = Math.max.apply(null, tempScores) || 1;
+  var chart4 = allP.map(function(p, i) {
+    var temp = tempScores[i];
+    var pct  = Math.round(temp / maxTemp * 100);
+    var cc   = pct > 60 ? 'sisal-bar-fill--green' : pct > 35 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
+    var tip  = p.nome + ' — T:@' + formatQuote(p.quote_titolo) + ' P:@' + formatQuote(p.quote_podio) + ' 30+:@' + formatQuote(p.quote_best_30) + ' 18+:@' + formatQuote(p.quote_avg_18);
+    return _bRow(p.nome, pct, pct + '%', cc, tip);
+  }).join('');
 
-  // ── 5. Fiducia algoritmo (gauge verticali) ──────────────────────
-  var chart5 =
-    '<div class="sisal-gauge-wrap">' +
-    allP.slice(0, 8).map(function(p) {
-      var conf = p.confidence || 0;
-      var ci   = conf > 65 ? '#49d29b' : conf > 40 ? '#ffcc00' : '#ff6600';
-      return '<div class="sisal-gauge-col" title="' + escapeHtml(p.nome) + ' — fiducia ' + conf + '%">' +
-        '<div class="sisal-gauge-bar-wrap">' +
-          '<div class="sisal-gauge-bar"><div class="sisal-gauge-fill" data-conf="' + conf + '" style="background:' + ci + '"></div></div>' +
-          '<div class="sisal-gauge-label">' + conf + '%</div>' +
-        '</div>' +
-        '<div class="sisal-gauge-name">' + escapeHtml((p.nome.split(' ')[0] || '').substring(0, 6)) + '</div>' +
-      '</div>';
-    }).join('') +
-    '</div>';
+  // ── 5. Fiducia algoritmo (barre orizzontali) ──────────────────
+  var chart5 = allP.slice(0, 8).map(function(p) {
+    var conf = p.confidence || 0;
+    var cc   = conf > 65 ? 'sisal-bar-fill--green' : conf > 40 ? 'sisal-bar-fill--yellow' : 'sisal-bar-fill--orange';
+    return _bRow(p.nome, conf, conf + '%', cc, p.nome + ' — fiducia algoritmo ' + conf + '%');
+  }).join('');
 
   // ── 6. Radar Canvas — profilo giocatore ─────────────────────────
   window._sisalRadarData = allP.slice(0, 6).map(function(p) {
@@ -2105,39 +2334,54 @@ function renderSisalCharts(board) {
         '<label class="sisal-sim-label">Record personale <span id="sisal-sim-record-val"></span></label>' +
         '<input type="range" id="sisal-sim-record" min="5" max="50" step="1" class="sisal-sim-range">' +
       '</div>' +
-      '<div class="sisal-sim-result">' +
-        '<div class="sisal-sim-result-label">Quota Titolo simulata</div>' +
-        '<div class="sisal-sim-result-value" id="sisal-sim-result">—</div>' +
-        '<div class="sisal-sim-result-delta" id="sisal-sim-delta"></div>' +
+      '<div class="sisal-sim-multi">' +
+        '<div class="sisal-sim-market-card">' +
+          '<div class="sisal-sim-market-label">🏆 Titolo</div>' +
+          '<div class="sisal-sim-market-value" id="sisal-sim-q-titolo">—</div>' +
+          '<div class="sisal-sim-market-delta" id="sisal-sim-d-titolo"></div>' +
+        '</div>' +
+        '<div class="sisal-sim-market-card">' +
+          '<div class="sisal-sim-market-label">🥉 Podio</div>' +
+          '<div class="sisal-sim-market-value" id="sisal-sim-q-podio">—</div>' +
+          '<div class="sisal-sim-market-delta" id="sisal-sim-d-podio"></div>' +
+        '</div>' +
+        '<div class="sisal-sim-market-card">' +
+          '<div class="sisal-sim-market-label">🎯 Best 30+</div>' +
+          '<div class="sisal-sim-market-value" id="sisal-sim-q-best30">—</div>' +
+          '<div class="sisal-sim-market-delta" id="sisal-sim-d-best30"></div>' +
+        '</div>' +
+        '<div class="sisal-sim-market-card">' +
+          '<div class="sisal-sim-market-label">📈 Media 18+</div>' +
+          '<div class="sisal-sim-market-value" id="sisal-sim-q-avg18">—</div>' +
+          '<div class="sisal-sim-market-delta" id="sisal-sim-d-avg18"></div>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
   // ── Assemble ─────────────────────────────────────────────────────
   el.innerHTML =
+    '<div class="sisal-charts-note">📊 Analisi basata sui top ' + allP.length + ' giocatori per classifica campionato corrente</div>' +
     '<div class="sisal-charts-grid">' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🏆 Probabilità Titolo</div>' + chart1 + '</div>' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">' + nmLabel + '</div>' + chart2 + '</div>' +
     '</div>' +
     '<div class="sisal-charts-grid">' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">📊 Media vs Record</div>' + chart3 + '</div>' +
-      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">📋 Quote multi-mercato</div>' + chart4 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🌡 Temperatura mercato</div>' + chart4 + '</div>' +
     '</div>' +
     '<div class="sisal-charts-grid sisal-charts-grid--3">' +
-      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🌡 Fiducia algoritmo</div>' + chart5 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🧠 Fiducia algoritmo</div>' + chart5 + '</div>' +
       '<div class="sisal-chart-card sisal-reveal sisal-chart-radar-card"><div class="sisal-chart-title">🕸 Radar — profilo</div>' + chart6 + '</div>' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">✦ Media × Record</div>' + chart7 + '</div>' +
     '</div>' +
     '<div class="sisal-charts-grid sisal-charts-grid--halfleft">' +
-      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🎛 Simulatore quota titolo</div>' + chart8 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🎛 Simulatore quote</div>' + chart8 + '</div>' +
     '</div>';
 
   // ── Animate + init interactive ───────────────────────────────────
   setTimeout(function() {
     el.querySelectorAll('.sisal-bar-fill[data-pct]').forEach(function(bar) {
       bar.style.width = bar.getAttribute('data-pct') + '%';
-    });
-    el.querySelectorAll('.sisal-gauge-fill[data-conf]').forEach(function(fill) {
-      fill.style.height = fill.getAttribute('data-conf') + '%';
     });
     el.querySelectorAll('.sisal-reveal').forEach(function(card, idx) {
       setTimeout(function() { card.classList.add('visible'); }, idx * 90);
@@ -2240,6 +2484,86 @@ function _drawSisalRadar(container, playerIdx) {
   ctx.fillText(player.nome, cx, cy + 4);
 }
 
+/** Draw mini radar pentagon on a .stats-radar-canvas element inside a player card */
+function _drawStatsRadar(cardEl, player, allPlayers) {
+  var canvas = cardEl.querySelector('.stats-radar-canvas');
+  if (!canvas) return;
+
+  var maxMedia  = Math.max.apply(null, allPlayers.map(function(p) { return p.media_tiro || 0; })) || 1;
+  var maxRecord = Math.max.apply(null, allPlayers.map(function(p) { return p.record || 0; })) || 1;
+  // 5 dims: Media, Record, Win%, Costanza, Podi%
+  var dims = [
+    (player.media_tiro || 0) / maxMedia,
+    (player.record || 0) / maxRecord,
+    (player.win_rate || 0) / 100,
+    (player.consistenza || 0) / 100,
+    (player.podio_rate || 0) / 100
+  ];
+  var labels = ['Media', 'Record', 'Win%', 'Costanza', 'Podi%'];
+  var n = 5;
+  var W = canvas.width, H = canvas.height;
+  var cx = W / 2, cy = H / 2 + 2;
+  var R = Math.min(W, H) / 2 - 28;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  // Background rings
+  for (var ri = 1; ri <= 4; ri++) {
+    ctx.beginPath();
+    for (var ai = 0; ai < n; ai++) {
+      var ang = (Math.PI * 2 * ai / n) - Math.PI / 2;
+      var rr  = (ri / 4) * R;
+      var xx  = cx + rr * Math.cos(ang), yy = cy + rr * Math.sin(ang);
+      if (ai === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (ri === 4 ? '0.12' : '0.05') + ')';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Axis lines + labels
+  for (var ai2 = 0; ai2 < n; ai2++) {
+    var ang2 = (Math.PI * 2 * ai2 / n) - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(ang2), cy + R * Math.sin(ang2));
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    var lx = cx + (R + 16) * Math.cos(ang2), ly = cy + (R + 16) * Math.sin(ang2);
+    ctx.font = '7px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.textAlign = 'center';
+    ctx.fillText(labels[ai2], lx, ly + 3);
+  }
+
+  // Player polygon
+  ctx.beginPath();
+  for (var di = 0; di < n; di++) {
+    var ang3 = (Math.PI * 2 * di / n) - Math.PI / 2;
+    var rr3  = dims[di] * R;
+    var xx3  = cx + rr3 * Math.cos(ang3), yy3 = cy + rr3 * Math.sin(ang3);
+    if (di === 0) ctx.moveTo(xx3, yy3); else ctx.lineTo(xx3, yy3);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,102,0,0.14)';
+  ctx.fill();
+  ctx.strokeStyle = '#ff6600';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Vertex dots
+  for (var di2 = 0; di2 < n; di2++) {
+    var ang4 = (Math.PI * 2 * di2 / n) - Math.PI / 2;
+    var rr4  = dims[di2] * R;
+    ctx.beginPath();
+    ctx.arc(cx + rr4 * Math.cos(ang4), cy + rr4 * Math.sin(ang4), 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff6600';
+    ctx.fill();
+  }
+}
+
 /** Initialise the simulatore sliders and live odds recalculation */
 function _initSisalSimulatore(container, allP, board) {
   var playerSel    = container.querySelector('#sisal-sim-player');
@@ -2247,14 +2571,31 @@ function _initSisalSimulatore(container, allP, board) {
   var recordSlider = container.querySelector('#sisal-sim-record');
   var mediaValEl   = container.querySelector('#sisal-sim-media-val');
   var recordValEl  = container.querySelector('#sisal-sim-record-val');
-  var resultEl     = container.querySelector('#sisal-sim-result');
-  var deltaEl      = container.querySelector('#sisal-sim-delta');
   if (!playerSel || !mediaSlider || !recordSlider) return;
 
-  var MARGIN    = 0.08;
+  var MARGIN    = 1.08;
   var totalR    = board.giornate_totali  || 8;
   var played    = board.giornate_giocate || 1;
   var remaining = Math.max(1, totalR - played);
+
+  function _updateCard(qId, dId, q, origQ) {
+    var qEl = container.querySelector('#' + qId);
+    var dEl = container.querySelector('#' + dId);
+    if (qEl) qEl.textContent = '@' + q.toFixed(2).replace('.', ',');
+    if (dEl) {
+      var delta = origQ - q;
+      if (Math.abs(delta) < 0.05) {
+        dEl.textContent = '\u2248 quota attuale';
+        dEl.className = 'sisal-sim-market-delta';
+      } else if (delta > 0) {
+        dEl.textContent = '\u25b2 ' + Math.abs(delta).toFixed(2);
+        dEl.className = 'sisal-sim-market-delta sisal-sim-market-delta--better';
+      } else {
+        dEl.textContent = '\u25bc ' + Math.abs(delta).toFixed(2);
+        dEl.className = 'sisal-sim-market-delta sisal-sim-market-delta--worse';
+      }
+    }
+  }
 
   function recalc() {
     var idx    = parseInt(playerSel.value) || 0;
@@ -2268,24 +2609,49 @@ function _initSisalSimulatore(container, allP, board) {
     });
     var strengths = simP.map(function(pl) { return 0.65 * pl.media + 0.35 * pl.record; });
     var totalStr  = strengths.reduce(function(a, b) { return a + b; }, 0) || 1;
-    var pT = Math.max(0.005, Math.min(0.95, (strengths[idx] / totalStr) * (0.4 + 0.6 * remaining / totalR)));
-    var q  = Math.round((1 / pT) * (1 + MARGIN) * 100) / 100;
-    var origQ = allP[idx].quote_titolo || q;
-    var delta = origQ - q;
 
-    if (resultEl) resultEl.textContent = '@' + q.toFixed(2).replace('.', ',');
-    if (deltaEl) {
-      if (Math.abs(delta) < 0.05) {
-        deltaEl.textContent = 'invariata rispetto alla quota attuale';
-        deltaEl.style.color = 'rgba(255,255,255,0.35)';
-      } else if (delta > 0) {
-        deltaEl.textContent = '▲ migliore di ' + delta.toFixed(2) + ' vs @' + formatQuote(origQ) + ' attuale';
-        deltaEl.style.color = 'var(--sisal-green)';
+    // Titolo
+    var pT = Math.max(0.005, Math.min(0.95, (strengths[idx] / totalStr) * (0.4 + 0.6 * remaining / totalR)));
+    var qT = _probToOdds(pT, MARGIN);
+
+    // Podio
+    var pPodio = Math.max(0.01, Math.min(0.97, (3 * strengths[idx] / totalStr) * (0.5 + 0.5 * remaining / totalR)));
+    var qPodio = _probToOdds(pPodio, MARGIN);
+
+    // Best 30+
+    var dist30  = 30 - record;
+    var pBest30;
+    if (dist30 <= 0) {
+      pBest30 = 0.90;
+    } else {
+      var sigma30 = Math.max(2.0, record * 0.25);
+      pBest30 = Math.min(0.93, 1 - Math.pow(1 - Math.max(0.005, _normCDF(-dist30 / sigma30)), Math.max(1, remaining)));
+    }
+    var qBest30 = _probToOdds(Math.max(0.01, pBest30), MARGIN);
+
+    // Media 18+
+    var gPlayed   = allP[idx].partite || Math.max(1, played);
+    var currTot   = media * gPlayed;
+    var pAvg18;
+    if (remaining <= 0) {
+      pAvg18 = media >= 18 ? 0.92 : 0.03;
+    } else {
+      var neededFut = (18 * (gPlayed + remaining) - currTot) / remaining;
+      if (neededFut <= 0) {
+        pAvg18 = 0.92;
+      } else if (neededFut > 49) {
+        pAvg18 = 0.01;
       } else {
-        deltaEl.textContent = '▼ peggiore di ' + Math.abs(delta).toFixed(2) + ' vs @' + formatQuote(origQ) + ' attuale';
-        deltaEl.style.color = 'var(--primary)';
+        var sigma18 = Math.max(3.0, (record - media) * 0.4 + 3.0);
+        pAvg18 = _normCDF(-((neededFut - media) / sigma18));
       }
     }
+    var qAvg18 = _probToOdds(Math.max(0.01, Math.min(0.93, pAvg18)), MARGIN);
+
+    _updateCard('sisal-sim-q-titolo', 'sisal-sim-d-titolo', qT,      allP[idx].quote_titolo  || qT);
+    _updateCard('sisal-sim-q-podio',  'sisal-sim-d-podio',  qPodio,  allP[idx].quote_podio   || qPodio);
+    _updateCard('sisal-sim-q-best30', 'sisal-sim-d-best30', qBest30, allP[idx].quote_best_30 || qBest30);
+    _updateCard('sisal-sim-q-avg18',  'sisal-sim-d-avg18',  qAvg18,  allP[idx].quote_avg_18  || qAvg18);
   }
 
   function syncToPlayer() {

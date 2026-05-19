@@ -92,7 +92,10 @@
 
               <!-- Scommesse attive (dashboard) -->
               <section style="margin-top:1.75rem">
-                <h2 class="section-title">🎰 Scommesse attive</h2>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+                  <h2 class="section-title" style="margin:0">🎰 Scommesse attive</h2>
+                  <button class="btn-link-sm" id="btn-goto-scommesse">Vedi tutte →</button>
+                </div>
                 <div id="dashboard-active-bets">
                   <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
                 </div>
@@ -136,12 +139,17 @@
 
             <!-- ── Tab: Scommesse ── -->
             <div id="tab-scommesse" class="profile-tab" hidden>
-              <h2 class="section-title">🎰 Scommesse singole</h2>
-              <div id="bets-history-list">
-                <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
+              <div class="bets-tab-header">
+                <h2 class="section-title" style="margin:0">🎰 Le mie scommesse</h2>
+                <div class="bet-filter-tabs" id="bet-filter-tabs">
+                  <button class="bet-filter-btn active" data-filter="tutte">Tutte</button>
+                  <button class="bet-filter-btn" data-filter="attiva">⏳ Attive</button>
+                  <button class="bet-filter-btn" data-filter="vinta">✅ Vinte</button>
+                  <button class="bet-filter-btn" data-filter="persa">❌ Perse</button>
+                  <button class="bet-filter-btn" data-filter="annullata">↩ Annullate</button>
+                </div>
               </div>
-              <h2 class="section-title" style="margin-top:2rem">📋 Multipli (schedine)</h2>
-              <div id="parlay-history-list">
+              <div id="all-bets-list">
                 <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
               </div>
             </div>
@@ -504,15 +512,15 @@
         +'">'+(wallet.bet_coins>=0?'+':'')+fmtCoins(wallet.bet_coins)+'</span></div>'
     }
 
-    // ── Scommesse ────────────────────────────────────────────────
+    // ── Scommesse — helpers ──────────────────────────────────────
     var _BET_LABELS = {
       titolo:'🏆 Titolo campionato', podio:'🥉 Podio campionato',
-      top5:'⭐ Top 5', best_30:'🎯 Best ≥30 (stagione)', avg_18:'📊 Media ≥18 (stagione)',
+      top5:'⭐ Top 5', best_30:'🎯 Best ≥30', avg_18:'📊 Media ≥18',
       giornata_win:'🥇 Vince la giornata', giornata_podio:'🥉 Podio giornata',
-      giornata_over_20:'📊 Over 20 (giornata)', giornata_over_25:'🎯 Over 25 (giornata)',
-      giornata_over_30:'⭐ Over 30 (giornata)', speciale:'✨ Mercato speciale'
+      giornata_over_20:'🎯 Over 20 punti', giornata_over_25:'🎯 Over 25 punti',
+      giornata_over_30:'🎯 Over 30 punti', speciale:'✨ Speciale'
     }
-    function _betLabel(b) { return b.market_label || _BET_LABELS[b.bet_type] || b.bet_type }
+    function _betLabel(b) { return _BET_LABELS[b.bet_type] || b.bet_type }
 
     function _cancelInfo(createdAt) {
       var rem = new Date(createdAt).getTime() + 3600000 - Date.now()
@@ -520,36 +528,138 @@
       return { canCancel:true, label: Math.floor(rem/60000)+'m '+ Math.floor((rem%60000)/1000)+'s' }
     }
 
+    // ── Indicatore stato corrente (porta logica da admin.js) ──────
+    function _normBetName(s) { return (s||'').toLowerCase().trim() }
+
+    function _getBetCurrentStatus(betType, playerName, giornataDate, seasonId) {
+      var stagione = (CSL.stagioni||[]).find(function(st){ return st.id===seasonId })
+      if (!stagione) return null
+      var pn = _normBetName(playerName)
+      var ok = pn && pn !== '—'
+
+      var stagBets = ['titolo','podio','top5','best_30','avg_18']
+      if (stagBets.indexOf(betType) >= 0) {
+        if (!ok) return null
+        var p = (stagione.classifica||[]).find(function(r){ return _normBetName(r.nome)===pn })
+        if (!p) return null
+        var pos = p.posizione
+        if (betType==='titolo')  return pos===1  ? {l:'1° ✓', c:'w'} : {l:pos+'°', c:'l'}
+        if (betType==='podio')   return pos<=3   ? {l:pos+'° ✓', c:'w'} : {l:pos+'°', c:'l'}
+        if (betType==='top5')    return pos<=5   ? {l:pos+'° ✓', c:'w'} : {l:pos+'°', c:'l'}
+        if (betType==='best_30') return p.record>=30   ? {l:'Rec '+p.record+' ✓', c:'w'} : {l:'Rec '+p.record+' — serve 30+', c:'l'}
+        if (betType==='avg_18')  return p.media_tiro>=18 ? {l:'Media '+p.media_tiro.toFixed(1)+' ✓', c:'w'} : {l:'Media '+p.media_tiro.toFixed(1)+' — serve ≥18', c:'l'}
+      }
+
+      if (betType.indexOf('giornata_')===0) {
+        if (!giornataDate) return null
+        var today = new Date(); today.setHours(0,0,0,0)
+        var ggDate = new Date(giornataDate+'T00:00:00')
+        if (ggDate > today) return {l:'Non ancora disputata', c:'p'}
+        var giornata = (stagione.giornate||[]).find(function(g){ return g.data===giornataDate })
+        if (!giornata) return {l:'Risultati non ancora inseriti', c:'u'}
+        if (!ok) return null
+        var pr = (giornata.risultati||[]).find(function(r){ return _normBetName(r.nome)===pn })
+        if (!pr) return {l:'Giocatore assente', c:'u'}
+        var ps = pr.posizione, sc = pr.punteggio
+        if (betType==='giornata_win')     return ps===1  ? {l:'1° — '+sc+'pt. ✓', c:'w'} : {l:ps+'° — '+sc+'pt.', c:'l'}
+        if (betType==='giornata_podio')   return ps<=3   ? {l:ps+'° — '+sc+'pt. ✓', c:'w'} : {l:ps+'° — '+sc+'pt.', c:'l'}
+        if (betType==='giornata_over_20') return sc>=20  ? {l:sc+'pt. ✓', c:'w'} : {l:sc+'pt. — serve 20+', c:'l'}
+        if (betType==='giornata_over_25') return sc>=25  ? {l:sc+'pt. ✓', c:'w'} : {l:sc+'pt. — serve 25+', c:'l'}
+        if (betType==='giornata_over_30') return sc>=30  ? {l:sc+'pt. ✓', c:'w'} : {l:sc+'pt. — serve 30+', c:'l'}
+      }
+      return null
+    }
+
+    function _betCurHtml(st) {
+      if (!st) return ''
+      var cls   = {w:'bet-cur-win',l:'bet-cur-lose',p:'bet-cur-pending',u:'bet-cur-unknown'}[st.c] || 'bet-cur-unknown'
+      var icon  = {w:'🟢',l:'🔴',p:'⏳',u:'❓'}[st.c] || '❓'
+      return '<span class="bet-current-status '+cls+'">'+icon+' '+_esc(st.l)+'</span>'
+    }
+
+    // ── Render contesto scommessa (data giornata + label speciale) ─
+    function _betContextHtml(b, isActive) {
+      var parts = []
+      var isGiornata = b.bet_type && b.bet_type.indexOf('giornata_')===0
+      var isSpeciale = b.bet_type === 'speciale'
+      if (b.player_name && b.player_name !== '—' && b.player_name.trim()) {
+        parts.push('<span class="bet-ctx-player">🎯 '+_esc(b.player_name)+'</span>')
+      }
+      if (b.giornata_date) {
+        var today = new Date(); today.setHours(0,0,0,0)
+        var ggD   = new Date(b.giornata_date+'T00:00:00')
+        var ggFmt = ggD.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+        var ggNum = b.giornata_num ? ' — GG'+b.giornata_num : ''
+        var past  = isActive && ggD < today
+        parts.push('<span class="bet-ctx-date'+(past?' bet-ctx-date--past':'')+'">📅 '+ggFmt+ggNum+'</span>')
+      } else if (isGiornata) {
+        parts.push('<span class="bet-ctx-warn">⚠ Giornata non specificata</span>')
+      }
+      if (isSpeciale && b.market_label) {
+        parts.push('<span class="bet-ctx-label">💬 '+_esc(b.market_label)+'</span>')
+      }
+      return parts.length ? '<div class="bet-card-context">'+parts.join('')+'</div>' : ''
+    }
+
+    // ── Status badge ──────────────────────────────────────────────
+    function _betStatusBadge(status) {
+      var map = {
+        attiva:    '<span class="bet-status bet-status--active">⏳ Attiva</span>',
+        vinta:     '<span class="bet-status bet-status--won">✅ Vinta</span>',
+        persa:     '<span class="bet-status bet-status--lost">❌ Persa</span>',
+        annullata: '<span class="bet-status bet-status--cancelled">↩ Annullata</span>',
+      }
+      return map[status] || '<span class="bet-status">'+_esc(status)+'</span>'
+    }
+
+    // ── Wallet update helper ──────────────────────────────────────
+    async function _updateWalletDisplay() {
+      var w = await CSLAuth.getWallet()
+      var tot = w.total
+      var hdEl  = document.getElementById('wallet-balance-header')
+      var totEl = document.getElementById('wallet-total-amount')
+      if (hdEl)  hdEl.textContent  = fmtCoins(tot)
+      if (totEl) totEl.textContent = fmtCoins(tot) + ' 🪙'
+    }
+
+    // ── renderActiveBets (Dashboard) ─────────────────────────────
     async function renderActiveBets(container) {
       var bets = (await CSLAuth.getBets()).filter(function(b){ return b.status==='attiva' })
       if (!bets.length) {
-        container.innerHTML = '<p class="text-muted">Nessuna scommessa attiva al momento.</p>'
+        container.innerHTML = '<p class="text-muted">Nessuna scommessa attiva al momento. <a href="sisal.html" class="btn-link-sm">Vai al SISAL →</a></p>'
         return
       }
+      var today = new Date(); today.setHours(0,0,0,0)
+
       container.innerHTML = '<div class="bets-list" id="active-bets-list">'
         + bets.map(function(b) {
           var potential = Math.floor(b.importo * b.quota)
-          var ci = _cancelInfo(b.created_at)
-          var gtag = b.giornata_num ? ' <span class="bet-g-tag">G'+b.giornata_num+'</span>' : ''
+          var ci  = _cancelInfo(b.created_at)
+          var ctx = _betContextHtml(b, true)
+          var curSt = _getBetCurrentStatus(b.bet_type, b.player_name, b.giornata_date, _seasonId)
+          var isExpired = b.giornata_date && new Date(b.giornata_date+'T00:00:00') < today
+          var cardCls = isExpired ? 'bet-row card admin-bet-card--expired' : 'bet-row card'
           var cancelHtml = ci.canCancel
             ? '<button class="btn-cancel-bet" data-bid="'+_esc(b.id)+'">✕ Cancella ('+ci.label+')</button>'
-            : '<span class="bet-cancel-expired">🔒 Non cancellabile</span>'
-          return '<div class="bet-row card" id="brow-'+_esc(b.id)+'">'
-            +'<div class="bet-row-info">'
-            +'<span class="bet-row-player">'+_esc(b.player_name)+'</span>'
-            +gtag
-            +'<span class="bet-row-type">'+_esc(_betLabel(b))+'</span>'
-            +'<span class="bet-row-quota">@'+fmtQ(b.quota)+'</span>'
+            : ''
+          return '<div class="'+cardCls+'" id="brow-'+_esc(b.id)+'">'
+            +'<div class="bet-card-header-compact">'
+            +'<span class="bet-type-badge">'+_esc(_betLabel(b))+'</span>'
+            +(isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : '')
             +'</div>'
+            +ctx
             +'<div class="bet-row-amounts">'
             +'<span class="bet-row-importo">🪙 '+fmtCoins(b.importo)+' puntati</span>'
             +'<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
             +'</div>'
-            +'<div class="bet-row-actions">'+cancelHtml+'</div>'
+            +'<div class="bet-row-footer">'
+            +_betCurHtml(curSt)
+            +(cancelHtml ? '<div class="bet-row-actions">'+cancelHtml+'</div>' : '')
+            +'</div>'
             +'</div>'
         }).join('')
         +'</div>'
-      // Cancel via event delegation
+
       container.addEventListener('click', async function(e) {
         var btn = e.target.closest('.btn-cancel-bet')
         if (!btn) return
@@ -559,145 +669,235 @@
         if (res && res.error) {
           btn.disabled = false; btn.textContent = '✕ Cancella'
           var row = document.getElementById('brow-'+bid)
-          if (row) {
-            var errEl = row.querySelector('.bet-cancel-err') || document.createElement('span')
-            errEl.className = 'bet-cancel-err'
-            errEl.textContent = ' — ' + res.error
-            row.querySelector('.bet-row-actions').appendChild(errEl)
-          }
+          if (row) { var e2 = document.createElement('span'); e2.className='bet-cancel-err'; e2.textContent=' — '+res.error; row.querySelector('.bet-row-actions').appendChild(e2) }
         } else {
-          var row = document.getElementById('brow-'+bid)
-          if (row) row.remove()
-          // Aggiorna saldo nel profilo
-          var w = await CSLAuth.getWallet()
-          var tot = w.total
-          var hdEl = document.getElementById('wallet-balance-header')
-          var totEl = document.getElementById('wallet-total-amount')
-          if (hdEl)  hdEl.textContent  = fmtCoins(tot)
-          if (totEl) totEl.textContent = fmtCoins(tot) + ' 🪙'
+          await renderActiveBets(container)
+          _updateWalletDisplay()
         }
       })
     }
 
-    async function renderBetsHistory(container) {
-      var bets = await CSLAuth.getBets()
-      if (!bets.length) {
-        container.innerHTML = '<p class="text-muted">Nessuna scommessa singola effettuata.</p>'
-        return
-      }
-      var statusLabel = { attiva:'⏳ Attiva', vinta:'✅ Vinta', persa:'❌ Persa', annullata:'↩ Annullata' }
-      var statusCls   = { attiva:'bet-status--active', vinta:'bet-status--won', persa:'bet-status--lost', annullata:'bet-status--cancelled' }
-      container.innerHTML = '<div class="bets-list">'
-        + bets.map(function(b) {
-          var potential = Math.floor(b.importo * b.quota)
-          var profitHtml = (b.vincita_netta !== null && b.vincita_netta !== undefined)
-            ? '<span class="bet-row-profit '+(b.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'
-              +(b.vincita_netta>=0?'+':'')+fmtCoins(b.vincita_netta)+' Bossoli</span>'
-            : ''
-          var dateStr = new Date(b.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
-          var gtag = b.giornata_num ? ' <span class="bet-g-tag">G'+b.giornata_num+'</span>' : ''
-          return '<div class="bet-row card">'
-            +'<div class="bet-row-info">'
-            +'<span class="bet-row-player">'+_esc(b.player_name)+'</span>'
-            +gtag
-            +'<span class="bet-row-type">'+_esc(_betLabel(b))+'</span>'
-            +'<span class="bet-row-quota">@'+fmtQ(b.quota)+'</span>'
-            +'<span class="bet-status '+_esc(statusCls[b.status]||'')+'">'+_esc(statusLabel[b.status]||b.status)+'</span>'
-            +'</div>'
-            +'<div class="bet-row-amounts">'
-            +'<span class="bet-row-importo">🪙 '+fmtCoins(b.importo)+' puntati</span>'
-            +(b.status==='attiva'
-              ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
-              : profitHtml)
-            +'<span class="bet-row-date">'+dateStr+'</span>'
-            +'</div>'
-            +'</div>'
-        }).join('')
-        +'</div>'
-    }
+    // ── renderAllBets (Tab Scommesse — singole + parlay unificati) ─
+    var _allBetsCache  = null
+    var _allBetsFilter = 'tutte'
 
-    async function renderParlayHistory(container) {
-      var parlays = await CSLAuth.getParlayBets()
-      if (!parlays.length) {
-        container.innerHTML = '<p class="text-muted">Nessuna scommessa multipla effettuata.</p>'
-        return
+    async function renderAllBets(container) {
+      if (!_allBetsCache) {
+        container.innerHTML = '<p class="text-muted">Caricamento…</p>'
+        var results = await Promise.all([CSLAuth.getBets(), CSLAuth.getParlayBets()])
+        _allBetsCache = {
+          singole: results[0],
+          parlay:  results[1],
+        }
       }
-      var statusLabel = { attiva:'⏳ Attiva', vinta:'✅ Vinta', persa:'❌ Persa', annullata:'↩ Annullata' }
-      var statusCls   = { attiva:'bet-status--active', vinta:'bet-status--won', persa:'bet-status--lost', annullata:'bet-status--cancelled' }
-      var panelLabel  = { stagione:'📅 Stagione', giornata:'⚡ Giornata', speciali:'✨ Speciali' }
-      container.innerHTML = '<div class="bets-list" id="parlay-bets-list">'
-        + parlays.map(function(p) {
-          var legs      = Array.isArray(p.legs) ? p.legs : []
-          var potential = Math.floor(p.importo * p.quota_final)
-          var bonusPct  = Math.round((p.bonus_mult - 1) * 100)
-          var dateStr   = new Date(p.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
-          var profitHtml = (p.vincita_netta !== null && p.vincita_netta !== undefined)
-            ? '<span class="bet-row-profit '+(p.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'+(p.vincita_netta>=0?'+':'')+fmtCoins(p.vincita_netta)+' Bossoli</span>'
-            : ''
-          var legsHtml = legs.map(function(l) {
-            return '<div class="parlay-leg">📌 '
-              + (l.player_name && l.player_name !== '—' ? '<strong>'+_esc(l.player_name)+'</strong> · ' : '')
-              + _esc(l.market_label || l.bet_type)
-              + ' <em>@'+fmtQ(l.quota)+'</em></div>'
-          }).join('')
-          var cancelHtml = ''
-          if (p.status === 'attiva') {
-            var ci = _cancelInfo(p.created_at)
-            cancelHtml = ci.canCancel
-              ? '<button class="btn-cancel-bet btn-cancel-parlay" data-pid="'+_esc(p.id)+'">✕ Cancella ('+ci.label+')</button>'
-              : '<span class="bet-cancel-expired">🔒 Non cancellabile</span>'
-          }
-          return '<div class="bet-row card parlay-row" id="prow-'+_esc(p.id)+'">'
-            +'<div class="bet-row-info">'
-            +'<span class="bet-parlay-badge">'+_esc(panelLabel[p.panel]||p.panel)+'</span>'
-            +'<span class="bet-row-quota">'+legs.length+' selezioni → @'+fmtQ(p.quota_final)
-              +(bonusPct > 0 ? ' <em class="parlay-bonus">(+'+bonusPct+'% bonus)</em>' : '')+'</span>'
-            +'<span class="bet-status '+_esc(statusCls[p.status]||'')+'">'+_esc(statusLabel[p.status]||p.status)+'</span>'
-            +'</div>'
-            +'<div class="parlay-legs-list">'+legsHtml+'</div>'
-            +'<div class="bet-row-amounts">'
-            +'<span class="bet-row-importo">🪙 '+fmtCoins(p.importo)+' puntati</span>'
-            +(p.status==='attiva'
-              ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
-              : profitHtml)
-            +'<span class="bet-row-date">'+dateStr+'</span>'
-            +'</div>'
-            +(cancelHtml ? '<div class="bet-row-actions">'+cancelHtml+'</div>' : '')
-            +'</div>'
-        }).join('')
-        +'</div>'
-      // Cancellazione via event delegation
+      _renderFilteredBets(container)
+
+      // Bind filter buttons (once)
+      document.querySelectorAll('.bet-filter-btn').forEach(function(btn) {
+        btn.onclick = function() {
+          document.querySelectorAll('.bet-filter-btn').forEach(function(b){ b.classList.remove('active') })
+          btn.classList.add('active')
+          _allBetsFilter = btn.dataset.filter
+          _renderFilteredBets(container)
+        }
+      })
+
+      // Bind cancel events
       container.addEventListener('click', async function(e) {
-        var btn = e.target.closest('.btn-cancel-parlay')
+        var btn = e.target.closest('.btn-cancel-bet')
         if (!btn) return
-        var pid = btn.getAttribute('data-pid')
+        var bid = btn.dataset.bid, pid = btn.dataset.pid
         btn.disabled = true; btn.textContent = 'Annullamento…'
-        var res = await CSLAuth.cancelParlay(pid)
+        var res = bid ? await CSLAuth.cancelBet(bid) : await CSLAuth.cancelParlay(pid)
         if (res && res.error) {
           btn.disabled = false; btn.textContent = '✕ Cancella'
-          var row = document.getElementById('prow-'+pid)
-          if (row) {
-            var errEl = row.querySelector('.bet-cancel-err') || document.createElement('span')
-            errEl.className = 'bet-cancel-err'
-            errEl.textContent = ' — ' + res.error
-            row.querySelector('.bet-row-actions').appendChild(errEl)
-          }
         } else {
-          var row = document.getElementById('prow-'+pid)
-          if (row) row.remove()
-          var w = await CSLAuth.getWallet()
-          var tot = w.total
-          var hdEl = document.getElementById('wallet-balance-header')
-          var totEl = document.getElementById('wallet-total-amount')
-          if (hdEl)  hdEl.textContent  = fmtCoins(tot)
-          if (totEl) totEl.textContent = fmtCoins(tot) + ' 🪙'
+          _allBetsCache = null  // invalida cache
+          await renderAllBets(container)
+          _updateWalletDisplay()
+          // Aggiorna anche dashboard
+          await renderActiveBets(document.getElementById('dashboard-active-bets'))
         }
       })
+    }
+
+    function _renderFilteredBets(container) {
+      var f = _allBetsFilter
+      var singole = (_allBetsCache.singole||[]).filter(function(b){ return f==='tutte'||b.status===f })
+      var parlay  = (_allBetsCache.parlay ||[]).filter(function(b){ return f==='tutte'||b.status===f })
+
+      // Riepilogo contatori (sempre su dati non filtrati)
+      var allS = _allBetsCache.singole||[], allP = _allBetsCache.parlay||[]
+      var counts = {}
+      ;['attiva','vinta','persa','annullata'].forEach(function(s) {
+        counts[s] = allS.filter(function(b){return b.status===s}).length
+                  + allP.filter(function(b){return b.status===s}).length
+      })
+      // Aggiorna badge sui filter buttons
+      document.querySelectorAll('.bet-filter-btn').forEach(function(btn) {
+        var fv = btn.dataset.filter
+        var cnt = fv === 'tutte' ? (allS.length+allP.length) : (counts[fv]||0)
+        var label = {tutte:'Tutte',attiva:'⏳ Attive',vinta:'✅ Vinte',persa:'❌ Perse',annullata:'↩ Annullate'}[fv] || fv
+        btn.innerHTML = label + (cnt > 0 ? ' <span class="bet-filter-count">'+cnt+'</span>' : '')
+      })
+
+      var merged = [
+        ...singole.map(function(b){ return Object.assign({_tipo:'singola'}, b) }),
+        ...parlay.map(function(b){  return Object.assign({_tipo:'parlay'},  b) }),
+      ].sort(function(a,b){ return b.created_at.localeCompare(a.created_at) })
+
+      if (!merged.length) {
+        container.innerHTML = '<p class="text-muted" style="padding:1rem 0">Nessuna scommessa'+(f!=='tutte'?' con questo filtro':'ancora effettuata')+'.</p>'
+        return
+      }
+
+      var today = new Date(); today.setHours(0,0,0,0)
+      container.innerHTML = '<div class="bets-list">'
+        + merged.map(function(b) {
+          return b._tipo === 'singola' ? _renderSingolaBetCard(b, today) : _renderParlayBetCard(b, today)
+        }).join('')
+        + '</div>'
+    }
+
+    function _renderSingolaBetCard(b, today) {
+      var isActive  = b.status === 'attiva'
+      var isExpired = isActive && b.giornata_date && new Date(b.giornata_date+'T00:00:00') < today
+      var cardCls   = isExpired ? 'bet-row card admin-bet-card--expired' : 'bet-row card'
+      var potential = Math.floor(b.importo * b.quota)
+      var dateStr   = new Date(b.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
+      var ctx       = _betContextHtml(b, isActive)
+
+      var profitHtml = ''
+      if (!isActive && b.vincita_netta !== null && b.vincita_netta !== undefined) {
+        profitHtml = '<span class="bet-row-profit '+(b.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'
+          +(b.vincita_netta>=0?'+':'')+fmtCoins(b.vincita_netta)+' Bossoli</span>'
+      }
+
+      var ci = isActive ? _cancelInfo(b.created_at) : null
+      var cancelHtml = (ci && ci.canCancel)
+        ? '<button class="btn-cancel-bet" data-bid="'+_esc(b.id)+'">✕ Cancella ('+ci.label+')</button>'
+        : ''
+
+      var curSt = isActive ? _getBetCurrentStatus(b.bet_type, b.player_name, b.giornata_date, _seasonId) : null
+
+      return '<div class="'+cardCls+'">'
+        +'<div class="bet-card-header-compact">'
+        +'<span class="bet-card-date">'+dateStr+'</span>'
+        +'<span class="bet-type-badge">'+_esc(_betLabel(b))+'</span>'
+        +_betStatusBadge(b.status)
+        +(isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : '')
+        +'</div>'
+        +ctx
+        +'<div class="bet-row-amounts">'
+        +'<span class="bet-row-importo">🪙 '+fmtCoins(b.importo)+' puntati</span>'
+        +(isActive
+          ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+          : profitHtml)
+        +'</div>'
+        +'<div class="bet-row-footer">'
+        +_betCurHtml(curSt)
+        +(cancelHtml ? '<div class="bet-row-actions">'+cancelHtml+'</div>' : '')
+        +'</div>'
+        +'</div>'
+    }
+
+    function _renderParlayBetCard(p, today) {
+      var isActive  = p.status === 'attiva'
+      var isExpired = isActive && p.giornata_date && new Date(p.giornata_date+'T00:00:00') < today
+      var cardCls   = isExpired ? 'bet-row card parlay-row admin-bet-card--expired' : 'bet-row card parlay-row'
+      var legs      = Array.isArray(p.legs) ? p.legs : []
+      var potential = Math.floor(p.importo * p.quota_final)
+      var bonusPct  = Math.round((p.bonus_mult - 1) * 100)
+      var dateStr   = new Date(p.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
+      var panelLabel = {stagione:'📅 Stagione',giornata:'⚡ Giornata',speciali:'✨ Speciali'}
+      var profitHtml = ''
+      if (!isActive && p.vincita_netta !== null && p.vincita_netta !== undefined) {
+        profitHtml = '<span class="bet-row-profit '+(p.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'
+          +(p.vincita_netta>=0?'+':'')+fmtCoins(p.vincita_netta)+' Bossoli</span>'
+      }
+
+      // Render gambe con stato
+      var legsHtml = legs.map(function(l, i) {
+        var legDate = l.giornata_date || p.giornata_date
+        var legSt   = isActive ? _getBetCurrentStatus(l.bet_type, l.player_name, legDate, p.season_id) : null
+        var lTipo   = _BET_LABELS[l.bet_type] || l.bet_type || '?'
+        var lLabel  = l.market_label ? ' <em class="text-muted">— '+_esc(l.market_label)+'</em>' : ''
+        var lPlayer = (l.player_name && l.player_name !== '—') ? '<strong>🎯 '+_esc(l.player_name)+'</strong> · ' : ''
+        return '<div class="parlay-leg">'
+          +'<span class="bet-leg-num">'+(i+1)+'</span> '
+          +lPlayer+_esc(lTipo)+lLabel
+          +' <em class="text-muted">@'+fmtQ(l.quota)+'</em>'
+          +(legSt ? ' '+_betCurHtml(legSt) : '')
+          +'</div>'
+      }).join('')
+
+      // Riepilogo overall parlay
+      var overallHtml = ''
+      if (isActive && legs.length > 0) {
+        var legStatuses = legs.map(function(l) {
+          return _getBetCurrentStatus(l.bet_type, l.player_name, l.giornata_date||p.giornata_date, p.season_id)
+        })
+        var nW = legStatuses.filter(function(s){ return s&&s.c==='w' }).length
+        var nL = legStatuses.filter(function(s){ return s&&s.c==='l' }).length
+        if (nL > 0) {
+          overallHtml = '<span class="bet-current-status bet-cur-lose">🔴 '+nL+' gamba'+
+            (nL!==1?'e':'')+' perdente'+(nL!==1?'i':'')+' — schedina a rischio</span>'
+        } else if (nW === legs.length && nW > 0) {
+          overallHtml = '<span class="bet-current-status bet-cur-win">🟢 Tutte vincenti ('+nW+'/'+legs.length+')</span>'
+        } else if (nW > 0) {
+          overallHtml = '<span class="bet-current-status bet-cur-pending">⏳ '+nW+'/'+legs.length+' vincenti — in corso</span>'
+        }
+      }
+
+      // Data giornata
+      var dateRefHtml = ''
+      if (p.giornata_date) {
+        var ggD   = new Date(p.giornata_date+'T00:00:00')
+        var ggFmt = ggD.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+        var ggNum = p.giornata_num ? ' — GG'+p.giornata_num : ''
+        dateRefHtml = '<div class="bet-card-context">'
+          +'<span class="bet-ctx-date'+(isExpired?' bet-ctx-date--past':'')+'">📅 '+ggFmt+ggNum+'</span>'
+          +'</div>'
+      }
+
+      var ci = isActive ? _cancelInfo(p.created_at) : null
+      var cancelHtml = (ci && ci.canCancel)
+        ? '<button class="btn-cancel-bet" data-pid="'+_esc(p.id)+'">✕ Cancella ('+ci.label+')</button>'
+        : ''
+
+      return '<div class="'+cardCls+'">'
+        +'<div class="bet-card-header-compact">'
+        +'<span class="bet-card-date">'+dateStr+'</span>'
+        +'<span class="bet-type-badge">📋 '+_esc(panelLabel[p.panel]||p.panel)
+          +' · '+legs.length+' selezioni@'+fmtQ(p.quota_final)
+          +(bonusPct>0?' <em class="parlay-bonus">(+'+bonusPct+'%)</em>':'')+'</span>'
+        +_betStatusBadge(p.status)
+        +(isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : '')
+        +'</div>'
+        +dateRefHtml
+        +'<div class="parlay-legs-list">'+legsHtml+'</div>'
+        +'<div class="bet-row-amounts">'
+        +'<span class="bet-row-importo">🪙 '+fmtCoins(p.importo)+' puntati</span>'
+        +(isActive
+          ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+          : profitHtml)
+        +'</div>'
+        +(overallHtml || cancelHtml ? '<div class="bet-row-footer">'+overallHtml+(cancelHtml?'<div class="bet-row-actions">'+cancelHtml+'</div>':'')+'</div>' : '')
+        +'</div>'
     }
 
     // ── Sidebar tab switching ─────────────────────────────────────
     var _activeTab = 'dashboard'
     function initSidebar() {
+      // "Vedi tutte →" nel dashboard
+      var gotoBtn = document.getElementById('btn-goto-scommesse')
+      if (gotoBtn) {
+        gotoBtn.addEventListener('click', function() {
+          var btn = document.querySelector('.profile-sidebar-btn[data-tab="scommesse"]')
+          if (btn) btn.click()
+        })
+      }
+
       document.querySelectorAll('.profile-sidebar-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var tab = btn.getAttribute('data-tab')
@@ -709,10 +909,8 @@
           _activeTab = tab
           // Carica dati on-demand
           if (tab === 'scommesse') {
-            var c  = document.getElementById('bets-history-list')
-            var cp = document.getElementById('parlay-history-list')
-            if (c  && c.querySelector('.text-muted'))  renderBetsHistory(c)
-            if (cp && cp.querySelector('.text-muted')) renderParlayHistory(cp)
+            var c = document.getElementById('all-bets-list')
+            if (c && c.querySelector('.text-muted')) renderAllBets(c)
           }
         })
       })

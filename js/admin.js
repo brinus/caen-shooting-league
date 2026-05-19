@@ -569,6 +569,92 @@ async function reloadScommesse() {
   await Promise.all([loadScommesseSingole(), loadScommesseMultiple()])
 }
 
+// ── Indicatore vincente/perdente in tempo reale ────────────────
+// Usa i dati statici CSL.stagioni (classifica + risultati giornate).
+
+function _normName(s) { return (s || '').toLowerCase().trim() }
+
+function getBetCurrentStatus(betType, playerName, giornataDate, seasonId) {
+  const stagione = (CSL.stagioni || []).find(st => st.id === seasonId)
+  if (!stagione) return null
+
+  const pn = _normName(playerName)
+  const isValidPlayer = pn && pn !== '—'
+
+  // ── Scommesse stagionali ─────────────────────────────────────
+  if (['titolo', 'podio', 'top5', 'best_30', 'avg_18'].includes(betType)) {
+    if (!isValidPlayer) return null
+    const p = (stagione.classifica || []).find(r => _normName(r.nome) === pn)
+    if (!p) return null
+    const pos = p.posizione
+    switch (betType) {
+      case 'titolo':
+        return pos === 1 ? _betWin(`1° ✓`) : _betLose(`${pos}°`)
+      case 'podio':
+        return pos <= 3  ? _betWin(`${pos}° ✓`) : _betLose(`${pos}°`)
+      case 'top5':
+        return pos <= 5  ? _betWin(`${pos}° ✓`) : _betLose(`${pos}°`)
+      case 'best_30': {
+        const r = p.record
+        return r >= 30 ? _betWin(`Record ${r} ✓`) : _betLose(`Record ${r} — serve 30+`)
+      }
+      case 'avg_18': {
+        const m = p.media_tiro
+        return m >= 18 ? _betWin(`Media ${m.toFixed(1)} ✓`) : _betLose(`Media ${m.toFixed(1)} — serve ≥18`)
+      }
+    }
+  }
+
+  // ── Scommesse di giornata ────────────────────────────────────
+  if (betType.startsWith('giornata_')) {
+    if (!giornataDate) return null
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const ggDate = new Date(giornataDate + 'T00:00:00')
+    if (ggDate > today) return { label: 'Non ancora disputata', cls: 'pending' }
+
+    const giornata = (stagione.giornate || []).find(g => g.data === giornataDate)
+    if (!giornata) return { label: 'Risultati non ancora inseriti', cls: 'unknown' }
+
+    const risultati = giornata.risultati || []
+    if (!isValidPlayer) return null
+    const pr = risultati.find(r => _normName(r.nome) === pn)
+    if (!pr) return { label: 'Giocatore assente', cls: 'unknown' }
+
+    const pos = pr.posizione, score = pr.punteggio
+    switch (betType) {
+      case 'giornata_win':
+        return pos === 1  ? _betWin(`1° — ${score}pt. ✓`) : _betLose(`${pos}° — ${score}pt.`)
+      case 'giornata_podio':
+        return pos <= 3   ? _betWin(`${pos}° — ${score}pt. ✓`) : _betLose(`${pos}° — ${score}pt.`)
+      case 'giornata_over_20':
+        return score >= 20 ? _betWin(`${score}pt. ✓`) : _betLose(`${score}pt. — serve 20+`)
+      case 'giornata_over_25':
+        return score >= 25 ? _betWin(`${score}pt. ✓`) : _betLose(`${score}pt. — serve 25+`)
+      case 'giornata_over_30':
+        return score >= 30 ? _betWin(`${score}pt. ✓`) : _betLose(`${score}pt. — serve 30+`)
+    }
+  }
+
+  return null // speciale o non determinabile
+}
+
+function _betWin(label)  { return { label, cls: 'winning' } }
+function _betLose(label) { return { label, cls: 'losing' }  }
+
+function betCurrentStatusHtml(status) {
+  if (!status) return ''
+  const map = {
+    winning: 'bet-cur-win',
+    losing:  'bet-cur-lose',
+    pending: 'bet-cur-pending',
+    unknown: 'bet-cur-unknown',
+  }
+  const icons = { winning: '🟢', losing: '🔴', pending: '⏳', unknown: '❓' }
+  const cls  = map[status.cls] || 'bet-cur-unknown'
+  const icon = icons[status.cls] || '❓'
+  return `<span class="bet-current-status ${cls}">${icon} ${escHtml(status.label)}</span>`
+}
+
 async function loadScommesseSingole() {
   const listEl = document.getElementById('scommesse-singole-list')
   const statusFilter = document.getElementById('scommesse-filtro-status').value
@@ -658,6 +744,12 @@ async function loadScommesseSingole() {
     const cardClass    = isExpired ? 'admin-bet-card admin-bet-card--expired' : 'admin-bet-card'
     const actions      = s.status === 'attiva' ? betActionButtons(s.id, 'singola') : ''
 
+    // Indicatore vincente/perdente (solo per scommesse attive)
+    const curStatus    = s.status === 'attiva'
+      ? getBetCurrentStatus(s.bet_type, s.player_name, s.giornata_date, s.season_id)
+      : null
+    const curStatusHtml = betCurrentStatusHtml(curStatus)
+
     return `<div class="${cardClass}" data-id="${escHtml(s.id)}">
       <div class="bet-card-header">
         <span class="bet-card-date">${createdStr}</span>
@@ -668,6 +760,7 @@ async function loadScommesseSingole() {
       ${contextHtml}
       <div class="bet-card-footer">
         <span class="bet-card-amount">${s.importo} 🪙 → <strong>${potWin} 🪙</strong> <span class="text-muted">(×${s.quota})</span></span>
+        ${curStatusHtml}
         ${actions ? `<div class="bet-card-actions">${actions}</div>` : ''}
       </div>
     </div>`
@@ -769,11 +862,18 @@ async function loadScommesseMultiple() {
       const lTipo   = BET_LABEL[l.bet_type] || l.bet_type || '?'
       const lPlayer = (l.player_name && l.player_name !== '—') ? escHtml(l.player_name) : ''
       const lLabel  = l.market_label ? `<em class="text-muted"> — ${escHtml(l.market_label)}</em>` : ''
+      // Indicatore per la singola gamba
+      const legDate   = l.giornata_date || s.giornata_date   // usa data dal leg o dalla parlay
+      const legStatus = s.status === 'attiva'
+        ? getBetCurrentStatus(l.bet_type, l.player_name, legDate, s.season_id)
+        : null
+      const legStatusHtml = betCurrentStatusHtml(legStatus)
       return `<div class="bet-leg-row">
         <span class="bet-leg-num">${i + 1}</span>
         <span class="bet-leg-type">${escHtml(lTipo)}</span>
         ${lPlayer ? `<span class="bet-leg-player">🎯 ${lPlayer}</span>` : ''}
         ${lLabel}
+        ${legStatusHtml}
         <span class="bet-leg-quota text-muted">×${Number(l.quota).toFixed(2)}</span>
       </div>`
     }).join('')
@@ -781,6 +881,24 @@ async function loadScommesseMultiple() {
     const expiredBadge = isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : ''
     const cardClass    = isExpired ? 'admin-bet-card admin-bet-card--expired' : 'admin-bet-card'
     const actions      = s.status === 'attiva' ? betActionButtons(s.id, 'multipla') : ''
+
+    // Riepilogo stato gambe (solo scommessa attiva)
+    let parlayOverallHtml = ''
+    if (s.status === 'attiva' && legs.length > 0) {
+      const legStatuses = legs.map(function (l) {
+        return getBetCurrentStatus(l.bet_type, l.player_name, l.giornata_date || s.giornata_date, s.season_id)
+      })
+      const winning = legStatuses.filter(st => st?.cls === 'winning').length
+      const losing  = legStatuses.filter(st => st?.cls === 'losing').length
+      const total   = legs.length
+      if (losing > 0) {
+        parlayOverallHtml = `<span class="bet-current-status bet-cur-lose">🔴 ${losing} gamba${losing !== 1 ? 'e' : ''} perdente${losing !== 1 ? 'i' : ''} — schedina a rischio</span>`
+      } else if (winning === total && total > 0) {
+        parlayOverallHtml = `<span class="bet-current-status bet-cur-win">🟢 Tutte vincenti (${winning}/${total})</span>`
+      } else if (winning > 0) {
+        parlayOverallHtml = `<span class="bet-current-status bet-cur-pending">⏳ ${winning}/${total} vincenti — in corso</span>`
+      }
+    }
 
     return `<div class="${cardClass}" data-id="${escHtml(s.id)}">
       <div class="bet-card-header">
@@ -794,6 +912,7 @@ async function loadScommesseMultiple() {
       <div class="bet-legs-list">${legsHtml}</div>
       <div class="bet-card-footer">
         <span class="bet-card-amount">${s.importo} 🪙 → <strong>${potWin} 🪙</strong> <span class="text-muted">(×${Number(s.quota_final).toFixed(2)})</span></span>
+        ${parlayOverallHtml}
         ${actions ? `<div class="bet-card-actions">${actions}</div>` : ''}
       </div>
     </div>`

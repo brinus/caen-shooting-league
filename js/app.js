@@ -1696,6 +1696,111 @@ function _findSisalNextMatchday(stagione) {
   return null;
 }
 
+/** Box-Muller transform: single sample from N(mu, sigma) */
+function _randNorm(mu, sigma) {
+  var u1 = Math.random(), u2 = Math.random();
+  var z  = Math.sqrt(-2 * Math.log(Math.max(1e-10, u1))) * Math.cos(2 * Math.PI * u2);
+  return mu + sigma * z;
+}
+
+/**
+ * Monte Carlo season simulation.
+ * Simulates N_SIM full seasons from the current standings.
+ * Sigma per player: (record - media) / sqrt(2*ln(k)), floor 3, cap 9.
+ * Championship points by giornata rank: [10,8,6,4,4,2,2,1,1,1,0,...].
+ * Returns per-player { pTitolo, pPodio, pTop5, pBest30, pAvg18 }.
+ */
+function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
+  var n       = classifica.length;
+  var rimaste = Math.max(0, totali - giocate);
+  var PTS     = [10, 8, 6, 4, 4, 2, 2, 1, 1, 1];
+
+  var medias  = classifica.map(function(p) { return p.media_tiro  || 0; });
+  var sigmas  = classifica.map(function(p) {
+    var k   = Math.max(2, p.partite || giocate);
+    var z_k = Math.sqrt(2 * Math.log(k));
+    return Math.min(9, Math.max(3.0, ((p.record || 0) - (p.media_tiro || 0)) / z_k));
+  });
+  var gPlayed = classifica.map(function(p) { return p.partite || giocate; });
+  var curPts  = classifica.map(function(p) { return p.punti_campionato || 0; });
+  var curSums = medias.map(function(m, i) { return m * gPlayed[i]; });
+
+  // Season already over: deterministic result
+  if (rimaste === 0) {
+    var ord0 = curPts.map(function(_, i) { return i; })
+                     .sort(function(a, b) { return curPts[b] !== curPts[a] ? curPts[b] - curPts[a] : curSums[b] - curSums[a]; });
+    return classifica.map(function(_, i) {
+      var rank = ord0.indexOf(i);
+      return { pTitolo: rank===0?1:0, pPodio: rank<3?1:0, pTop5: rank<5?1:0,
+               pBest30: (classifica[i].record||0)>=30?1:0,
+               pAvg18:  (classifica[i].media_tiro||0)>=18?1:0 };
+    });
+  }
+
+  var cntTitolo = new Array(n).fill(0);
+  var cntPodio  = new Array(n).fill(0);
+  var cntTop5   = new Array(n).fill(0);
+  var cntBest30 = new Array(n).fill(0);
+  var cntAvg18  = new Array(n).fill(0);
+
+  // Pre-allocate to avoid GC pressure in the hot loop
+  var simPts    = new Array(n);
+  var simSums   = new Array(n);
+  var hitBest30 = new Array(n);
+  var scores    = new Array(n);
+  var order     = new Array(n);
+
+  for (var s = 0; s < N_SIM; s++) {
+    for (var i = 0; i < n; i++) {
+      simPts[i]    = curPts[i];
+      simSums[i]   = curSums[i];
+      hitBest30[i] = false;
+    }
+
+    for (var g = 0; g < rimaste; g++) {
+      // Simulate punteggio (best attempt) for each player
+      for (var i = 0; i < n; i++) {
+        var sc    = Math.round(Math.min(50, Math.max(0, _randNorm(medias[i], sigmas[i]))));
+        scores[i] = sc;
+        simSums[i] += sc;
+        if (sc >= 30) hitBest30[i] = true;
+      }
+      // Rank by score desc, tiebreak by cumulative score
+      for (var i = 0; i < n; i++) order[i] = i;
+      order.sort(function(a, b) {
+        return scores[b] !== scores[a] ? scores[b] - scores[a] : simSums[b] - simSums[a];
+      });
+      for (var r = 0; r < n; r++) simPts[order[r]] += (PTS[r] || 0);
+    }
+
+    // Final championship standings
+    for (var i = 0; i < n; i++) order[i] = i;
+    order.sort(function(a, b) {
+      return simPts[b] !== simPts[a] ? simPts[b] - simPts[a] : simSums[b] - simSums[a];
+    });
+    for (var r2 = 0; r2 < n; r2++) {
+      var fi = order[r2];
+      if (r2 === 0) cntTitolo[fi]++;
+      if (r2 < 3)  cntPodio[fi]++;
+      if (r2 < 5)  cntTop5[fi]++;
+    }
+    for (var i = 0; i < n; i++) {
+      if (hitBest30[i]) cntBest30[i]++;
+      if (simSums[i] / (gPlayed[i] + rimaste) >= 18) cntAvg18[i]++;
+    }
+  }
+
+  return classifica.map(function(_, i) {
+    return {
+      pTitolo: Math.max(0.001, cntTitolo[i] / N_SIM),
+      pPodio:  Math.max(0.005, cntPodio[i]  / N_SIM),
+      pTop5:   Math.max(0.010, cntTop5[i]   / N_SIM),
+      pBest30: Math.max(0.005, cntBest30[i] / N_SIM),
+      pAvg18:  Math.max(0.005, cntAvg18[i]  / N_SIM)
+    };
+  });
+}
+
 /**
  * Compute a full SISAL board from live CSL.stagioni data.
  * Returns a board object in the same shape as CSL.sisal entries.
@@ -1710,69 +1815,19 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   var giocate     = giornate.length;
   var totali      = stagione.giornate_totali || 26;
   var rimaste     = Math.max(0, totali - giocate);
-  var MARGIN      = 1.08;
-  var leaderPts   = classifica[0].punti_campionato || 0;
-  var top3Pts     = (classifica[2] || classifica[classifica.length - 1]).punti_campionato || 0;
-  var top5Pts     = (classifica[4] || classifica[classifica.length - 1]).punti_campionato || 0;
+  var MARGIN  = 1.08;
 
-  // ── Titolo raw scores → normalize → odds ──────────────────────────
-  var rawTitolo = classifica.map(function(p, i) {
-    var gap  = leaderPts - (p.punti_campionato || 0);
-    if (gap > rimaste * 10 && i > 0) return 0.002;
-    var gapF = Math.exp(-gap * 0.12);
-    var recF = Math.min(1.5, Math.max(0.4, (p.record || 0) / 20));
-    return gapF * recF;
-  });
-  var sumT = rawTitolo.reduce(function(a, b) { return a + b; }, 0) || 1;
-  var probTitolo = rawTitolo.map(function(r) { return r / sumT; });
+  // ── Monte Carlo season simulation (5 000 runs) ────────────────────
+  var mcProbs = _runMonteCarlo(classifica, giocate, totali, 5000);
 
-  // ── Per-player season odds ─────────────────────────────────────────
+  // ── Per-player season odds (from Monte Carlo) ─────────────────────
   var players = classifica.map(function(p, i) {
-    var pT = probTitolo[i];
-
-    // Podio
-    var gapTop3 = Math.max(0, top3Pts - (p.punti_campionato || 0));
-    var rawP = i < 3
-      ? Math.max(0.15, 1 - i * 0.20) * Math.min(1.3, (p.record || 0) / 16)
-      : (gapTop3 <= rimaste * 10 ? Math.exp(-gapTop3 * 0.06) * Math.min(1.2, (p.record || 0) / 18) : 0.02);
-    var pPodio = Math.min(0.97, Math.max(0.02, rawP));
-
-    // Top 5
-    var gapTop5 = Math.max(0, top5Pts - (p.punti_campionato || 0));
-    var rawP5 = i < 5
-      ? Math.max(0.20, 1 - i * 0.12) * Math.min(1.2, (p.record || 0) / 16)
-      : (gapTop5 <= rimaste * 10 ? Math.exp(-gapTop5 * 0.04) * Math.min(1.1, (p.record || 0) / 18) : 0.03);
-    var pTop5 = Math.min(0.97, Math.max(0.03, rawP5));
-
-    // Best 30+
-    var dist30   = 30 - (p.record || 0);
-    var pBest30;
-    if (dist30 <= 0) {
-      pBest30 = 0.90;
-    } else {
-      var sigma30  = Math.max(2.0, (p.record || 0) * 0.25);
-      var pSingle30 = _normCDF(-dist30 / sigma30);
-      pBest30 = Math.min(0.93, 1 - Math.pow(1 - Math.max(0.005, pSingle30), rimaste));
-    }
-
-    // Media ≥18
-    var gPlayed = p.partite || giocate;
-    var currTot  = (p.media_tiro || 0) * gPlayed;
-    var pAvg18;
-    if (rimaste <= 0) {
-      pAvg18 = (p.media_tiro || 0) >= 18 ? 0.92 : 0.03;
-    } else {
-      var neededFut = (18 * (gPlayed + rimaste) - currTot) / rimaste;
-      if (neededFut <= 0) {
-        pAvg18 = 0.92;
-      } else if (neededFut > 49) {
-        pAvg18 = 0.01;
-      } else {
-        var sigma18 = Math.max(3.0, ((p.record || 0) - (p.media_tiro || 0)) * 0.4 + 3.0);
-        pAvg18 = _normCDF(-((neededFut - (p.media_tiro || 0)) / sigma18));
-      }
-    }
-    pAvg18 = Math.min(0.93, Math.max(0.01, pAvg18));
+    var probs   = mcProbs[i];
+    var pT      = probs.pTitolo;
+    var pPodio  = probs.pPodio;
+    var pTop5   = probs.pTop5;
+    var pBest30 = probs.pBest30;
+    var pAvg18  = probs.pAvg18;
 
     // Trend: use static board data if available, else derive
     var staticP = staticBoard && staticBoard.players

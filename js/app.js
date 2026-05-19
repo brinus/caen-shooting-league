@@ -1945,12 +1945,14 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     highlights:      highlights,
     specials:        specials,
     methodology: [
-      'Probabilità di titolo: gap punti ponderato su stima record × fattore partite rimanenti.',
-      'Podio/Top5: probabilità basata su gap con la posizione target e margine catch-up possibile.',
-      'Best 30+: distribuzione normale sul record attuale, campionata su N giornate rimanenti.',
-      'Media finale ≥18: probabilità di tenere la media sulle partite ancora da giocare.',
-      'Giornata: modello Plackett-Luce per vittoria, CDF normale per over 25/20.',
-      'Quote decimali con margine ~8%. Solo per uso satirico: nessuna scommessa reale consentita.'
+      'Simulazione Monte Carlo: 5 000 stagioni complete simulate per ciascun aggiornamento del board.',
+      'Per ogni simulazione, le giornate rimanenti vengono giocate estraendo i punteggi da N(media, σ²), con σ stimato da (record − media) / √(2·ln(k)) — la formula esatta per il valore atteso del massimo di k variabili normali.',
+      'I punteggi simulati vengono classificati secondo il sistema punti ufficiale (10-8-6-4-4-2-2-1-1-1); in caso di parità si usa il punteggio cumulativo come spareggio.',
+      'Le probabilità di titolo, podio e top5 emergono direttamente dal conteggio dei risultati finali su 5 000 run — garantendo per costruzione che P(titolo) ≤ P(podio) ≤ P(top5).',
+      'Best 30+: frazione di simulazioni in cui il giocatore registra almeno una giornata con punteggio ≥ 30.',
+      'Media ≥18: frazione di simulazioni in cui la media finale di stagione supera 18 punti.',
+      'Giornata successiva: modello strength-based con CDF normale per le quote over/under.',
+      'Quote decimali con margine ~8% (overround 1.08). Solo per uso satirico: nessuna scommessa reale consentita.'
     ],
     next_matchday: nextMatchday
   };

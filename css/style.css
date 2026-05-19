@@ -2241,7 +2241,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   font-size: 0.85rem;
 }
 .btn-icon:hover { border-color: var(--error); color: var(--error); }
-.btn-link-sm { color: var(--primary); font-size: 0.85rem; text-decoration: none; }
+.btn-link-sm { background: none; border: none; padding: 0; font-family: inherit; color: var(--primary); font-size: 0.85rem; text-decoration: none; cursor: pointer; }
 .btn-link-sm:hover { text-decoration: underline; }
 .admin-edit-btn { color: var(--text-muted); font-size: 0.85rem; text-decoration: none; }
 .admin-edit-btn:hover { color: var(--primary); }

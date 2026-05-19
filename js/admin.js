@@ -566,6 +566,13 @@ async function loadScommesseTab() {
 }
 
 async function reloadScommesse() {
+  // Carica i dati live di stagioni/risultati da Supabase prima di calcolare
+  // lo stato delle scommesse. Necessario perché csl:auth-ready può scattare
+  // prima che app.js aggiorni CSL.stagioni con i dati live.
+  if (typeof _loadStagioniFromSupabase === 'function') {
+    const live = await _loadStagioniFromSupabase()
+    if (live && live.length) CSL.stagioni = live
+  }
   await Promise.all([loadScommesseSingole(), loadScommesseMultiple()])
 }
 

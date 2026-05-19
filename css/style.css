@@ -3751,3 +3751,190 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   .bet-speciali-list { grid-template-columns: 1fr; max-height: 260px; }
   .bet-amount-input { max-width: 100%; width: 100%; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   SISAL — Visual Upgrade Styles
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Live pill in page header ── */
+.sisal-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(73, 210, 155, 0.12);
+  border: 1px solid rgba(73, 210, 155, 0.35);
+  color: var(--sisal-green);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 0.85rem;
+  animation: sisal-live-pulse 2s ease-in-out infinite;
+}
+.sisal-live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--sisal-green);
+  animation: sisal-dot-blink 1.2s ease-in-out infinite;
+}
+@keyframes sisal-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(73, 210, 155, 0.0); }
+  50%       { box-shadow: 0 0 12px 2px rgba(73, 210, 155, 0.22); }
+}
+@keyframes sisal-dot-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+/* ── Scrolling odds ticker ── */
+.sisal-ticker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid rgba(73, 210, 155, 0.18);
+  background: rgba(7, 11, 26, 0.96);
+  margin-bottom: 1.25rem;
+  height: 36px;
+}
+.sisal-ticker-label {
+  flex-shrink: 0;
+  padding: 0 0.9rem;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sisal-green);
+  background: rgba(73, 210, 155, 0.08);
+  border-right: 1px solid rgba(73, 210, 155, 0.18);
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.sisal-ticker-scroll {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.sisal-ticker-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: sisal-ticker-move 60s linear infinite;
+  will-change: transform;
+}
+.sisal-ticker-track:hover { animation-play-state: paused; }
+@keyframes sisal-ticker-move {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.sisal-ticker-item {
+  display: inline-block;
+  padding: 0 1.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+.sisal-ticker-item:hover { color: var(--text); }
+
+/* ── Quote color classes ── */
+.sisal-quote--fav {
+  background: rgba(73, 210, 155, 0.14);
+  border-color: rgba(73, 210, 155, 0.32);
+  color: var(--sisal-green);
+}
+.sisal-quote--mid {
+  background: rgba(255, 204, 0, 0.10);
+  border-color: rgba(255, 204, 0, 0.25);
+  color: var(--secondary);
+}
+.sisal-quote--long {
+  background: rgba(255, 102, 0, 0.10);
+  border-color: rgba(255, 102, 0, 0.22);
+  color: var(--primary);
+}
+.sisal-quote--extreme {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+/* Quote enter animation (triggered via JS) */
+.sisal-quote--anim {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.sisal-quote--entered {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Table row accents ── */
+.sisal-row--hot td { background: rgba(255, 102, 0, 0.03); }
+.sisal-row--hot .sisal-table-player { border-left: 2px solid rgba(255, 102, 0, 0.45); padding-left: 0.45rem; }
+.sisal-row--cold td { background: rgba(100, 181, 246, 0.03); }
+.sisal-row--cold .sisal-table-player { border-left: 2px solid rgba(100, 181, 246, 0.35); padding-left: 0.45rem; }
+
+/* ── Highlight card accent variants ── */
+.sisal-highlight-card--title {
+  border-color: rgba(73, 210, 155, 0.32);
+  background: linear-gradient(135deg, rgba(73, 210, 155, 0.06), var(--bg-card) 60%);
+}
+.sisal-highlight-card--sharp {
+  border-color: rgba(255, 102, 0, 0.28);
+  background: linear-gradient(135deg, rgba(255, 102, 0, 0.05), var(--bg-card) 60%);
+}
+.sisal-highlight-card--value {
+  border-color: rgba(255, 204, 0, 0.25);
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.05), var(--bg-card) 60%);
+}
+.sisal-highlight-card--outsider {
+  border-color: rgba(100, 181, 246, 0.22);
+  background: linear-gradient(135deg, rgba(100, 181, 246, 0.05), var(--bg-card) 60%);
+}
+
+/* ── Next-tag variant for live ── */
+.sisal-next-tag--live {
+  background: rgba(73, 210, 155, 0.12);
+  border-color: rgba(73, 210, 155, 0.32);
+  color: var(--sisal-green);
+  animation: sisal-live-pulse 2s ease-in-out infinite;
+}
+.sisal-next-tag--today {
+  background: rgba(255, 204, 0, 0.12);
+  border-color: rgba(255, 204, 0, 0.30);
+  color: var(--secondary);
+}
+.sisal-next-tag--past {
+  background: rgba(255, 80, 80, 0.10);
+  border-color: rgba(255, 80, 80, 0.22);
+  color: #ff8c8c;
+}
+
+/* ── Special card quote color ── */
+.sisal-special-quote.sisal-quote--fav    { color: var(--sisal-green); }
+.sisal-special-quote.sisal-quote--mid    { color: var(--secondary); }
+.sisal-special-quote.sisal-quote--long   { color: var(--primary); }
+.sisal-special-quote.sisal-quote--extreme { color: var(--text-muted); }
+
+/* ── Page header SISAL enhanced ── */
+.page-header--sisal {
+  padding-bottom: 1.2rem;
+  position: relative;
+}
+.page-header--sisal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 0%, rgba(73, 210, 155, 0.07), transparent 60%),
+              radial-gradient(ellipse at 0% 100%, rgba(255, 102, 0, 0.05), transparent 50%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+

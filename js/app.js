@@ -1382,9 +1382,297 @@ function getSisalTrendClass(trend) {
       : 'sisal-chip--steady';
 }
 
+// ── Live SISAL Odds Engine ─────────────────────────────────────────────────
+
+/** Normal CDF (Abramowitz & Stegun approximation) */
+function _normCDF(x) {
+  var t = 1 / (1 + 0.2316419 * Math.abs(x));
+  var poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  var pdf = Math.exp(-0.5 * x * x) / 2.5066282746310002;
+  var cdf = 1 - pdf * poly;
+  return x >= 0 ? cdf : 1 - cdf;
+}
+
+/** Convert probability to decimal odds with bookmaker margin */
+function _probToOdds(p, margin) {
+  return Math.round(Math.max(1.02, (margin || 1.08) / Math.max(0.005, p)) * 100) / 100;
+}
+
+/** Compute CSS class for quote color-coding */
+function getSisalQuoteClass(q) {
+  if (q < 2.0)  return 'sisal-quote--fav';
+  if (q < 4.0)  return 'sisal-quote--mid';
+  if (q < 10.0) return 'sisal-quote--long';
+  return 'sisal-quote--extreme';
+}
+
+/** Find the next matchday (Mon or Wed) after the last played giornata.
+ *  If static data is stale (last played date is in the past), skips forward
+ *  to the next future matchday and adjusts the giornata number. */
+function _findSisalNextMatchday(stagione) {
+  var giornate = stagione.giornate || [];
+  if (!giornate.length) return null;
+  var sorted   = giornate.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
+  var lastData = sorted[sorted.length - 1].data;
+  var nextNum  = sorted.length + 1;
+  var DAYS     = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+
+  // Start from day after lastData; if that's in the past, advance to today
+  // (accounts for stale static data that doesn't include recent matchdays)
+  var afterLast = new Date(lastData + 'T00:00:00');
+  afterLast.setDate(afterLast.getDate() + 1);
+  var todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
+  var start = afterLast > todayDate ? afterLast : new Date(todayDate);
+
+  // Count Mon/Wed days we're skipping over to correctly compute nextNum
+  var scan = new Date(afterLast);
+  while (scan < start) {
+    var sdow = scan.getDay();
+    if (sdow === 1 || sdow === 3) nextNum++;
+    scan.setDate(scan.getDate() + 1);
+  }
+
+  var d = new Date(start);
+  for (var i = 0; i < 14; i++) {
+    var dow = d.getDay();
+    if (dow === 1 || dow === 3) {
+      var dateStr = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+      if (stagione.fine && dateStr > stagione.fine) return null;
+      return { numero: nextNum, data: dateStr, giorno: DAYS[dow] };
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return null;
+}
+
+/**
+ * Compute a full SISAL board from live CSL.stagioni data.
+ * Returns a board object in the same shape as CSL.sisal entries.
+ * @param {object} stagione - One entry from CSL.stagioni
+ * @param {object|null} staticBoard - Corresponding CSL.sisal entry for fallback data
+ */
+function computeLiveSisalBoard(stagione, staticBoard) {
+  if (!stagione || !stagione.classifica || !stagione.classifica.length) return staticBoard || null;
+
+  var classifica  = stagione.classifica;
+  var giornate    = stagione.giornate || [];
+  var giocate     = giornate.length;
+  var totali      = stagione.giornate_totali || 26;
+  var rimaste     = Math.max(0, totali - giocate);
+  var MARGIN      = 1.08;
+  var leaderPts   = classifica[0].punti_campionato || 0;
+  var top3Pts     = (classifica[2] || classifica[classifica.length - 1]).punti_campionato || 0;
+  var top5Pts     = (classifica[4] || classifica[classifica.length - 1]).punti_campionato || 0;
+
+  // ── Titolo raw scores → normalize → odds ──────────────────────────
+  var rawTitolo = classifica.map(function(p, i) {
+    var gap  = leaderPts - (p.punti_campionato || 0);
+    if (gap > rimaste * 10 && i > 0) return 0.002;
+    var gapF = Math.exp(-gap * 0.12);
+    var recF = Math.min(1.5, Math.max(0.4, (p.record || 0) / 20));
+    return gapF * recF;
+  });
+  var sumT = rawTitolo.reduce(function(a, b) { return a + b; }, 0) || 1;
+  var probTitolo = rawTitolo.map(function(r) { return r / sumT; });
+
+  // ── Per-player season odds ─────────────────────────────────────────
+  var players = classifica.map(function(p, i) {
+    var pT = probTitolo[i];
+
+    // Podio
+    var gapTop3 = Math.max(0, top3Pts - (p.punti_campionato || 0));
+    var rawP = i < 3
+      ? Math.max(0.15, 1 - i * 0.20) * Math.min(1.3, (p.record || 0) / 16)
+      : (gapTop3 <= rimaste * 10 ? Math.exp(-gapTop3 * 0.06) * Math.min(1.2, (p.record || 0) / 18) : 0.02);
+    var pPodio = Math.min(0.97, Math.max(0.02, rawP));
+
+    // Top 5
+    var gapTop5 = Math.max(0, top5Pts - (p.punti_campionato || 0));
+    var rawP5 = i < 5
+      ? Math.max(0.20, 1 - i * 0.12) * Math.min(1.2, (p.record || 0) / 16)
+      : (gapTop5 <= rimaste * 10 ? Math.exp(-gapTop5 * 0.04) * Math.min(1.1, (p.record || 0) / 18) : 0.03);
+    var pTop5 = Math.min(0.97, Math.max(0.03, rawP5));
+
+    // Best 30+
+    var dist30   = 30 - (p.record || 0);
+    var pBest30;
+    if (dist30 <= 0) {
+      pBest30 = 0.90;
+    } else {
+      var sigma30  = Math.max(2.0, (p.record || 0) * 0.25);
+      var pSingle30 = _normCDF(-dist30 / sigma30);
+      pBest30 = Math.min(0.93, 1 - Math.pow(1 - Math.max(0.005, pSingle30), rimaste));
+    }
+
+    // Media ≥18
+    var gPlayed = p.partite || giocate;
+    var currTot  = (p.media_tiro || 0) * gPlayed;
+    var pAvg18;
+    if (rimaste <= 0) {
+      pAvg18 = (p.media_tiro || 0) >= 18 ? 0.92 : 0.03;
+    } else {
+      var neededFut = (18 * (gPlayed + rimaste) - currTot) / rimaste;
+      if (neededFut <= 0) {
+        pAvg18 = 0.92;
+      } else if (neededFut > 49) {
+        pAvg18 = 0.01;
+      } else {
+        var sigma18 = Math.max(3.0, ((p.record || 0) - (p.media_tiro || 0)) * 0.4 + 3.0);
+        pAvg18 = _normCDF(-((neededFut - (p.media_tiro || 0)) / sigma18));
+      }
+    }
+    pAvg18 = Math.min(0.93, Math.max(0.01, pAvg18));
+
+    // Trend: use static board data if available, else derive
+    var staticP = staticBoard && staticBoard.players
+      ? staticBoard.players.find(function(sp) { return sp.nome === p.nome; })
+      : null;
+    var trend = staticP ? staticP.trend
+      : ((p.vittorie || 0) >= 2 ? 'Caldo'
+        : (p.media_tiro || 0) < 12 ? 'Freddo' : 'Stabile');
+
+    var confidence = Math.min(90, 65 + Math.round((p.partite || 0) * 2.5));
+
+    var note = i < 3 ? 'già nel traffico buono'
+      : (p.record || 0) >= 25 ? 'ha già mostrato un colpo pesante'
+      : (p.partite || 0) < 3  ? 'campione ancora corto'
+      : 'profilo in definizione';
+    if ((p.vittorie || 0) >= 2) note = 'vincitore seriale; ' + note;
+
+    return {
+      nome:                p.nome,
+      iniziali:            p.iniziali,
+      posizione_attuale:   p.posizione,
+      partite:             p.partite,
+      media_tiro:          p.media_tiro,
+      record:              p.record,
+      trend:               trend,
+      confidence:          confidence,
+      quote_titolo:        _probToOdds(pT,     MARGIN),
+      quote_podio:         _probToOdds(pPodio, MARGIN),
+      quote_top5:          _probToOdds(pTop5,  MARGIN),
+      quote_best_30:       _probToOdds(Math.max(0.01, pBest30), MARGIN),
+      quote_avg_18:        _probToOdds(pAvg18, MARGIN),
+      note:                note
+    };
+  });
+
+  // ── Next matchday ──────────────────────────────────────────────────
+  var nextInfo = _findSisalNextMatchday(stagione);
+  var nextMatchday = null;
+  if (nextInfo) {
+    var strengths  = classifica.map(function(p) {
+      return 0.60 * (p.media_tiro || 0) + 0.40 * (p.record || 0);
+    });
+    var totalStr = strengths.reduce(function(a, b) { return a + b; }, 0) || 1;
+    var nmPlayers = classifica.map(function(p, i) {
+      var s      = strengths[i];
+      var pVitt  = s / totalStr;
+      var pPod   = Math.min(0.96, (s / totalStr) * 3.2);
+      var sigma  = Math.max(3.0, ((p.record || 0) - (p.media_tiro || 0)) * 0.5 + 2.5);
+      var pOv25  = _normCDF(((p.media_tiro || 0) - 25) / sigma);
+      var pOv20  = _normCDF(((p.media_tiro || 0) - 20) / sigma);
+      var staticNm = staticBoard && staticBoard.next_matchday && staticBoard.next_matchday.players
+        ? staticBoard.next_matchday.players.find(function(sp) { return sp.nome === p.nome; })
+        : null;
+      var trend  = (staticNm && staticNm.trend) || (classifica[i] && classifica[i].trend) || 'Stabile';
+      return {
+        nome:               p.nome,
+        iniziali:           p.iniziali,
+        posizione_attuale:  p.posizione,
+        media_tiro:         p.media_tiro,
+        record:             p.record,
+        trend:              trend,
+        expected_score:     Math.round((0.70 * (p.media_tiro || 0) + 0.30 * (p.record || 0)) * 10) / 10,
+        quote_vittoria:     _probToOdds(Math.max(0.005, pVitt),  MARGIN),
+        quote_podio:        _probToOdds(Math.max(0.02,  pPod),   MARGIN),
+        quote_over_25:      _probToOdds(Math.max(0.005, pOv25),  MARGIN),
+        quote_over_20:      _probToOdds(Math.max(0.01,  pOv20),  MARGIN)
+      };
+    });
+    nmPlayers.sort(function(a, b) { return b.expected_score - a.expected_score; });
+    var bestVitt  = nmPlayers.slice().sort(function(a, b) { return a.quote_vittoria - b.quote_vittoria; })[0];
+    var best25    = nmPlayers.slice().sort(function(a, b) { return a.quote_over_25  - b.quote_over_25;  })[0];
+    nextMatchday = {
+      numero:    nextInfo.numero,
+      data:      nextInfo.data,
+      giorno:    nextInfo.giorno,
+      players:   nmPlayers,
+      highlights: [
+        { label: 'Favorito G' + nextInfo.numero, market: 'Vince la giornata',  player: bestVitt.nome, quota: bestVitt.quote_vittoria, blurb: 'Score atteso ' + bestVitt.expected_score + '. La quota più bassa del board giornata.' },
+        { label: 'Cecchino 25+',                  market: 'Score over 25',       player: best25.nome,  quota: best25.quote_over_25,  blurb: 'Record ' + best25.record + ': più vicino al muro dei 25 punti.' }
+      ],
+      specials: [
+        { label: 'Nessuno sotto 10',         quota: 2.20, note: 'Tutti i presenti chiudono con almeno 10 punti.' },
+        { label: 'Record personale battuto', quota: 3.50, note: 'Almeno un giocatore supera il proprio personal best.' }
+      ]
+    };
+  }
+
+  // ── Highlights ─────────────────────────────────────────────────────
+  var leaderP   = players[0];
+  var best30P   = players.slice().sort(function(a, b) { return a.quote_best_30 - b.quote_best_30; })[0];
+  var bestAvg18 = players.slice().sort(function(a, b) { return a.quote_avg_18  - b.quote_avg_18;  })[0];
+  var outsiderP = players.filter(function(p, i) { return i >= 4; })
+    .sort(function(a, b) { return a.quote_podio - b.quote_podio; })[0] || players[Math.min(4, players.length - 1)];
+  var highlights = [
+    { label: 'Favorito titolo',     market: 'Campione stagionale',   player: leaderP.nome,   quota: leaderP.quote_titolo,   blurb: 'Quota più bassa del board: posizione 1, record ' + leaderP.record + ' e ' + leaderP.partite + ' partite registrate.' },
+    { label: 'Cecchino 30+',        market: 'Best score over 30',    player: best30P.nome,   quota: best30P.quote_best_30,  blurb: 'Record attuale ' + best30P.record + '/50 — il più vicino al muro dei trenta.' },
+    { label: 'Value bet',           market: 'Media finale over 18',  player: bestAvg18.nome, quota: bestAvg18.quote_avg_18, blurb: 'Media attuale ' + (bestAvg18.media_tiro || 0).toFixed(1) + ': margine stretto ma giocabile, almeno sulla carta.' },
+    { label: 'Outsider con senso',  market: 'Podio finale',          player: outsiderP.nome, quota: outsiderP.quote_podio,  blurb: 'Record ' + (outsiderP.record || '—') + ' che fa sperare. Fuori dal podio ma non troppo lontano.' }
+  ];
+
+  var specials = (staticBoard && staticBoard.specials) ? staticBoard.specials : [
+    { label: 'Record assoluto 30+',             quota: 1.12,  note: 'Qualcuno rompe il muro dei trenta entro fine stagione.' },
+    { label: 'Finale al fotofinish',            quota: 14.47, note: 'Primo e secondo chiudono separati da massimo un punto campionato.' },
+    { label: 'Outsider a podio',                quota: 4.59,  note: 'Uno degli attuali fuori top 5 rientra tra i primi tre alla sirena.' },
+    { label: 'Campione con almeno 2 vittorie',  quota: 1.08,  note: 'Il vincitore finale mette insieme almeno due giornate vinte sul campo.' }
+  ];
+
+  return {
+    season_id:       stagione.id,
+    season_label:    stagione.nome + ' ' + stagione.anno,
+    giornate_giocate: giocate,
+    giornate_totali:  totali,
+    _isLive:         true,
+    players:         players,
+    highlights:      highlights,
+    specials:        specials,
+    methodology: [
+      'Probabilità di titolo: gap punti ponderato su stima record × fattore partite rimanenti.',
+      'Podio/Top5: probabilità basata su gap con la posizione target e margine catch-up possibile.',
+      'Best 30+: distribuzione normale sul record attuale, campionata su N giornate rimanenti.',
+      'Media finale ≥18: probabilità di tenere la media sulle partite ancora da giocare.',
+      'Giornata: modello Plackett-Luce per vittoria, CDF normale per over 25/20.',
+      'Quote decimali con margine ~8%. Solo per uso satirico: nessuna scommessa reale consentita.'
+    ],
+    next_matchday: nextMatchday
+  };
+}
+
 function initSisal() {
   var select = document.getElementById('sisal-season-select');
   if (!select) return;
+
+  // Compute live boards from CSL.stagioni and update CSL.sisal in-place
+  if (CSL.stagioni && CSL.stagioni.length) {
+    CSL.stagioni.forEach(function(stagione) {
+      var staticBoard = (CSL.sisal || []).find(function(b) { return b.season_id === stagione.id; });
+      var liveBoard   = computeLiveSisalBoard(stagione, staticBoard);
+      if (!liveBoard) return;
+      if (!CSL.sisal) CSL.sisal = [];
+      var idx = CSL.sisal.findIndex(function(b) { return b.season_id === stagione.id; });
+      if (idx >= 0) {
+        CSL.sisal[idx] = liveBoard;
+      } else {
+        CSL.sisal.push(liveBoard);
+      }
+    });
+    // Notify bet modal so it can re-populate with fresh data
+    document.dispatchEvent(new CustomEvent('sisal:boards-ready'));
+  }
 
   var boards = (CSL.sisal || []).filter(function(board) {
     return board.players && board.players.length > 0;
@@ -1399,6 +1687,8 @@ function initSisal() {
   }
 
   var orderedBoards = boards.slice().reverse();
+  // Avoid duplicate options on re-init
+  while (select.options.length) select.remove(0);
   orderedBoards.forEach(function(board) {
     var option = document.createElement('option');
     option.value = board.season_id;
@@ -1417,6 +1707,7 @@ function initSisal() {
   });
 
   renderSisalBoard(defaultBoard.season_id);
+  _renderSisalTicker(defaultBoard);
 }
 
 function renderSisalBoard(seasonId) {
@@ -1427,40 +1718,47 @@ function renderSisalBoard(seasonId) {
     ? Math.round((board.giornate_giocate / board.giornate_totali) * 100)
     : 0;
 
-  var titleEl = document.getElementById('sisal-season-title');
-  var summaryEl = document.getElementById('sisal-season-summary');
+  var titleEl         = document.getElementById('sisal-season-title');
+  var summaryEl       = document.getElementById('sisal-season-summary');
   var progressLabelEl = document.getElementById('sisal-progress-label');
-  var progressFillEl = document.getElementById('sisal-progress-fill');
-  var highlightsEl = document.getElementById('sisal-highlights');
-  var nextTitleEl = document.getElementById('sisal-next-title');
-  var nextCopyEl = document.getElementById('sisal-next-copy');
+  var progressFillEl  = document.getElementById('sisal-progress-fill');
+  var highlightsEl    = document.getElementById('sisal-highlights');
+  var nextTitleEl     = document.getElementById('sisal-next-title');
+  var nextCopyEl      = document.getElementById('sisal-next-copy');
   var nextHighlightsEl = document.getElementById('sisal-next-highlights');
-  var nextTbodyEl = document.getElementById('sisal-next-player-tbody');
-  var nextSpecialsEl = document.getElementById('sisal-next-specials');
-  var tbodyEl = document.getElementById('sisal-player-tbody');
-  var specialsEl = document.getElementById('sisal-specials');
-  var methodologyEl = document.getElementById('sisal-methodology');
+  var nextTbodyEl     = document.getElementById('sisal-next-player-tbody');
+  var nextSpecialsEl  = document.getElementById('sisal-next-specials');
+  var nextTagEl       = document.getElementById('sisal-next-tag');
+  var tbodyEl         = document.getElementById('sisal-player-tbody');
+  var specialsEl      = document.getElementById('sisal-specials');
+  var methodologyEl   = document.getElementById('sisal-methodology');
+  var liveBadgeEl     = document.getElementById('sisal-live-badge');
 
   if (titleEl) titleEl.textContent = board.season_label;
   if (summaryEl) {
+    var liveSpan = board._isLive
+      ? '<span style="color:var(--sisal-green)">⚡ quote live calcolate</span>'
+      : '<span>Quote pre-generate</span>';
     summaryEl.innerHTML =
-      '<span>' + board.giornate_giocate + ' giornate giocate su ' + board.giornate_totali + '</span>' +
+      '<span>' + board.giornate_giocate + ' giornate · ' + (board.giornate_totali - board.giornate_giocate) + ' rimanenti</span>' +
       '<span>' + board.players.length + ' profili quotati</span>' +
-      '<span>Quote decimali puramente decorative</span>';
+      liveSpan;
   }
-  if (progressLabelEl) {
-    progressLabelEl.textContent = progressPct + '% di stagione modellata';
-  }
-  if (progressFillEl) {
-    progressFillEl.style.width = progressPct + '%';
-  }
+  if (progressLabelEl) progressLabelEl.textContent = progressPct + '% di stagione';
+  if (progressFillEl)  progressFillEl.style.width  = progressPct + '%';
 
+  // Live badge
+  if (liveBadgeEl) liveBadgeEl.hidden = !board._isLive;
+
+  // ── Highlight cards ───────────────────────────────────────────────
   if (highlightsEl) {
-    highlightsEl.innerHTML = board.highlights.map(function(item) {
-      return '<article class="sisal-highlight-card">' +
+    var highlightCls = ['sisal-highlight-card--title', 'sisal-highlight-card--sharp', 'sisal-highlight-card--value', 'sisal-highlight-card--outsider'];
+    highlightsEl.innerHTML = board.highlights.map(function(item, idx) {
+      var cls = highlightCls[idx] || '';
+      return '<article class="sisal-highlight-card ' + cls + '">' +
         '<div class="sisal-highlight-top">' +
           '<span class="sisal-chip">' + escapeHtml(item.label) + '</span>' +
-          '<span class="sisal-quote sisal-quote--featured">' + formatQuote(item.quota) + '</span>' +
+          '<span class="sisal-quote sisal-quote--featured ' + getSisalQuoteClass(item.quota) + '">' + formatQuote(item.quota) + '</span>' +
         '</div>' +
         '<div class="sisal-highlight-market">' + escapeHtml(item.market) + '</div>' +
         '<div class="sisal-highlight-player">' + escapeHtml(item.player) + '</div>' +
@@ -1469,99 +1767,122 @@ function renderSisalBoard(seasonId) {
     }).join('');
   }
 
+  // ── Next Matchday ─────────────────────────────────────────────────
   if (nextTitleEl && nextCopyEl && nextHighlightsEl && nextTbodyEl && nextSpecialsEl) {
     if (!board.next_matchday) {
-      nextTitleEl.textContent = 'Nessuna prossima giornata in calendario';
-      nextCopyEl.textContent = 'Per questa stagione non ci sono altre date future disponibili al momento del push.';
-      nextHighlightsEl.innerHTML =
-        '<article class="sisal-highlight-card">' +
-          '<div class="sisal-highlight-market">Calendario chiuso</div>' +
-          '<div class="sisal-highlight-player">Lavagna sospesa</div>' +
-          '<p class="sisal-highlight-copy">La sezione prossima giornata si riattiva appena esiste una futura lun/mer ancora valida nel range della stagione.</p>' +
-        '</article>';
-      nextTbodyEl.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem">Nessuna giornata futura disponibile per questa stagione.</td></tr>';
+      if (nextTagEl) { nextTagEl.textContent = 'stagione conclusa'; nextTagEl.className = 'sisal-next-tag'; }
+      nextTitleEl.textContent = 'Nessuna giornata futura in calendario';
+      nextCopyEl.textContent  = 'La lavagna prossima giornata si riattiva quando esiste una lun/mer futura nel range stagione.';
+      nextHighlightsEl.innerHTML = '<article class="sisal-highlight-card"><div class="sisal-highlight-market">Calendario chiuso</div><div class="sisal-highlight-player">Lavagna sospesa</div><p class="sisal-highlight-copy">Fine stagione.</p></article>';
+      nextTbodyEl.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem">Nessuna giornata futura disponibile.</td></tr>';
       nextSpecialsEl.innerHTML = '';
     } else {
       var next = board.next_matchday;
+      var today     = new Date(); today.setHours(0, 0, 0, 0);
+      var nextDate  = new Date(next.data + 'T00:00:00');
+      var isToday   = nextDate.getTime() === today.getTime();
+      var isPast    = nextDate < today;
+      var daysAway  = Math.round((nextDate - today) / 86400000);
+
       nextTitleEl.textContent = 'G' + next.numero + ' · ' + next.giorno + ' ' + formatDate(next.data);
-      nextCopyEl.textContent = 'Questa sezione viene rigenerata automaticamente sulla prossima lun/mer futura disponibile ogni volta che aggiorni i dati.';
-      nextHighlightsEl.innerHTML = next.highlights.map(function(item) {
+      if (nextCopyEl) {
+        if (board._isLive) {
+          nextCopyEl.textContent = 'Quote calcolate in tempo reale dal motore CSL SISAL. Aggiornate automaticamente a ogni caricamento.';
+        } else {
+          nextCopyEl.textContent = 'Questa sezione viene rigenerata automaticamente sulla prossima lun/mer futura disponibile.';
+        }
+      }
+      if (nextTagEl) {
+        if (isToday)  { nextTagEl.textContent = '🟡 OGGI'; nextTagEl.className = 'sisal-next-tag sisal-next-tag--today'; }
+        else if (isPast) { nextTagEl.textContent = '⏰ +' + Math.abs(daysAway) + ' gg fa'; nextTagEl.className = 'sisal-next-tag sisal-next-tag--past'; }
+        else { nextTagEl.textContent = 'tra ' + daysAway + ' gg'; nextTagEl.className = 'sisal-next-tag'; }
+        if (board._isLive) { nextTagEl.textContent = '⚡ live'; nextTagEl.className = 'sisal-next-tag sisal-next-tag--live'; }
+      }
+
+      nextHighlightsEl.innerHTML = (next.highlights || []).map(function(item) {
         return '<article class="sisal-highlight-card">' +
           '<div class="sisal-highlight-top">' +
             '<span class="sisal-chip">' + escapeHtml(item.label) + '</span>' +
-            '<span class="sisal-quote sisal-quote--featured">' + formatQuote(item.quota) + '</span>' +
+            '<span class="sisal-quote sisal-quote--featured ' + getSisalQuoteClass(item.quota) + '">' + formatQuote(item.quota) + '</span>' +
           '</div>' +
           '<div class="sisal-highlight-market">' + escapeHtml(item.market) + '</div>' +
           '<div class="sisal-highlight-player">' + escapeHtml(item.player) + '</div>' +
-          '<p class="sisal-highlight-copy">' + escapeHtml(item.blurb) + '</p>' +
+          '<p class="sisal-highlight-copy">' + escapeHtml(item.blurb || '') + '</p>' +
         '</article>';
       }).join('');
-      nextTbodyEl.innerHTML = next.players.map(function(player) {
+
+      var trendIcon = { 'Caldo': '🔥', 'Freddo': '🧊', 'Stabile': '→' };
+      nextTbodyEl.innerHTML = (next.players || []).map(function(player) {
         var trendClass = getSisalTrendClass(player.trend);
-        var linePct = Math.max(0, Math.min(100, (player.expected_score / 50) * 100)).toFixed(1);
-        return '<tr>' +
+        var linePct = Math.max(0, Math.min(100, ((player.expected_score || 0) / 50) * 100)).toFixed(1);
+        var ti = trendIcon[player.trend] || '→';
+        return '<tr class="sisal-row' + (player.trend === 'Caldo' ? ' sisal-row--hot' : player.trend === 'Freddo' ? ' sisal-row--cold' : '') + '">' +
           '<td class="sisal-table-player-cell">' +
             '<div class="sisal-table-player">' +
               '<a class="sisal-player-link" href="stats.html?player=' + encodeURIComponent(player.nome) + '">' + escapeHtml(player.nome) + '</a>' +
               '<div class="sisal-table-player-meta">' +
-                '<span>media ' + player.media_tiro.toFixed(1) + '</span>' +
-                '<span>record ' + player.record + '</span>' +
-                '<span>linea ' + player.expected_score.toFixed(1) + '</span>' +
+                '<span>media ' + (player.media_tiro || 0).toFixed(1) + '</span>' +
+                '<span>record ' + (player.record || 0) + '</span>' +
+                '<span>linea ' + (player.expected_score || 0).toFixed(1) + '</span>' +
               '</div>' +
             '</div>' +
           '</td>' +
-          '<td><span class="rank-badge ' + rankClass(player.posizione_attuale) + '">' + player.posizione_attuale + '</span></td>' +
-          '<td><span class="sisal-quote">' + formatQuote(player.quote_vittoria) + '</span></td>' +
-          '<td><span class="sisal-quote">' + formatQuote(player.quote_podio) + '</span></td>' +
-          '<td><span class="sisal-quote">' + formatQuote(player.quote_over_25) + '</span></td>' +
-          '<td><span class="sisal-quote">' + formatQuote(player.quote_over_20) + '</span></td>' +
+          '<td><span class="rank-badge ' + rankClass(player.posizione_attuale) + '">' + (player.posizione_attuale || '—') + '</span></td>' +
+          '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_vittoria) + '">' + formatQuote(player.quote_vittoria) + '</span></td>' +
+          '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_podio) + '">' + formatQuote(player.quote_podio) + '</span></td>' +
+          '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_over_25) + '">' + formatQuote(player.quote_over_25) + '</span></td>' +
+          '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_over_20) + '">' + formatQuote(player.quote_over_20) + '</span></td>' +
           '<td>' +
             '<div class="sisal-signal">' +
-              '<span class="sisal-chip ' + trendClass + '">' + escapeHtml(player.trend) + '</span>' +
+              '<span class="sisal-chip ' + trendClass + '">' + ti + ' ' + escapeHtml(player.trend) + '</span>' +
               '<div class="sisal-confidence sisal-confidence--line">' +
                 '<div class="sisal-confidence-bar"><div class="sisal-confidence-fill" style="width:' + linePct + '%"></div></div>' +
-                '<span class="sisal-confidence-value">linea ' + player.expected_score.toFixed(1) + '</span>' +
+                '<span class="sisal-confidence-value">linea ' + (player.expected_score || 0).toFixed(1) + '</span>' +
               '</div>' +
             '</div>' +
           '</td>' +
         '</tr>';
       }).join('');
-      nextSpecialsEl.innerHTML = next.specials.map(function(item) {
+
+      nextSpecialsEl.innerHTML = (next.specials || []).map(function(item) {
         return '<article class="sisal-special-card">' +
           '<div class="sisal-special-label">' + escapeHtml(item.label) + '</div>' +
-          '<div class="sisal-special-quote">' + formatQuote(item.quota) + '</div>' +
+          '<div class="sisal-special-quote ' + getSisalQuoteClass(item.quota) + '">' + formatQuote(item.quota) + '</div>' +
           '<p class="sisal-special-copy">' + escapeHtml(item.note) + '</p>' +
         '</article>';
       }).join('');
     }
   }
 
+  // ── Season players table ──────────────────────────────────────────
+  var trendIconMap = { 'Caldo': '🔥', 'Freddo': '🧊', 'Stabile': '→' };
   if (tbodyEl) {
     tbodyEl.innerHTML = board.players.map(function(player) {
       var trendClass = getSisalTrendClass(player.trend);
-      return '<tr>' +
+      var ti = trendIconMap[player.trend] || '→';
+      return '<tr class="sisal-row' + (player.trend === 'Caldo' ? ' sisal-row--hot' : player.trend === 'Freddo' ? ' sisal-row--cold' : '') + '">' +
         '<td class="sisal-table-player-cell">' +
           '<div class="sisal-table-player">' +
             '<a class="sisal-player-link" href="stats.html?player=' + encodeURIComponent(player.nome) + '">' + escapeHtml(player.nome) + '</a>' +
             '<div class="sisal-table-player-meta">' +
               '<span>' + formatCount(player.partite, 'giornata', 'giornate') + '</span>' +
-              '<span>media ' + player.media_tiro.toFixed(1) + '</span>' +
-              '<span>record ' + player.record + '</span>' +
+              '<span>media ' + (player.media_tiro || 0).toFixed(1) + '</span>' +
+              '<span>record ' + (player.record || 0) + '</span>' +
             '</div>' +
-            '<div class="sisal-table-player-note">' + escapeHtml(player.note) + '</div>' +
+            '<div class="sisal-table-player-note">' + escapeHtml(player.note || '') + '</div>' +
           '</div>' +
         '</td>' +
-        '<td><span class="rank-badge ' + rankClass(player.posizione_attuale) + '">' + player.posizione_attuale + '</span></td>' +
-        '<td><span class="sisal-quote">' + formatQuote(player.quote_titolo) + '</span></td>' +
-        '<td><span class="sisal-quote">' + formatQuote(player.quote_podio) + '</span></td>' +
-        '<td><span class="sisal-quote">' + formatQuote(player.quote_best_30) + '</span></td>' +
-        '<td><span class="sisal-quote">' + formatQuote(player.quote_avg_18) + '</span></td>' +
+        '<td><span class="rank-badge ' + rankClass(player.posizione_attuale) + '">' + (player.posizione_attuale || '—') + '</span></td>' +
+        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_titolo) + '">' + formatQuote(player.quote_titolo) + '</span></td>' +
+        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_podio) + '">' + formatQuote(player.quote_podio) + '</span></td>' +
+        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_30) + '">' + formatQuote(player.quote_best_30) + '</span></td>' +
+        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_avg_18) + '">' + formatQuote(player.quote_avg_18) + '</span></td>' +
         '<td>' +
           '<div class="sisal-signal">' +
-            '<span class="sisal-chip ' + trendClass + '">' + escapeHtml(player.trend) + '</span>' +
+            '<span class="sisal-chip ' + trendClass + '">' + ti + ' ' + escapeHtml(player.trend) + '</span>' +
             '<div class="sisal-confidence">' +
-              '<div class="sisal-confidence-bar"><div class="sisal-confidence-fill" style="width:' + player.confidence + '%"></div></div>' +
-              '<span class="sisal-confidence-value">fiducia ' + player.confidence + '%</span>' +
+              '<div class="sisal-confidence-bar"><div class="sisal-confidence-fill" style="width:' + (player.confidence || 0) + '%"></div></div>' +
+              '<span class="sisal-confidence-value">fiducia ' + (player.confidence || 0) + '%</span>' +
             '</div>' +
           '</div>' +
         '</td>' +
@@ -1570,10 +1891,10 @@ function renderSisalBoard(seasonId) {
   }
 
   if (specialsEl) {
-    specialsEl.innerHTML = board.specials.map(function(item) {
+    specialsEl.innerHTML = (board.specials || []).map(function(item) {
       return '<article class="sisal-special-card">' +
         '<div class="sisal-special-label">' + escapeHtml(item.label) + '</div>' +
-        '<div class="sisal-special-quote">' + formatQuote(item.quota) + '</div>' +
+        '<div class="sisal-special-quote ' + getSisalQuoteClass(item.quota) + '">' + formatQuote(item.quota) + '</div>' +
         '<p class="sisal-special-copy">' + escapeHtml(item.note) + '</p>' +
       '</article>';
     }).join('');
@@ -1584,6 +1905,34 @@ function renderSisalBoard(seasonId) {
       return '<li>' + escapeHtml(item) + '</li>';
     }).join('');
   }
+
+  // Trigger quote animation
+  setTimeout(function() {
+    document.querySelectorAll('.sisal-quote--anim').forEach(function(el) {
+      el.classList.add('sisal-quote--entered');
+    });
+  }, 80);
+}
+
+/** Build the scrolling ticker content from the board */
+function _renderSisalTicker(board) {
+  var el = document.getElementById('sisal-ticker-content');
+  if (!el || !board || !board.players) return;
+  var items = [];
+  board.players.slice(0, 8).forEach(function(p) {
+    items.push('🏆 ' + p.nome.split(' ')[0] + ' @' + formatQuote(p.quote_titolo));
+    items.push('📊 ' + p.nome.split(' ')[0] + ' media18 @' + formatQuote(p.quote_avg_18));
+  });
+  if (board.next_matchday && board.next_matchday.players) {
+    board.next_matchday.players.slice(0, 5).forEach(function(p) {
+      items.push('⚡ G' + board.next_matchday.numero + ' ' + p.nome.split(' ')[0] + ' @' + formatQuote(p.quote_vittoria));
+    });
+  }
+  // Repeat for seamless loop
+  var full = items.concat(items);
+  el.innerHTML = full.map(function(t) {
+    return '<span class="sisal-ticker-item">' + escapeHtml(t) + '</span>';
+  }).join('');
 }
 
 // ── Supabase Integration ───────────────────────────────────────

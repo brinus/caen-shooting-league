@@ -32,6 +32,19 @@
         <span class="sisal-kicker">Simulatore non autorizzato</span>
         <h1>SISAL</h1>
         <p>Quote completamente fittizie costruite sui risultati reali della lega. Nessuna scommessa vera: solo statistiche che si prendono troppo sul serio.</p>
+        <div class="sisal-live-pill" id="sisal-live-badge" hidden>
+          <span class="sisal-live-dot"></span> quote calcolate live
+        </div>
+      </div>
+
+      <!-- Scrolling odds ticker -->
+      <div class="sisal-ticker-wrap">
+        <div class="sisal-ticker-label">LAVAGNA</div>
+        <div class="sisal-ticker-scroll">
+          <div class="sisal-ticker-track" id="sisal-ticker-content">
+            <span class="sisal-ticker-item">Caricamento quote…</span>
+          </div>
+        </div>
       </div>
 
       <section class="sisal-marquee card">
@@ -71,7 +84,7 @@
         </div>
         <div class="sisal-next-headline">
           <div class="sisal-next-title" id="sisal-next-title">—</div>
-          <div class="sisal-next-tag">rigenerata al push</div>
+          <div class="sisal-next-tag" id="sisal-next-tag">caricamento…</div>
         </div>
         <div class="sisal-highlight-grid" id="sisal-next-highlights"></div>
         <div class="table-wrapper" style="margin-bottom:1rem">
@@ -608,22 +621,35 @@
         })
       })
 
-      /* ── Init on DOMContentLoaded ── */
-      document.addEventListener('DOMContentLoaded', function() {
+      /* ── Init bet modal tabs from CSL.sisal ── */
+      function _initBetModalTabs() {
         var boards = CSL.sisal || []
         if (!boards.length) return
+        // Rebuild season select (avoid duplicates)
+        while (selSeason.options.length) selSeason.remove(0)
         boards.slice().reverse().forEach(function(b) {
           var opt = document.createElement('option')
           opt.value = b.season_id; opt.textContent = b.season_label
           selSeason.appendChild(opt)
         })
-        // default: last (most recent) board
+        // default: most recent
         _seasonId = boards[boards.length - 1].season_id
         selSeason.value = _seasonId
         var defaultBoard = boards.find(function(b){ return b.season_id === _seasonId }) || boards[boards.length - 1]
         populateStagioneTab(_seasonId)
         populateGiornataTab(defaultBoard)
         populateSpecialiTab(defaultBoard)
+      }
+
+      /* ── Init on DOMContentLoaded (fast path with static data) ── */
+      document.addEventListener('DOMContentLoaded', function() {
+        _initBetModalTabs()
+      })
+
+      /* ── Re-init when live boards are ready (from app.js initSisal) ── */
+      document.addEventListener('sisal:boards-ready', function() {
+        _initBetModalTabs()
+        clearSlip()
       })
 
       selSeason.addEventListener('change', function() {

@@ -77,68 +77,96 @@
         <div class="sisal-highlight-grid" id="sisal-highlights"></div>
       </section>
 
-      <section style="margin-bottom:2rem">
-        <div class="lb-tabs-header">
-          <h2 class="section-title" style="margin-bottom:0">Prossima Giornata</h2>
-          <p class="sisal-board-intro" id="sisal-next-copy">—</p>
-        </div>
-        <div class="sisal-next-headline">
-          <div class="sisal-next-title" id="sisal-next-title">—</div>
+      <section class="sisal-section sisal-section--giornata sisal-reveal">
+        <div class="sisal-section-header-band">
+          <div class="sisal-section-header-left">
+            <span class="sisal-section-icon">⚡</span>
+            <div>
+              <div class="sisal-section-kicker">Mercati Giornata</div>
+              <div class="sisal-section-name" id="sisal-next-section-name">Prossima Giornata</div>
+            </div>
+          </div>
           <div class="sisal-next-tag" id="sisal-next-tag">caricamento…</div>
         </div>
-        <div class="sisal-highlight-grid" id="sisal-next-highlights"></div>
-        <div class="table-wrapper" style="margin-bottom:1rem">
-          <table>
-            <thead>
-              <tr>
-                <th>Giocatore</th>
-                <th>Pos.</th>
-                <th>Vincente</th>
-                <th>Podio</th>
-                <th>Over 25</th>
-                <th>Over 20</th>
-                <th>Segnale</th>
-              </tr>
-            </thead>
-            <tbody id="sisal-next-player-tbody"></tbody>
-          </table>
-        </div>
-        <div class="sisal-specials-grid" id="sisal-next-specials"></div>
-      </section>
-
-      <section style="margin-bottom:2rem">
-        <div class="lb-tabs-header">
-          <h2 class="section-title" style="margin-bottom:0">Quote Giocatori</h2>
-          <p class="sisal-board-intro">Quote piu basse = mercato piu convinto. Le cifre sono serie solo quanto basta per far discutere alla macchinetta del caffe.</p>
-        </div>
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Giocatore</th>
-                <th>Pos.</th>
-                <th>Titolo</th>
-                <th>Podio</th>
-                <th>Best 30+</th>
-                <th>Media 18+</th>
-                <th>Segnale</th>
-              </tr>
-            </thead>
-            <tbody id="sisal-player-tbody"></tbody>
-          </table>
+        <div class="sisal-section-body">
+          <p class="sisal-section-desc" id="sisal-next-copy">—</p>
+          <div class="sisal-next-headline" style="margin-bottom:0.5rem">
+            <div class="sisal-next-title" id="sisal-next-title">—</div>
+          </div>
+          <div class="sisal-highlight-grid" id="sisal-next-highlights" style="margin-top:1rem"></div>
+          <div class="table-wrapper" style="margin:1rem 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Giocatore</th>
+                  <th>Pos.</th>
+                  <th>Vincente</th>
+                  <th>Podio</th>
+                  <th>Over 25</th>
+                  <th>Over 20</th>
+                  <th>Segnale</th>
+                </tr>
+              </thead>
+              <tbody id="sisal-next-player-tbody"></tbody>
+            </table>
+          </div>
+          <div class="sisal-specials-grid" id="sisal-next-specials"></div>
         </div>
       </section>
 
-      <section style="margin-bottom:2rem">
-        <h2 class="section-title">Mercati Speciali</h2>
-        <div class="sisal-specials-grid" id="sisal-specials"></div>
+      <section class="sisal-section sisal-section--campionato sisal-reveal">
+        <div class="sisal-section-header-band">
+          <div class="sisal-section-header-left">
+            <span class="sisal-section-icon">🏆</span>
+            <div>
+              <div class="sisal-section-kicker">Scommesse di Stagione</div>
+              <div class="sisal-section-name">Campionato</div>
+            </div>
+          </div>
+        </div>
+        <div class="sisal-section-body">
+          <p class="sisal-section-desc">Titolo · Podio · Best 30+ · Media ≥18 — i mercati aperti per tutta la stagione. Quote più basse = il mercato è più convinto.</p>
+          <div class="table-wrapper" style="margin-bottom:1.5rem">
+            <table>
+              <thead>
+                <tr>
+                  <th>Giocatore</th>
+                  <th>Pos.</th>
+                  <th>Titolo</th>
+                  <th>Podio</th>
+                  <th>Best 30+</th>
+                  <th>Media 18+</th>
+                  <th>Segnale</th>
+                </tr>
+              </thead>
+              <tbody id="sisal-player-tbody"></tbody>
+            </table>
+          </div>
+          <div class="sisal-section-subsection-label">Mercati Speciali di Stagione</div>
+          <div class="sisal-specials-grid" id="sisal-specials"></div>
+        </div>
       </section>
 
-      <section class="sisal-methodology-card">
-        <div class="sisal-marquee-label">Metodo</div>
-        <h2 style="font-size:1.1rem;color:var(--text);margin-bottom:0.25rem">Come vengono fuori queste assurdita</h2>
-        <ul class="sisal-methodology" id="sisal-methodology"></ul>
+      <section class="sisal-section sisal-reveal" id="sisal-charts-section">
+        <div class="sisal-section-header-band">
+          <div class="sisal-section-header-left">
+            <span class="sisal-section-icon">📊</span>
+            <div>
+              <div class="sisal-section-kicker">Analisi &amp; Previsioni</div>
+              <div class="sisal-section-name">Il motore delle quote</div>
+            </div>
+          </div>
+        </div>
+        <div class="sisal-section-body">
+          <div id="sisal-charts-container"></div>
+          <div class="sisal-methodology-card" style="margin-top:1.5rem">
+            <div class="sisal-marquee-label">Metodo</div>
+            <h2 style="font-size:1.1rem;color:var(--text);margin-bottom:0.25rem">Come vengono fuori queste assurdità</h2>
+            <ul class="sisal-methodology" id="sisal-methodology"></ul>
+          </div>
+        </div>
       </section>
+
 
     </div>
   </main>

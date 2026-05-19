@@ -1769,6 +1769,12 @@ function renderSisalBoard(seasonId) {
 
   // ── Next Matchday ─────────────────────────────────────────────────
   if (nextTitleEl && nextCopyEl && nextHighlightsEl && nextTbodyEl && nextSpecialsEl) {
+    var sectionNameEl = document.getElementById('sisal-next-section-name');
+    if (sectionNameEl) {
+      sectionNameEl.textContent = board.next_matchday
+        ? 'G' + board.next_matchday.numero + ' · Prossima Giornata'
+        : 'Prossima Giornata';
+    }
     if (!board.next_matchday) {
       if (nextTagEl) { nextTagEl.textContent = 'stagione conclusa'; nextTagEl.className = 'sisal-next-tag'; }
       nextTitleEl.textContent = 'Nessuna giornata futura in calendario';
@@ -1912,6 +1918,95 @@ function renderSisalBoard(seasonId) {
       el.classList.add('sisal-quote--entered');
     });
   }, 80);
+
+  // Charts and scroll reveal
+  renderSisalCharts(board);
+  setTimeout(_initScrollReveal, 120);
+}
+
+/** Render probability/score bar charts in the predictions section */
+function renderSisalCharts(board) {
+  var el = document.getElementById('sisal-charts-container');
+  if (!el || !board || !board.players || !board.players.length) return;
+  var players = board.players.slice(0, 8);
+
+  // Chart 1: Title probability (normalized implied probability)
+  var rawProbs = players.map(function(p) { return 1 / (p.quote_titolo || 99); });
+  var totalProb = rawProbs.reduce(function(a, b) { return a + b; }, 0) || 1;
+  var normProbs = rawProbs.map(function(p) { return p / totalProb; });
+  var maxNorm = Math.max.apply(null, normProbs) || 1;
+
+  var chart1 = players.map(function(p, i) {
+    var pct = Math.round((normProbs[i] / maxNorm) * 100);
+    var prob = Math.round(normProbs[i] * 100);
+    var colorClass = prob > 28 ? 'sisal-bar-fill--green' : prob > 14 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
+    return '<div class="sisal-bar-row">' +
+      '<span class="sisal-bar-name">' + escapeHtml(p.nome.split(' ')[0]) + '</span>' +
+      '<div class="sisal-bar-track"><div class="sisal-bar-fill ' + colorClass + '" data-pct="' + pct + '"></div></div>' +
+      '<span class="sisal-bar-val">@' + formatQuote(p.quote_titolo) + '</span>' +
+    '</div>';
+  }).join('');
+
+  // Chart 2: Expected score / current average
+  var srcPlayers = (board.next_matchday && board.next_matchday.players && board.next_matchday.players.length)
+    ? board.next_matchday.players.slice(0, 8)
+    : players;
+  var scores = srcPlayers.map(function(p) { return p.expected_score || p.media_tiro || 0; });
+  var maxScore = Math.max.apply(null, scores) || 1;
+  var nextLabel = board.next_matchday
+    ? '⚡ Score atteso G' + board.next_matchday.numero
+    : '📊 Media corrente';
+
+  var chart2 = srcPlayers.map(function(p, i) {
+    var val = scores[i];
+    var pct = Math.round((val / maxScore) * 100);
+    var colorClass = val >= 22 ? 'sisal-bar-fill--green' : val >= 17 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
+    return '<div class="sisal-bar-row">' +
+      '<span class="sisal-bar-name">' + escapeHtml(p.nome.split(' ')[0]) + '</span>' +
+      '<div class="sisal-bar-track"><div class="sisal-bar-fill ' + colorClass + '" data-pct="' + pct + '"></div></div>' +
+      '<span class="sisal-bar-val">' + val.toFixed(1) + '</span>' +
+    '</div>';
+  }).join('');
+
+  el.innerHTML =
+    '<div class="sisal-charts-grid">' +
+      '<div class="sisal-chart-card sisal-reveal">' +
+        '<div class="sisal-chart-title">🏆 Probabilità Titolo — top 8</div>' +
+        chart1 +
+      '</div>' +
+      '<div class="sisal-chart-card sisal-reveal">' +
+        '<div class="sisal-chart-title">' + nextLabel + ' — top 8</div>' +
+        chart2 +
+      '</div>' +
+    '</div>';
+
+  setTimeout(function() {
+    el.querySelectorAll('.sisal-bar-fill[data-pct]').forEach(function(bar) {
+      bar.style.width = bar.getAttribute('data-pct') + '%';
+    });
+    el.querySelectorAll('.sisal-reveal').forEach(function(card, idx) {
+      setTimeout(function() { card.classList.add('visible'); }, idx * 120);
+    });
+  }, 200);
+}
+
+/** Activate IntersectionObserver-based scroll reveal for .sisal-reveal elements */
+function _initScrollReveal() {
+  if (typeof IntersectionObserver === 'undefined') {
+    document.querySelectorAll('.sisal-reveal').forEach(function(el) { el.classList.add('visible'); });
+    return;
+  }
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.sisal-reveal:not(.visible)').forEach(function(el) {
+    observer.observe(el);
+  });
 }
 
 /** Build the scrolling ticker content from the board */
@@ -1920,18 +2015,24 @@ function _renderSisalTicker(board) {
   if (!el || !board || !board.players) return;
   var items = [];
   board.players.slice(0, 8).forEach(function(p) {
-    items.push('🏆 ' + p.nome.split(' ')[0] + ' @' + formatQuote(p.quote_titolo));
-    items.push('📊 ' + p.nome.split(' ')[0] + ' media18 @' + formatQuote(p.quote_avg_18));
+    items.push({ market: 'TITOLO', name: p.nome.split(' ')[0], quota: p.quote_titolo });
+    items.push({ market: 'MEDIA18', name: p.nome.split(' ')[0], quota: p.quote_avg_18 });
+    items.push({ market: 'PODIO', name: p.nome.split(' ')[0], quota: p.quote_podio });
   });
   if (board.next_matchday && board.next_matchday.players) {
-    board.next_matchday.players.slice(0, 5).forEach(function(p) {
-      items.push('⚡ G' + board.next_matchday.numero + ' ' + p.nome.split(' ')[0] + ' @' + formatQuote(p.quote_vittoria));
+    board.next_matchday.players.slice(0, 6).forEach(function(p) {
+      items.push({ market: 'G' + board.next_matchday.numero + ' WIN', name: p.nome.split(' ')[0], quota: p.quote_vittoria });
     });
   }
   // Repeat for seamless loop
   var full = items.concat(items);
-  el.innerHTML = full.map(function(t) {
-    return '<span class="sisal-ticker-item">' + escapeHtml(t) + '</span>';
+  el.innerHTML = full.map(function(item) {
+    var qClass = getSisalQuoteClass(item.quota);
+    return '<span class="sisal-ticker-item">' +
+      '<span class="sisal-ticker-item-market">' + escapeHtml(item.market) + '</span>' +
+      '<span class="sisal-ticker-item-name">' + escapeHtml(item.name) + '</span>' +
+      '<span class="sisal-ticker-item-q ' + qClass + '">@' + formatQuote(item.quota) + '</span>' +
+    '</span>';
   }).join('');
 }
 

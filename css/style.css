@@ -238,10 +238,10 @@ main {
 .sisal-ticker-item {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 1rem;
   min-width: max-content;
-  padding: 0.55rem 0.8rem;
-  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -3833,14 +3833,37 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   100% { transform: translateX(-50%); }
 }
 .sisal-ticker-item {
-  display: inline-block;
-  padding: 0 1.5rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.15rem 1.2rem;
   white-space: nowrap;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: default;
 }
-.sisal-ticker-item:hover { color: var(--text); }
+.sisal-ticker-item:hover { background: rgba(255, 255, 255, 0.03); }
+.sisal-ticker-item-market {
+  font-size: 0.59rem;
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+.sisal-ticker-item-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.sisal-ticker-item-q {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.sisal-ticker-item-q.sisal-quote--fav    { color: var(--sisal-green); }
+.sisal-ticker-item-q.sisal-quote--mid    { color: var(--secondary); }
+.sisal-ticker-item-q.sisal-quote--long   { color: var(--primary); }
+.sisal-ticker-item-q.sisal-quote--extreme { color: var(--text-muted); }
 
 /* ── Quote color classes ── */
 .sisal-quote--fav {
@@ -3917,11 +3940,11 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   color: #ff8c8c;
 }
 
-/* ── Special card quote color ── */
-.sisal-special-quote.sisal-quote--fav    { color: var(--sisal-green); }
-.sisal-special-quote.sisal-quote--mid    { color: var(--secondary); }
-.sisal-special-quote.sisal-quote--long   { color: var(--primary); }
-.sisal-special-quote.sisal-quote--extreme { color: var(--text-muted); }
+/* ── Special card quote color (no background bleed on block element) ── */
+.sisal-special-quote.sisal-quote--fav    { color: var(--sisal-green); background: none; border: none; }
+.sisal-special-quote.sisal-quote--mid    { color: var(--secondary);   background: none; border: none; }
+.sisal-special-quote.sisal-quote--long   { color: var(--primary);     background: none; border: none; }
+.sisal-special-quote.sisal-quote--extreme { color: var(--text-muted); background: none; border: none; }
 
 /* ── Page header SISAL enhanced ── */
 .page-header--sisal {
@@ -3936,5 +3959,175 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
               radial-gradient(ellipse at 0% 100%, rgba(255, 102, 0, 0.05), transparent 50%);
   pointer-events: none;
   border-radius: inherit;
+}
+
+/* ── SISAL section bands ── */
+.sisal-section {
+  margin-bottom: 2.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.sisal-section-header-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sisal-section--giornata .sisal-section-header-band {
+  background: linear-gradient(90deg, rgba(255, 102, 0, 0.10) 0%, transparent 70%);
+  border-left: 3px solid var(--primary);
+}
+
+.sisal-section--campionato .sisal-section-header-band {
+  background: linear-gradient(90deg, rgba(73, 210, 155, 0.08) 0%, transparent 70%);
+  border-left: 3px solid var(--sisal-green);
+}
+
+.sisal-section-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.sisal-section-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sisal-section-kicker {
+  font-size: 0.62rem;
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.18rem;
+}
+
+.sisal-section-name {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(0.9rem, 2vw, 1.12rem);
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.sisal-section--giornata .sisal-section-name { color: var(--primary); }
+.sisal-section--campionato .sisal-section-name { color: var(--sisal-green); }
+
+.sisal-section-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 1.2rem;
+}
+
+.sisal-section-body {
+  padding: 1.25rem 1.4rem;
+}
+
+.sisal-section-subsection-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.7rem 0 0.7rem;
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Charts & predictions ── */
+.sisal-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.sisal-chart-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+}
+
+.sisal-chart-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.sisal-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.55rem;
+}
+
+.sisal-bar-name {
+  width: 108px;
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.sisal-bar-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.sisal-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sisal-bar-fill--green  { background: linear-gradient(to right, var(--sisal-green), rgba(73, 210, 155, 0.35)); }
+.sisal-bar-fill--orange { background: linear-gradient(to right, var(--primary), rgba(255, 102, 0, 0.35)); }
+.sisal-bar-fill--yellow { background: linear-gradient(to right, var(--secondary), rgba(255, 204, 0, 0.35)); }
+
+.sisal-bar-val {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Scroll reveal ── */
+.sisal-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.sisal-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .sisal-charts-grid { grid-template-columns: 1fr; }
+  .sisal-section-body { padding: 1rem; }
+  .sisal-section-header-band { padding: 0.85rem 1rem; }
+  .sisal-section-name { font-size: 0.9rem; }
 }
 

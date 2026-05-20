@@ -2432,7 +2432,13 @@ function renderSisalCharts(board) {
         '<div class="sisal-final-header">Possibile classifica — ' + (o.pct || 0) + '%</div>' + items + '</div>';
     }).join('');
 
-    chartFinal = '<div id="sisal-final-carousel-wrap">' + slides + '</div>';
+    var dots = tops.map(function(_, di) { return '<button class="sisal-final-dot' + (di===0? ' active' : '') + '" data-idx="' + di + '"></button>'; }).join('');
+    chartFinal = '<div class="sisal-final-carousel">'
+      + '<button class="sisal-final-prev" aria-label="Prev">◀</button>'
+      + '<div id="sisal-final-carousel-wrap">' + slides + '</div>'
+      + '<button class="sisal-final-next" aria-label="Next">▶</button>'
+      + '<div class="sisal-final-dots">' + dots + '</div>'
+      + '</div>';
   } else {
     chartFinal = '<div id="sisal-final-carousel-wrap"><p class="text-muted">Nessun dato Monte Carlo disponibile.</p></div>';
   }
@@ -2495,9 +2501,13 @@ function renderSisalCharts(board) {
       '<div class="sisal-chart-card sisal-reveal sisal-chart-radar-card"><div class="sisal-chart-title">🕸 Radar — profilo</div>' + chart6 + '</div>' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">✦ Media × Record</div>' + chart7 + '</div>' +
     '</div>' +
-    '<div class="sisal-charts-grid sisal-charts-grid--halfleft">' +
-      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🎛 Simulatore quote</div>' + chart8 + '</div>' +
-      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🔁 Possibili classifiche finali</div>' + chartFinal + '</div>' +
+    '<div class="sisal-charts-grid">' +
+      '<div class="sisal-chart-card sisal-reveal sisal-chart-sim-full"><div class="sisal-chart-title">🎛 Simulatore quote</div>' + chart8 +
+        '<div class="sisal-sim-charts">' +
+          '<div id="sisal-sim-chart-bars" class="sisal-sim-chart"></div>' +
+          '<div id="sisal-sim-chart-dist" class="sisal-sim-chart"></div>' +
+        '</div>' +
+      '</div>' +
     '</div>';
 
   // ── Animate + init interactive ───────────────────────────────────
@@ -2517,17 +2527,38 @@ function renderSisalCharts(board) {
       });
     });
     _initSisalSimulatore(el, allP, board);
-    // Init final-standings carousel (cycle top MC orders)
-    var carouselWrap = el.querySelector('#sisal-final-carousel-wrap');
-    if (carouselWrap) {
-      var slides = carouselWrap.querySelectorAll('.sisal-final-slide');
-      if (slides && slides.length > 1) {
+    // Init final-standings carousel (cycle top MC orders) with controls
+    var carouselContainer = el.querySelector('.sisal-final-carousel');
+    if (carouselContainer) {
+      var wrap = carouselContainer.querySelector('#sisal-final-carousel-wrap');
+      var slides = wrap ? wrap.querySelectorAll('.sisal-final-slide') : [];
+      var dots = carouselContainer.querySelectorAll('.sisal-final-dot');
+      var prevBtn = carouselContainer.querySelector('.sisal-final-prev');
+      var nextBtn = carouselContainer.querySelector('.sisal-final-next');
+      if (slides && slides.length) {
         var cidx = 0;
-        setInterval(function() {
-          slides[cidx].style.display = 'none';
-          cidx = (cidx + 1) % slides.length;
-          slides[cidx].style.display = 'block';
-        }, 5000);
+        function showSlide(i) {
+          for (var j = 0; j < slides.length; j++) { slides[j].style.display = 'none'; }
+          slides[i].style.display = 'block';
+          if (dots && dots.length) {
+            dots.forEach(function(d) { d.classList.remove('active'); });
+            if (dots[i]) dots[i].classList.add('active');
+          }
+        }
+        showSlide(0);
+        var carouselTimer = setInterval(function() { cidx = (cidx + 1) % slides.length; showSlide(cidx); }, 5000);
+        if (prevBtn) prevBtn.addEventListener('click', function() { clearInterval(carouselTimer); cidx = (cidx - 1 + slides.length) % slides.length; showSlide(cidx); carouselTimer = setInterval(function() { cidx = (cidx + 1) % slides.length; showSlide(cidx); }, 5000); });
+        if (nextBtn) nextBtn.addEventListener('click', function() { clearInterval(carouselTimer); cidx = (cidx + 1) % slides.length; showSlide(cidx); carouselTimer = setInterval(function() { cidx = (cidx + 1) % slides.length; showSlide(cidx); }, 5000); });
+        if (dots && dots.length) {
+          dots.forEach(function(dot) {
+            dot.addEventListener('click', function() {
+              var idx = parseInt(dot.getAttribute('data-idx') || '0', 10);
+              clearInterval(carouselTimer);
+              cidx = idx; showSlide(cidx);
+              carouselTimer = setInterval(function() { cidx = (cidx + 1) % slides.length; showSlide(cidx); }, 5000);
+            });
+          });
+        }
       }
     }
   }, 200);
@@ -2787,6 +2818,45 @@ function _initSisalSimulatore(container, allP, board) {
     _updateCard('sisal-sim-q-podio',  'sisal-sim-d-podio',  qPodio,  allP[idx].quote_podio   || qPodio);
     _updateCard('sisal-sim-q-best30', 'sisal-sim-d-best30', qBest30, allP[idx].quote_best_30 || qBest30);
     _updateCard('sisal-sim-q-avg18',  'sisal-sim-d-avg18',  qAvg18,  allP[idx].quote_avg_18  || qAvg18);
+
+    // Update simulator charts: market comparison bars and delta list
+    try {
+      var barsEl = container.querySelector('#sisal-sim-chart-bars');
+      var distEl = container.querySelector('#sisal-sim-chart-dist');
+      if (barsEl) {
+        var markets = [
+          { id: 'titolo', label: 'Titolo', simQ: qT, origQ: allP[idx].quote_titolo || qT },
+          { id: 'podio',  label: 'Podio',  simQ: qPodio, origQ: allP[idx].quote_podio  || qPodio },
+          { id: 'best30', label: 'Best30', simQ: qBest30, origQ: allP[idx].quote_best_30 || qBest30 },
+          { id: 'avg18',  label: 'Media18',simQ: qAvg18,  origQ: allP[idx].quote_avg_18  || qAvg18 }
+        ];
+        // compute pseudo-prob (inverse of quote) for visual comparison
+        var maxV = 0;
+        markets.forEach(function(m){ m.origP = 1 / Math.max(1.01, m.origQ); m.simP = 1 / Math.max(1.01, m.simQ); maxV = Math.max(maxV, m.origP, m.simP); });
+        var html = markets.map(function(m){
+          var origW = Math.round((m.origP / maxV) * 100);
+          var simW  = Math.round((m.simP  / maxV) * 100);
+          return '<div class="sisal-sim-bar-row"><div class="sisal-sim-bar-label">' + m.label + '</div>' +
+            '<div class="sisal-sim-bar-wrap"><div class="sisal-sim-bar orig" style="width:' + origW + '%"></div><div class="sisal-sim-bar sim" style="width:' + simW + '%"></div></div>' +
+            '<div class="sisal-sim-bar-vals">@' + m.origQ.toFixed(2).replace('.',',') + ' → @' + m.simQ.toFixed(2).replace('.',',') + '</div></div>';
+        }).join('');
+        barsEl.innerHTML = html;
+      }
+      if (distEl) {
+        var deltas = [
+          { k: 'Titolo', d: (allP[idx].quote_titolo || qT) - qT },
+          { k: 'Podio',  d: (allP[idx].quote_podio  || qPodio) - qPodio },
+          { k: 'Best30', d: (allP[idx].quote_best_30|| qBest30) - qBest30 },
+          { k: 'Media18',d: (allP[idx].quote_avg_18 || qAvg18) - qAvg18 }
+        ];
+        var html2 = '<ul class="sisal-sim-delta-list">' + deltas.map(function(x){
+          var cls = x.d > 0 ? 'better' : (x.d < 0 ? 'worse' : 'equal');
+          var sym = x.d > 0 ? '\u25b2' : (x.d < 0 ? '\u25bc' : '\u2248');
+          return '<li class="sisal-sim-delta-' + cls + '"><span class="k">' + x.k + '</span> <span class="v">' + sym + ' ' + Math.abs(x.d).toFixed(2) + '</span></li>';
+        }).join('') + '</ul>';
+        distEl.innerHTML = html2;
+      }
+    } catch (e) { console.error('sim charts update', e); }
   }
 
   function syncToPlayer() {

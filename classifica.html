@@ -43,14 +43,14 @@
         <h2 class="section-title" style="margin-bottom:0">🏆 Classifica Stagionale</h2>
         <div class="lb-tabs">
           <button class="lb-tab active" data-tab="camp">Punti Campionato</button>
-          <button class="lb-tab" data-tab="best">🎯 Best Score</button>
+            <button class="lb-tab" data-tab="best">🎯 Classifica Cecchino</button>
         </div>
       </div>
 
       <!-- Panel: Punti Campionato -->
       <div id="lb-panel-camp" class="lb-panel">
         <div class="table-wrapper">
-          <table>
+          <table class="classifica-window-table">
             <thead>
               <tr>
                 <th>#</th>
@@ -67,6 +67,7 @@
             <tbody id="leaderboard-tbody"></tbody>
           </table>
         </div>
+        <div id="leaderboard-pager-camp" class="classifica-pager"></div>
         <p class="note" style="margin-top:0.5rem;margin-bottom:2rem">
           Punti Camp. = 10 al 1°, 8 al 2°, 6 al 3°, 4 dal 4° al 5°, 2 dal 6° al 7°, 1 dall'8° al 10°, 0 dall'11° in poi &nbsp;·&nbsp;
           Ordine campionato = Pt Camp. → Media esatta → Pt Tiro → Record &nbsp;·&nbsp;
@@ -79,7 +80,7 @@
       <!-- Panel: Best Score -->
       <div id="lb-panel-best" class="lb-panel" style="display:none">
         <div class="table-wrapper">
-          <table>
+          <table class="classifica-window-table">
             <thead>
               <tr>
                 <th>#</th>
@@ -95,6 +96,7 @@
             <tbody id="leaderboard-best-tbody"></tbody>
           </table>
         </div>
+        <div id="leaderboard-pager-best" class="classifica-pager"></div>
         <p class="note" style="margin-top:0.5rem;margin-bottom:2rem">
           Classifica cecchini per miglior singolo tentativo ufficiale &nbsp;·&nbsp;
           Spareggio: media tiro esatta → 2° miglior tentativo ufficiale → punti tiro &nbsp;·&nbsp;
@@ -102,14 +104,26 @@
         </p>
       </div>
 
-      <!-- Classifica giornaliera -->
-      <h2 class="section-title" style="margin-bottom:0.75rem">📅 Risultati per Giornata</h2>
-      <p class="note" style="margin-bottom:1rem">
-        Ordine giornata = Best → Media 3T → 2° best &nbsp;·&nbsp;
-        -1 vale 0 solo nelle metriche di spareggio &nbsp;·&nbsp;
-        Ex aequo solo se coincidono tutti i criteri sportivi
-      </p>
-      <div id="giornate-container"></div>
+      <section class="classifica-calendar-shell">
+        <div class="classifica-calendar-header">
+          <div>
+            <h2 class="section-title" style="margin-bottom:0.4rem">📅 Calendario stagione</h2>
+            <p class="note" style="margin-bottom:0">
+              Calendario completo della stagione. Clicca una giornata giocata per vedere la classifica di serata in blocchi da 10.
+            </p>
+          </div>
+          <div class="classifica-calendar-nav">
+            <button type="button" class="classifica-calendar-btn" id="classifica-cal-prev" aria-label="Mese precedente">◀</button>
+            <div id="classifica-cal-month" class="classifica-calendar-month">—</div>
+            <button type="button" class="classifica-calendar-btn" id="classifica-cal-next" aria-label="Mese successivo">▶</button>
+          </div>
+        </div>
+
+        <div id="classifica-calendar-summary" class="classifica-calendar-summary"></div>
+        <div id="classifica-calendar-grid" class="classifica-calendar-grid"></div>
+
+        <div id="classifica-giornata-detail" class="classifica-giornata-detail"></div>
+      </section>
 
     </div>
   </main>

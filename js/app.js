@@ -402,14 +402,28 @@ function renderRecentPosts(posts) {  var container = document.getElementById('re
 
 // ── Classifica Page ────────────────────────────────────────────
 
+var CLASSIFICA_PAGE_SIZE = 10;
+var _classificaState = {
+  seasonId: null,
+  campPage: 0,
+  bestPage: 0,
+  giornataPage: 0,
+  selectedDate: null,
+  calendarMonth: null,
+  calendarYear: null,
+};
+var _classificaCalendarCache = Object.create(null);
+
 function initClassifica() {
   var select = document.getElementById('season-select');
   if (!select) return;
 
-  // Populate selector — most recent first
+  while (select.options.length) select.remove(0);
+
   var sorted = CSL.stagioni.slice().reverse();
   var activeSeason = getCurrentSeason();
   var activeId = activeSeason ? activeSeason.id : (sorted[0] ? sorted[0].id : null);
+
   sorted.forEach(function(s) {
     var opt = document.createElement('option');
     opt.value = s.id;
@@ -418,13 +432,12 @@ function initClassifica() {
     select.appendChild(opt);
   });
 
-  select.addEventListener('change', function() {
+  select.onchange = function() {
     renderLeaderboard(select.value);
-  });
+  };
 
-  // Tab switching (set up once)
   document.querySelectorAll('.lb-tab').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+    btn.onclick = function() {
       document.querySelectorAll('.lb-tab').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
       var tab = btn.getAttribute('data-tab');
@@ -432,198 +445,562 @@ function initClassifica() {
       var best = document.getElementById('lb-panel-best');
       if (camp) camp.style.display = tab === 'camp' ? '' : 'none';
       if (best) best.style.display = tab === 'best' ? '' : 'none';
-    });
+    };
   });
 
   if (activeId) renderLeaderboard(activeId);
 }
 
-function renderLeaderboard(seasonId) {
+async function renderLeaderboard(seasonId) {
   var season = CSL.stagioni.find(function(s) { return s.id === seasonId; });
   if (!season) return;
 
-  // ── Classifica stagionale ──
-  var tbody = document.getElementById('leaderboard-tbody');
-  if (tbody) {
-    var standings = season.classifica.slice().sort(compareCampionatoPlayers);
-    var maxPts = standings[0] ? standings[0].punti_campionato : 1;
+  var seasonChanged = _classificaState.seasonId !== season.id;
+  _classificaState.seasonId = season.id;
 
-    tbody.innerHTML = standings.length
-      ? standings.map(function(p) {
-          var barPct = maxPts > 0 ? ((p.punti_campionato / maxPts) * 100).toFixed(1) : '0';
-          var recUsati = p.recuperi_usati || 0;
-          var recMax   = p.recuperi_max   || 0;
-          var recHtml  = recMax > 0
-            ? '<span class="recupero-counter' + (recUsati > 0 ? ' recupero-counter--used' : '') + '">' + recUsati + '/' + recMax + '</span>'
-            : '<span style="color:var(--text-muted)">—</span>';
-          return '<tr class="row-clickable" data-player="' + escapeHtml(p.nome) + '" title="Vedi statistiche">' +
-            '<td><span class="rank-badge ' + rankClass(p.posizione) + '">' + p.posizione + '</span></td>' +
-            '<td class="player-name">' + escapeHtml(p.nome) + '</td>' +
-            '<td>' + p.partite + '</td>' +
-            '<td><div class="score-bar-wrapper">' +
-              '<div class="score-bar-bg"><div class="score-bar-fill" style="width:0" data-w="' + barPct + '%"></div></div>' +
-              '<span class="score-value">' + p.punti_campionato + '</span>' +
-            '</div></td>' +
-            '<td>' + p.punti_tiro + '</td>' +
-            '<td>' + formatTieAverage(getSeasonAverage(p)) + '</td>' +
-            '<td>' + p.record + '</td>' +
-            '<td>' + p.vittorie + '</td>' +
-            '<td>' + recHtml + '</td>' +
-            '</tr>'
-        }).join('')
-      : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem">Nessun risultato ancora.</td></tr>';
+  await _ensureClassificaCalendarData(season);
+  var calendarEntries = _buildClassificaCalendarEntries(season);
+  var playedEntries = calendarEntries.filter(function(entry) { return entry.hasResults; });
 
-    // Animate bars
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        tbody.querySelectorAll('.score-bar-fill').forEach(function(bar) {
-          bar.style.width = bar.getAttribute('data-w');
-        });
-      });
-    });
-    // Click row → statistiche giocatore
-    tbody.querySelectorAll('tr[data-player]').forEach(function(tr) {
-      tr.addEventListener('click', function() {
-        window.location.href = 'stats.html?player=' + encodeURIComponent(tr.getAttribute('data-player'));
-      });
-    });
+  if (seasonChanged) {
+    _classificaState.campPage = 0;
+    _classificaState.bestPage = 0;
+    _classificaState.giornataPage = 0;
+    _classificaState.selectedDate = playedEntries.length ? playedEntries[playedEntries.length - 1].data : null;
+    _classificaState.calendarMonth = null;
+    _classificaState.calendarYear = null;
+  } else if (_classificaState.selectedDate && !playedEntries.some(function(entry) { return entry.data === _classificaState.selectedDate; })) {
+    _classificaState.selectedDate = playedEntries.length ? playedEntries[playedEntries.length - 1].data : null;
+    _classificaState.giornataPage = 0;
+  } else if (!_classificaState.selectedDate && playedEntries.length) {
+    _classificaState.selectedDate = playedEntries[playedEntries.length - 1].data;
   }
 
-  // ── Classifica Best Score ──
-  var tbodyBest = document.getElementById('leaderboard-best-tbody');
-  if (tbodyBest) {
-    var byRecord = season.classifica.slice().sort(compareCecchiniPlayers);
-    var bestPositions = [];
-    byRecord.forEach(function(p, idx) {
-      if (idx === 0 || !sameCecchiniRank(p, byRecord[idx - 1])) {
-        bestPositions.push(idx + 1);
-      } else {
-        bestPositions.push(bestPositions[idx - 1]);
-      }
-    });
-    var maxRecord = byRecord[0] ? byRecord[0].record : 50;
-    tbodyBest.innerHTML = byRecord.length
-      ? byRecord.map(function(p, idx) {
-          var pos = bestPositions[idx];
-          var barPct = maxRecord > 0 ? ((p.record / maxRecord) * 100).toFixed(1) : '0';
-          return '<tr class="row-clickable" data-player="' + escapeHtml(p.nome) + '" title="Vedi statistiche">' +
-            '<td><span class="rank-badge ' + rankClass(pos) + '">' + pos + '</span></td>' +
-            '<td class="player-name">' + escapeHtml(p.nome) + '</td>' +
-            '<td><div class="score-bar-wrapper">' +
-              '<div class="score-bar-bg"><div class="score-bar-fill score-bar-fill--best" style="width:0" data-w="' + barPct + '%"></div></div>' +
-              '<span class="score-value" style="color:var(--secondary)">' + p.record + '</span>' +
-            '</div></td>' +
-            '<td>' + formatTieAverage(getSeasonAverage(p)) + '</td>' +
-            '<td>' + (getSecondRecord(p) > 0 ? getSecondRecord(p) : '—') + '</td>' +
-            '<td>' + p.punti_tiro + '</td>' +
-            '<td>' + p.partite + '</td>' +
-            '<td>' + p.punti_campionato + '</td>' +
-            '</tr>';
-        }).join('')
-      : '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem">Nessun risultato ancora.</td></tr>';
-
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        tbodyBest.querySelectorAll('.score-bar-fill--best').forEach(function(bar) {
-          bar.style.width = bar.getAttribute('data-w');
-        });
-      });
-    });
-    // Click row → statistiche giocatore
-    tbodyBest.querySelectorAll('tr[data-player]').forEach(function(tr) {
-      tr.addEventListener('click', function() {
-        window.location.href = 'stats.html?player=' + encodeURIComponent(tr.getAttribute('data-player'));
-      });
-    });
-  }
-
-  // ── Info stagione ──
-  var info = document.getElementById('season-info-text');
-  if (info) {
-    var statusBadge = '';
-    if (season.status === 'attiva') {
-      statusBadge = ' &nbsp;<span class="badge-active">Attiva</span>';
-    } else if (season.status === 'next') {
-      statusBadge = ' &nbsp;<span class="badge-active" style="background:rgba(255,204,0,0.1);border-color:rgba(255,204,0,0.3);color:var(--secondary);animation:none">In arrivo</span>';
-    }
-    info.innerHTML = season.nome + ' ' + season.anno +
-      ' &nbsp;·&nbsp; ' + formatDate(season.inizio) + ' — ' + formatDate(season.fine) +
-      statusBadge;
-  }
-
-  // ── Classifica giornaliera ──
-  renderGiornate(season);
+  _renderCampionatoTable(season);
+  _renderCecchiniTable(season);
+  _renderSeasonInfo(season);
+  _renderClassificaCalendar(season, calendarEntries);
 }
 
-function renderGiornate(season) {
-  var container = document.getElementById('giornate-container');
+async function _ensureClassificaCalendarData(season) {
+  if (!season) return [];
+  if (season._plannedGiornateLoaded) return season._plannedGiornate || [];
+
+  if (Object.prototype.hasOwnProperty.call(_classificaCalendarCache, season.id)) {
+    season._plannedGiornate = _classificaCalendarCache[season.id];
+    season._plannedGiornateLoaded = true;
+    return season._plannedGiornate;
+  }
+
+  var rows = [];
+  if (window.CSLAuth && CSLAuth.client) {
+    try {
+      var res = await CSLAuth.client
+        .from('giornate')
+        .select('id, season_id, numero, data, note')
+        .eq('season_id', season.id)
+        .order('numero', { ascending: true });
+      if (!res.error && Array.isArray(res.data)) rows = res.data;
+    } catch (e) {
+      console.warn('Failed to load calendar for classifica page', season.id, e);
+    }
+  }
+
+  season._plannedGiornate = rows;
+  season._plannedGiornateLoaded = true;
+  _classificaCalendarCache[season.id] = rows;
+  return rows;
+}
+
+function _buildClassificaDefaultSchedule(inizioStr, fineStr) {
+  if (!inizioStr || !fineStr) return [];
+  var result = [];
+  var n = 0;
+  var d = new Date(inizioStr + 'T00:00:00');
+  var end = new Date(fineStr + 'T00:00:00');
+  while (d <= end) {
+    var dow = d.getDay();
+    if (dow === 1 || dow === 3) {
+      n++;
+      result.push({
+        numero: n,
+        data: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'),
+      });
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return result;
+}
+
+function _buildClassificaCalendarEntries(season) {
+  var defaultSchedule = _buildClassificaDefaultSchedule(season.inizio, season.fine);
+  var defaultByNumero = Object.create(null);
+  defaultSchedule.forEach(function(item) { defaultByNumero[item.numero] = item.data; });
+
+  var planned = Array.isArray(season._plannedGiornate)
+    ? season._plannedGiornate.filter(function(item) { return item && item.data && (item.note || '') !== 'deleted'; })
+    : [];
+  if (!planned.length) {
+    planned = defaultSchedule.map(function(item) {
+      return {
+        season_id: season.id,
+        numero: item.numero,
+        data: item.data,
+        note: 'default',
+        _isFallbackDefault: true,
+      };
+    });
+  }
+
+  var entryMap = Object.create(null);
+  planned.forEach(function(item) {
+    entryMap[item.data] = {
+      data: item.data,
+      numero: item.numero || null,
+      giorno: '',
+      hasResults: false,
+      risultati: [],
+      playerCount: 0,
+      isPlanned: true,
+      isDefault: !!item._isFallbackDefault || defaultByNumero[item.numero] === item.data,
+    };
+  });
+
+  (season.giornate || []).forEach(function(g) {
+    var entry = entryMap[g.data] || {
+      data: g.data,
+      numero: g.numero || null,
+      giorno: g.giorno || '',
+      hasResults: false,
+      risultati: [],
+      playerCount: 0,
+      isPlanned: false,
+      isDefault: defaultByNumero[g.numero] === g.data,
+    };
+    entry.numero = entry.numero || g.numero || null;
+    entry.giorno = g.giorno || entry.giorno;
+    entry.hasResults = true;
+    entry.risultati = (g.risultati || []).slice();
+    entry.playerCount = entry.risultati.length;
+    entryMap[g.data] = entry;
+  });
+
+  return Object.keys(entryMap).map(function(key) {
+    var entry = entryMap[key];
+    if (!entry.giorno) {
+      entry.giorno = new Date(entry.data + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long' });
+    }
+    return entry;
+  }).sort(function(a, b) {
+    return a.data.localeCompare(b.data) || ((a.numero || 0) - (b.numero || 0));
+  });
+}
+
+function _renderCampionatoTable(season) {
+  var tbody = document.getElementById('leaderboard-tbody');
+  if (!tbody) return;
+
+  var standings = season.classifica.slice().sort(compareCampionatoPlayers);
+  var totalPages = Math.max(1, Math.ceil(standings.length / CLASSIFICA_PAGE_SIZE));
+  if (_classificaState.campPage > totalPages - 1) _classificaState.campPage = totalPages - 1;
+  var pageStart = _classificaState.campPage * CLASSIFICA_PAGE_SIZE;
+  var pageRows = standings.slice(pageStart, pageStart + CLASSIFICA_PAGE_SIZE);
+  var maxPts = standings[0] ? standings[0].punti_campionato : 1;
+
+  tbody.innerHTML = pageRows.length
+    ? pageRows.map(function(p) {
+        var barPct = maxPts > 0 ? ((p.punti_campionato / maxPts) * 100).toFixed(1) : '0';
+        var recUsati = p.recuperi_usati || 0;
+        var recMax = p.recuperi_max || 0;
+        var recHtml = recMax > 0
+          ? '<span class="recupero-counter' + (recUsati > 0 ? ' recupero-counter--used' : '') + '">' + recUsati + '/' + recMax + '</span>'
+          : '<span style="color:var(--text-muted)">—</span>';
+        return '<tr class="row-clickable' + (p.posizione === 1 ? ' is-rank-1' : '') + '" data-player="' + escapeHtml(p.nome) + '" title="Vedi statistiche">' +
+          '<td><span class="rank-badge ' + rankClass(p.posizione) + '">' + p.posizione + '</span></td>' +
+          '<td class="player-name">' + escapeHtml(p.nome) + '</td>' +
+          '<td>' + p.partite + '</td>' +
+          '<td><div class="score-bar-wrapper">' +
+            '<div class="score-bar-bg"><div class="score-bar-fill" style="width:0" data-w="' + barPct + '%"></div></div>' +
+            '<span class="score-value">' + p.punti_campionato + '</span>' +
+          '</div></td>' +
+          '<td>' + p.punti_tiro + '</td>' +
+          '<td>' + formatTieAverage(getSeasonAverage(p)) + '</td>' +
+          '<td>' + p.record + '</td>' +
+          '<td>' + p.vittorie + '</td>' +
+          '<td>' + recHtml + '</td>' +
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem">Nessun risultato ancora.</td></tr>';
+
+  _animateScoreBars(tbody, '.score-bar-fill');
+  _bindLeaderboardRowClicks(tbody);
+  _renderClassificaPager(document.getElementById('leaderboard-pager-camp'), _classificaState.campPage, standings.length, function(nextPage) {
+    _classificaState.campPage = nextPage;
+    _renderCampionatoTable(season);
+  });
+}
+
+function _renderCecchiniTable(season) {
+  var tbodyBest = document.getElementById('leaderboard-best-tbody');
+  if (!tbodyBest) return;
+
+  var byRecord = season.classifica.slice().sort(compareCecchiniPlayers);
+  var bestPositions = [];
+  byRecord.forEach(function(p, idx) {
+    if (idx === 0 || !sameCecchiniRank(p, byRecord[idx - 1])) bestPositions.push(idx + 1);
+    else bestPositions.push(bestPositions[idx - 1]);
+  });
+
+  var totalPages = Math.max(1, Math.ceil(byRecord.length / CLASSIFICA_PAGE_SIZE));
+  if (_classificaState.bestPage > totalPages - 1) _classificaState.bestPage = totalPages - 1;
+  var pageStart = _classificaState.bestPage * CLASSIFICA_PAGE_SIZE;
+  var pageRows = byRecord.slice(pageStart, pageStart + CLASSIFICA_PAGE_SIZE);
+  var maxRecord = byRecord[0] ? byRecord[0].record : 50;
+
+  tbodyBest.innerHTML = pageRows.length
+    ? pageRows.map(function(p) {
+        var fullIndex = byRecord.indexOf(p);
+        var pos = bestPositions[fullIndex];
+        var barPct = maxRecord > 0 ? ((p.record / maxRecord) * 100).toFixed(1) : '0';
+        return '<tr class="row-clickable' + (pos === 1 ? ' is-rank-1' : '') + '" data-player="' + escapeHtml(p.nome) + '" title="Vedi statistiche">' +
+          '<td><span class="rank-badge ' + rankClass(pos) + '">' + pos + '</span></td>' +
+          '<td class="player-name">' + escapeHtml(p.nome) + '</td>' +
+          '<td><div class="score-bar-wrapper">' +
+            '<div class="score-bar-bg"><div class="score-bar-fill score-bar-fill--best" style="width:0" data-w="' + barPct + '%"></div></div>' +
+            '<span class="score-value" style="color:var(--secondary)">' + p.record + '</span>' +
+          '</div></td>' +
+          '<td>' + formatTieAverage(getSeasonAverage(p)) + '</td>' +
+          '<td>' + (getSecondRecord(p) > 0 ? getSecondRecord(p) : '—') + '</td>' +
+          '<td>' + p.punti_tiro + '</td>' +
+          '<td>' + p.partite + '</td>' +
+          '<td>' + p.punti_campionato + '</td>' +
+          '</tr>';
+      }).join('')
+    : '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem">Nessun risultato ancora.</td></tr>';
+
+  _animateScoreBars(tbodyBest, '.score-bar-fill--best');
+  _bindLeaderboardRowClicks(tbodyBest);
+  _renderClassificaPager(document.getElementById('leaderboard-pager-best'), _classificaState.bestPage, byRecord.length, function(nextPage) {
+    _classificaState.bestPage = nextPage;
+    _renderCecchiniTable(season);
+  });
+}
+
+function _renderSeasonInfo(season) {
+  var info = document.getElementById('season-info-text');
+  if (!info) return;
+
+  var statusBadge = '';
+  if (season.status === 'attiva') {
+    statusBadge = ' &nbsp;<span class="badge-active">Attiva</span>';
+  } else if (season.status === 'next') {
+    statusBadge = ' &nbsp;<span class="badge-active" style="background:rgba(255,204,0,0.1);border-color:rgba(255,204,0,0.3);color:var(--secondary);animation:none">In arrivo</span>';
+  }
+
+  info.innerHTML = season.nome + ' ' + season.anno +
+    ' &nbsp;·&nbsp; ' + formatDate(season.inizio) + ' — ' + formatDate(season.fine) +
+    statusBadge;
+}
+
+function _renderClassificaPager(container, currentPage, totalItems, onChange) {
   if (!container) return;
 
-  var giornate = season.giornate || [];
-  if (!giornate.length) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:1rem 0">Nessuna giornata disputata.</p>';
+  if (!totalItems) {
+    container.innerHTML = '';
     return;
   }
 
-  var total = season.giornate_totali || giornate.length;
-  container.innerHTML = giornate.map(function(g, idx) {
-    var num = g.numero || (giornate.length - idx);
-    var rows = g.risultati.map(function(r) {
-      var ts = [r.t1, r.t2, r.t3];
-      while (ts.length > 0 && ts[ts.length - 1] === -1) { ts.pop(); }
-      var tentativi = ts.map(function(v) {
-          return '<span class="tentativo' + (v >= 0 && v === r.punteggio && v > 0 ? ' best' : '') + (v === -1 ? ' not-attempted' : '') + '">' + (v === -1 ? '\u2014' : v) + '</span>';
-        }).join(' ');
-      var recuperoBadge = r.recupero
-        ? '<span class="recupero-badge" title="Recupero — giocato il ' + formatDate(r.data_effettiva) + '">R</span>'
-        : '';
-      return '<tr' + (r.recupero ? ' class="row-recupero"' : '') + '>' +
-        '<td><span class="rank-badge ' + rankClass(r.posizione) + '">' + r.posizione + '</span></td>' +
-        '<td class="player-name">' + recuperoBadge + escapeHtml(r.nome) + '</td>' +
-        '<td>' + tentativi + '</td>' +
-        '<td><strong style="color:var(--text)">' + r.punteggio + '</strong></td>' +
-        '<td>' + formatTieAverage(r.media_tre_tentativi) + '</td>' +
-        '<td>' + r.secondo_miglior_tentativo + '</td>' +
-        '<td><span class="camp-pts camp-pts-' + r.punti_campionato + '">' +
-          (r.punti_campionato > 0 ? '+' + r.punti_campionato : '\u2014') +
-        '</span></td>' +
-        '</tr>'
-    }).join('');
+  var totalPages = Math.max(1, Math.ceil(totalItems / CLASSIFICA_PAGE_SIZE));
+  var page = Math.max(0, Math.min(currentPage, totalPages - 1));
+  var from = page * CLASSIFICA_PAGE_SIZE + 1;
+  var to = Math.min(totalItems, from + CLASSIFICA_PAGE_SIZE - 1);
 
-    return '<div class="giornata-card card" style="margin-bottom:1.25rem">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">' +
-        '<div style="display:flex;align-items:center;gap:0.75rem">' +
-          '<span style="font-family:Orbitron,monospace;font-size:0.95rem;color:var(--secondary);letter-spacing:0.05em">G' + num + '<span style="font-size:0.7em;color:var(--text-muted);font-weight:400">/' + total + '</span></span>' +
-          '<div>' +
-            '<span style="font-family:Orbitron,monospace;font-size:0.82rem;color:var(--primary)">' + escapeHtml(g.giorno) + '</span>' +
-            '<span style="color:var(--text-muted);font-size:0.78rem;margin-left:0.6rem">' + formatDate(g.data) + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<span style="font-size:0.75rem;color:var(--text-muted)">' + g.risultati.length + ' giocatori</span>' +
-      '</div>' +
-      '<div class="table-wrapper">' +
-        '<table>' +
-          '<thead><tr><th>#</th><th>Giocatore</th><th>Tentativi</th><th>Best</th><th>Media 3T</th><th>2° best</th><th>Camp.</th></tr></thead>' +
-          '<tbody>' + rows + '</tbody>' +
-        '</table>' +
-      '</div>' +
+  if (totalPages === 1) {
+    container.innerHTML = '<div class="classifica-pager-meta">Giocatori ' + from + '–' + to + ' di ' + totalItems + '</div>';
+    return;
+  }
+
+  container.innerHTML = '<div class="classifica-pager-meta">Giocatori ' + from + '–' + to + ' di ' + totalItems + '</div>' +
+    '<div class="classifica-pager-controls">' +
+      '<button type="button" class="classifica-pager-btn" data-dir="prev"' + (page === 0 ? ' disabled' : '') + '>◀</button>' +
+      '<span class="classifica-pager-count">Pagina ' + (page + 1) + ' / ' + totalPages + '</span>' +
+      '<button type="button" class="classifica-pager-btn" data-dir="next"' + (page >= totalPages - 1 ? ' disabled' : '') + '>▶</button>' +
     '</div>';
+
+  var prevBtn = container.querySelector('[data-dir="prev"]');
+  var nextBtn = container.querySelector('[data-dir="next"]');
+  if (prevBtn) prevBtn.onclick = function() { onChange(page - 1); };
+  if (nextBtn) nextBtn.onclick = function() { onChange(page + 1); };
+}
+
+function _renderClassificaCalendar(season, entries) {
+  _renderClassificaCalendarSummary(season, entries);
+  _renderClassificaCalendarGrid(season, entries);
+  _renderClassificaGiornataDetail(season, entries);
+}
+
+function _renderClassificaCalendarSummary(season, entries) {
+  var summary = document.getElementById('classifica-calendar-summary');
+  if (!summary) return;
+
+  var played = entries.filter(function(entry) { return entry.hasResults; });
+  var upcoming = entries.filter(function(entry) { return entry.isPlanned && !entry.hasResults; });
+  var selected = entries.find(function(entry) { return entry.data === _classificaState.selectedDate; }) || null;
+  var next = upcoming.find(function(entry) { return entry.data >= today(); }) || upcoming[0] || null;
+
+  summary.innerHTML =
+    '<div class="admin-calendar-pill"><strong>' + escapeHtml(season.nome) + ' ' + escapeHtml(String(season.anno || '')) + '</strong></div>' +
+    '<div class="admin-calendar-pill">Giocate: <strong>' + played.length + '</strong></div>' +
+    '<div class="admin-calendar-pill">In calendario: <strong>' + entries.filter(function(entry) { return entry.isPlanned || entry.hasResults; }).length + '</strong></div>' +
+    '<div class="admin-calendar-pill">Range: <strong>' + escapeHtml(formatDate(season.inizio)) + '</strong> → <strong>' + escapeHtml(formatDate(season.fine)) + '</strong></div>' +
+    (next ? '<div class="admin-calendar-pill admin-calendar-pill--accent">Prossima: <strong>G' + escapeHtml(String(next.numero || '—')) + '</strong> · ' + escapeHtml(formatDate(next.data)) + '</div>' : '') +
+    (selected && selected.hasResults ? '<div class="admin-calendar-pill admin-calendar-pill--accent">Selezionata: <strong>G' + escapeHtml(String(selected.numero || '—')) + '</strong> · ' + escapeHtml(formatDate(selected.data)) + '</div>' : '');
+}
+
+function _renderClassificaCalendarGrid(season, entries) {
+  var monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var labelEl = document.getElementById('classifica-cal-month');
+  var grid = document.getElementById('classifica-calendar-grid');
+  if (!labelEl || !grid) return;
+
+  _resolveClassificaCalendarAnchor(season, entries);
+
+  var month = _classificaState.calendarMonth;
+  var year = _classificaState.calendarYear;
+  labelEl.textContent = monthNames[month] + ' ' + year;
+
+  var prevBtn = document.getElementById('classifica-cal-prev');
+  var nextBtn = document.getElementById('classifica-cal-next');
+  if (prevBtn) prevBtn.onclick = function() { _changeClassificaCalendarMonth(season, entries, -1); };
+  if (nextBtn) nextBtn.onclick = function() { _changeClassificaCalendarMonth(season, entries, 1); };
+
+  var seasonStart = new Date(season.inizio + 'T00:00:00');
+  seasonStart.setDate(1);
+  var seasonEnd = new Date(season.fine + 'T00:00:00');
+  seasonEnd.setDate(1);
+  var currentMonth = new Date(year, month, 1);
+  if (prevBtn) prevBtn.disabled = currentMonth <= seasonStart;
+  if (nextBtn) nextBtn.disabled = currentMonth >= seasonEnd;
+
+  grid.innerHTML = '';
+  ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].forEach(function(day) {
+    var hd = document.createElement('div');
+    hd.className = 'admin-calendar-weekday';
+    hd.textContent = day;
+    grid.appendChild(hd);
+  });
+
+  var entryByDate = Object.create(null);
+  entries.forEach(function(entry) { entryByDate[entry.data] = entry; });
+
+  var first = new Date(year, month, 1);
+  var startDow = (first.getDay() + 6) % 7;
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (var i = 0; i < startDow; i++) {
+    grid.appendChild(_classificaEmptyCalCell());
+  }
+
+  var seasonStartStr = season.inizio;
+  var seasonEndStr = season.fine;
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dd = new Date(year, month, d);
+    var dateStr = dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0') + '-' + String(dd.getDate()).padStart(2, '0');
+    var entry = entryByDate[dateStr] || null;
+
+    var cell = document.createElement('div');
+    cell.className = 'admin-calendar-day classifica-calendar-day';
+
+    var top = document.createElement('div');
+    top.className = 'admin-calendar-day-top';
+    var lbl = document.createElement('div');
+    lbl.className = 'admin-calendar-day-num';
+    lbl.textContent = d;
+    var badge = document.createElement('div');
+    badge.className = 'admin-calendar-day-badge';
+    top.appendChild(lbl);
+    top.appendChild(badge);
+
+    var body = document.createElement('div');
+    body.className = 'admin-calendar-day-body';
+
+    var isWithinSeason = dateStr >= seasonStartStr && dateStr <= seasonEndStr;
+    if (_sameCalendarDate(dd, new Date())) cell.classList.add('is-today');
+
+    if (!isWithinSeason) {
+      cell.classList.add('classifica-calendar-day--void');
+    } else if (entry) {
+      badge.textContent = 'G' + (entry.numero || '—');
+      body.textContent = entry.hasResults
+        ? entry.playerCount + ' giocator' + (entry.playerCount === 1 ? 'e' : 'i')
+        : 'programmata';
+      cell.classList.add(entry.hasResults ? 'is-played' : 'is-planned');
+      if (entry.isDefault) cell.classList.add('is-default');
+      if (entry.hasResults) {
+        cell.classList.add('classifica-calendar-day--clickable');
+        if (_classificaState.selectedDate === entry.data) cell.classList.add('is-selected');
+        cell.onclick = function(selectedEntry) {
+          return function() {
+            _classificaState.selectedDate = selectedEntry.data;
+            _classificaState.giornataPage = 0;
+            _renderClassificaCalendarSummary(season, entries);
+            _renderClassificaCalendarGrid(season, entries);
+            _renderClassificaGiornataDetail(season, entries);
+          };
+        }(entry);
+      }
+    } else {
+      body.textContent = (dd.getDay() === 1 || dd.getDay() === 3) ? 'slot lun/mer' : '';
+      if (body.textContent) cell.classList.add('is-available');
+    }
+
+    cell.appendChild(top);
+    cell.appendChild(body);
+    grid.appendChild(cell);
+  }
+}
+
+function _changeClassificaCalendarMonth(season, entries, delta) {
+  var next = new Date(_classificaState.calendarYear, _classificaState.calendarMonth + delta, 1);
+  var seasonStart = new Date(season.inizio + 'T00:00:00');
+  seasonStart.setDate(1);
+  var seasonEnd = new Date(season.fine + 'T00:00:00');
+  seasonEnd.setDate(1);
+  if (next < seasonStart || next > seasonEnd) return;
+
+  _classificaState.calendarMonth = next.getMonth();
+  _classificaState.calendarYear = next.getFullYear();
+  _renderClassificaCalendarGrid(season, entries);
+}
+
+function _resolveClassificaCalendarAnchor(season, entries) {
+  if (_classificaState.calendarMonth != null && _classificaState.calendarYear != null) return;
+
+  var anchor = null;
+  if (_classificaState.selectedDate) {
+    anchor = new Date(_classificaState.selectedDate + 'T00:00:00');
+  } else {
+    var todayDate = new Date(today() + 'T00:00:00');
+    var seasonStart = new Date(season.inizio + 'T00:00:00');
+    var seasonEnd = new Date(season.fine + 'T00:00:00');
+    if (todayDate < seasonStart) anchor = seasonStart;
+    else if (todayDate > seasonEnd) anchor = entries.length ? new Date(entries[entries.length - 1].data + 'T00:00:00') : seasonEnd;
+    else anchor = todayDate;
+  }
+
+  _classificaState.calendarMonth = anchor.getMonth();
+  _classificaState.calendarYear = anchor.getFullYear();
+}
+
+function _renderClassificaGiornataDetail(season, entries) {
+  var detail = document.getElementById('classifica-giornata-detail');
+  if (!detail) return;
+
+  var playedEntries = entries.filter(function(entry) { return entry.hasResults; });
+  if (!playedEntries.length) {
+    detail.innerHTML = '<div class="card classifica-giornata-card classifica-empty-state">' +
+      '<div class="classifica-giornata-title">Nessuna giornata ancora disputata</div>' +
+      '<p class="note" style="margin:0">Il calendario è già pronto, ma la classifica di giornata comparirà qui quando arriveranno i primi risultati.</p>' +
+    '</div>';
+    return;
+  }
+
+  var selected = playedEntries.find(function(entry) { return entry.data === _classificaState.selectedDate; }) || playedEntries[playedEntries.length - 1];
+  _classificaState.selectedDate = selected.data;
+
+  var risultati = (selected.risultati || []).slice().sort(function(a, b) {
+    return a.posizione - b.posizione || b.punteggio - a.punteggio || a.nome.localeCompare(b.nome, 'it');
+  });
+
+  var totalPages = Math.max(1, Math.ceil(risultati.length / CLASSIFICA_PAGE_SIZE));
+  if (_classificaState.giornataPage > totalPages - 1) _classificaState.giornataPage = totalPages - 1;
+  var pageStart = _classificaState.giornataPage * CLASSIFICA_PAGE_SIZE;
+  var pageRows = risultati.slice(pageStart, pageStart + CLASSIFICA_PAGE_SIZE);
+
+  var rowsHtml = pageRows.map(function(r) {
+    var recuperoBadge = r.recupero
+      ? '<span class="recupero-badge" title="Recupero — giocato il ' + formatDate(r.data_effettiva) + '">R</span>'
+      : '';
+    return '<tr class="row-clickable' + (r.posizione === 1 ? ' is-rank-1' : '') + (r.recupero ? ' row-recupero' : '') + '" data-player="' + escapeHtml(r.nome) + '" title="Vedi statistiche">' +
+      '<td><span class="rank-badge ' + rankClass(r.posizione) + '">' + r.posizione + '</span></td>' +
+      '<td class="player-name">' + recuperoBadge + escapeHtml(r.nome) + '</td>' +
+      '<td>' + _formatGiornataTentativi(r) + '</td>' +
+      '<td><strong style="color:var(--text)">' + r.punteggio + '</strong></td>' +
+      '<td>' + formatTieAverage(r.media_tre_tentativi) + '</td>' +
+      '<td>' + r.secondo_miglior_tentativo + '</td>' +
+      '<td><span class="camp-pts camp-pts-' + r.punti_campionato + '">' + (r.punti_campionato > 0 ? '+' + r.punti_campionato : '\u2014') + '</span></td>' +
+      '</tr>';
   }).join('');
+
+  detail.innerHTML = '<div class="card classifica-giornata-card">' +
+    '<div class="classifica-giornata-head">' +
+      '<div>' +
+        '<div class="classifica-giornata-kicker">G' + escapeHtml(String(selected.numero || '—')) + ' / ' + escapeHtml(String(season.giornate_totali || playedEntries.length)) + ' · ' + escapeHtml(selected.giorno) + ' ' + escapeHtml(formatDate(selected.data)) + '</div>' +
+        '<div class="classifica-giornata-title">Classifica della giornata</div>' +
+        '<p class="note" style="margin:0">Ordine giornata = Best → Media 3T → 2° best · Ex aequo solo se coincidono tutti i criteri sportivi.</p>' +
+      '</div>' +
+      '<div class="classifica-giornata-meta">' + risultati.length + ' giocatori</div>' +
+    '</div>' +
+    '<div class="table-wrapper">' +
+      '<table class="classifica-window-table">' +
+        '<thead><tr><th>#</th><th>Giocatore</th><th>Tentativi</th><th>Best</th><th>Media 3T</th><th>2° best</th><th>Camp.</th></tr></thead>' +
+        '<tbody>' + rowsHtml + '</tbody>' +
+      '</table>' +
+    '</div>' +
+    '<div id="classifica-giornata-pager" class="classifica-pager"></div>' +
+  '</div>';
+
+  _bindLeaderboardRowClicks(detail);
+  _renderClassificaPager(document.getElementById('classifica-giornata-pager'), _classificaState.giornataPage, risultati.length, function(nextPage) {
+    _classificaState.giornataPage = nextPage;
+    _renderClassificaGiornataDetail(season, entries);
+  });
+}
+
+function _formatGiornataTentativi(r) {
+  var ts = [r.t1, r.t2, r.t3];
+  while (ts.length > 0 && ts[ts.length - 1] === -1) ts.pop();
+  return ts.map(function(v) {
+    return '<span class="tentativo' + (v >= 0 && v === r.punteggio && v > 0 ? ' best' : '') + (v === -1 ? ' not-attempted' : '') + '">' + (v === -1 ? '\u2014' : v) + '</span>';
+  }).join(' ');
+}
+
+function _bindLeaderboardRowClicks(scope) {
+  if (!scope) return;
+  scope.querySelectorAll('tr[data-player]').forEach(function(tr) {
+    tr.onclick = function() {
+      window.location.href = 'stats.html?player=' + encodeURIComponent(tr.getAttribute('data-player'));
+    };
+  });
+}
+
+function _animateScoreBars(scope, selector) {
+  if (!scope) return;
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      scope.querySelectorAll(selector).forEach(function(bar) {
+        bar.style.width = bar.getAttribute('data-w');
+      });
+    });
+  });
+}
+
+function _sameCalendarDate(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function _classificaEmptyCalCell() {
+  var c = document.createElement('div');
+  c.className = 'admin-calendar-empty';
+  return c;
 }
 
 // ── Stats Page ─────────────────────────────────────────────────
 
-/**
- * Aggrega le statistiche per giocatore da una lista di stagioni.
- * Ritorna un array di oggetti player con tutti i campi stats.
- */
 function buildPlayerStats(seasons) {
-  var players = {}; // keyed by nome
-  // recuperi_max per giocatore dai dati classifica (per-stagione)
+  var players = {};
   var playerRecMax = {};
 
   seasons.forEach(function(season) {
-    // Recupera recuperi_max dalla classifica stagionale
     (season.classifica || []).forEach(function(c) {
       if (c.recuperi_max) playerRecMax[c.nome] = c.recuperi_max;
     });
@@ -632,33 +1009,33 @@ function buildPlayerStats(seasons) {
         var nome = r.nome;
         if (!players[nome]) {
           players[nome] = {
-            nome:            nome,
-            iniziali:        r.iniziali,
-            partite:         0,
-            punti_campionato:0,
-            punti_tiro:      0,
-            vittorie:        0,
-            podi:            0,
-            record:          0,
-            recuperi_usati:  0,
-            attempts_all:    [],
+            nome: nome,
+            iniziali: r.iniziali,
+            partite: 0,
+            punti_campionato: 0,
+            punti_tiro: 0,
+            vittorie: 0,
+            podi: 0,
+            record: 0,
+            recuperi_usati: 0,
+            attempts_all: [],
             t1_sum: 0, t1_n: 0,
             t2_sum: 0, t2_n: 0,
             t3_sum: 0, t3_n: 0,
-            stagioni_ids:    [],
-            best_giornata:   null, // { data, punteggio }
-            scores_all:      [],   // tutti i best giornalieri per distribuzione
-            scores_timeline: [],   // { data, punteggio } ordinati cronologicamente
+            stagioni_ids: [],
+            best_giornata: null,
+            scores_all: [],
+            scores_timeline: [],
           };
         }
         var p = players[nome];
-        p.partite          += 1;
+        p.partite += 1;
         p.punti_campionato += r.punti_campionato;
-        p.punti_tiro       += r.punteggio;
+        p.punti_tiro += r.punteggio;
         if (r.posizione === 1) p.vittorie += 1;
-        if (r.posizione <= 3)  p.podi     += 1;
+        if (r.posizione <= 3) p.podi += 1;
         if (r.punteggio > p.record) {
-          p.record        = r.punteggio;
+          p.record = r.punteggio;
           p.best_giornata = { data: g.data, punteggio: r.punteggio };
         }
         if (r.recupero) p.recuperi_usati = (p.recuperi_usati || 0) + 1;
@@ -666,14 +1043,11 @@ function buildPlayerStats(seasons) {
         [r.t1, r.t2, r.t3].forEach(function(v) {
           if (v >= 0) p.attempts_all.push(v);
         });
-        // In timeline usa la data effettiva (reale) per i recuperi
         var timelineDate = (r.recupero && r.data_effettiva) ? r.data_effettiva : g.data;
         p.scores_timeline.push({ data: timelineDate, punteggio: r.punteggio, recupero: r.recupero || false });
-        // Attempt averages (-1 = non effettuato, escluso dalla media)
         if (r.t1 >= 0) { p.t1_sum += r.t1; p.t1_n++; }
         if (r.t2 >= 0) { p.t2_sum += r.t2; p.t2_n++; }
         if (r.t3 >= 0) { p.t3_sum += r.t3; p.t3_n++; }
-        // Stagioni distinte
         if (p.stagioni_ids.indexOf(season.id) === -1) p.stagioni_ids.push(season.id);
       });
     });
@@ -685,30 +1059,29 @@ function buildPlayerStats(seasons) {
     var avg_t3 = p.t3_n ? (p.t3_sum / p.t3_n) : 0;
     var media_tiro = p.partite ? (p.punti_tiro / p.partite) : 0;
     var attemptsSorted = p.attempts_all.slice().sort(function(a, b) { return b - a; });
-    // Consistenza: % giornate sopra la propria media
     var sopra_media = p.scores_all.filter(function(s) { return s >= media_tiro; }).length;
     return {
-      nome:            p.nome,
-      iniziali:        p.iniziali,
-      partite:         p.partite,
-      punti_campionato:p.punti_campionato,
-      punti_tiro:      p.punti_tiro,
-      vittorie:        p.vittorie,
-      podi:            p.podi,
-      record:          p.record,
-      secondo_record:  attemptsSorted[1] || 0,
-      media_tiro:      parseFloat(media_tiro.toFixed(1)),
+      nome: p.nome,
+      iniziali: p.iniziali,
+      partite: p.partite,
+      punti_campionato: p.punti_campionato,
+      punti_tiro: p.punti_tiro,
+      vittorie: p.vittorie,
+      podi: p.podi,
+      record: p.record,
+      secondo_record: attemptsSorted[1] || 0,
+      media_tiro: parseFloat(media_tiro.toFixed(1)),
       media_tiro_spareggio: parseFloat(media_tiro.toFixed(3)),
-      avg_t1:          parseFloat(avg_t1.toFixed(1)),
-      avg_t2:          avg_t2 ? parseFloat(avg_t2.toFixed(1)) : null,
-      avg_t3:          avg_t3 ? parseFloat(avg_t3.toFixed(1)) : null,
-      win_rate:        p.partite ? parseFloat((p.vittorie / p.partite * 100).toFixed(1)) : 0,
-      podio_rate:      p.partite ? parseFloat((p.podi / p.partite * 100).toFixed(1)) : 0,
-      consistenza:     p.partite ? parseFloat((sopra_media / p.partite * 100).toFixed(1)) : 0,
-      best_giornata:   p.best_giornata,
-      recuperi_usati:  p.recuperi_usati || 0,
-      recuperi_max:    playerRecMax[p.nome] || 0,
-      stagioni_count:  p.stagioni_ids.length,
+      avg_t1: parseFloat(avg_t1.toFixed(1)),
+      avg_t2: avg_t2 ? parseFloat(avg_t2.toFixed(1)) : null,
+      avg_t3: avg_t3 ? parseFloat(avg_t3.toFixed(1)) : null,
+      win_rate: p.partite ? parseFloat((p.vittorie / p.partite * 100).toFixed(1)) : 0,
+      podio_rate: p.partite ? parseFloat((p.podi / p.partite * 100).toFixed(1)) : 0,
+      consistenza: p.partite ? parseFloat((sopra_media / p.partite * 100).toFixed(1)) : 0,
+      best_giornata: p.best_giornata,
+      recuperi_usati: p.recuperi_usati || 0,
+      recuperi_max: playerRecMax[p.nome] || 0,
+      stagioni_count: p.stagioni_ids.length,
       scores_timeline: p.scores_timeline.slice().sort(function(a, b) { return a.data < b.data ? -1 : 1; }),
     };
   }).sort(compareCampionatoPlayers);

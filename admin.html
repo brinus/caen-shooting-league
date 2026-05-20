@@ -43,6 +43,7 @@
         <div class="admin-tabs">
           <span class="admin-tab-group-label">Gara</span>
           <button class="admin-tab active" data-tab="giornate">📅 Giornate</button>
+          <button class="admin-tab" data-tab="calendario">🗓 Calendario</button>
           <button class="admin-tab" data-tab="stagioni">🏅 Stagioni</button>
           <span class="admin-tab-sep"></span>
           <span class="admin-tab-group-label">SISAL</span>
@@ -100,6 +101,32 @@
           <div class="admin-section card" style="margin-top:1.5rem">
             <h2>Giornate registrate</h2>
             <div id="giornate-list" class="admin-list"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Calendario (gestione giornate pianificate) ──────────────────────────────────── -->
+        <div class="admin-panel" id="tab-calendario">
+          <div class="admin-section card">
+            <h2>Calendario Stagione</h2>
+            <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem">
+              <label style="margin:0">Stagione</label>
+              <select id="calendario-stagione" class="form-input" style="width:240px"></select>
+              <button id="btn-refresh-calendario" class="btn-secondary">↺ Aggiorna</button>
+              <button id="btn-add-calendario-entry" class="btn-primary">+ Aggiungi giornata</button>
+            </div>
+            <div id="calendario-msg" class="form-success" hidden></div>
+            <div id="calendario-list" style="margin-top:1rem">
+              <div id="calendario-controls" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+                <button id="cal-prev" class="btn-secondary" style="padding:0.25rem 0.6rem">◀</button>
+                <div id="cal-month-label" style="font-weight:700;min-width:180px;text-align:center"></div>
+                <button id="cal-next" class="btn-secondary" style="padding:0.25rem 0.6rem">▶</button>
+                <div style="flex:1"></div>
+                <button id="btn-cal-show-list" class="btn-secondary">Mostra lista</button>
+              </div>
+              <div id="calendario-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:var(--card-bg);padding:8px;border-radius:6px"></div>
+              <div id="calendario-editor" hidden style="margin-top:0.75rem;padding:0.75rem;border:1px solid var(--border);border-radius:6px;background:var(--panel-bg)"></div>
+            </div>
+            <div class="form-error" id="calendario-error" hidden style="margin-top:0.5rem"></div>
           </div>
         </div>
 

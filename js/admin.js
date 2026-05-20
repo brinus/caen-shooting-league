@@ -12,6 +12,7 @@ document.addEventListener('csl:auth-ready', function () {
   document.getElementById('admin-content').hidden = false
   initTabs()
   loadGiornateTab()
+  loadCalendarioTab()
   loadStagioniTab()
   loadScommesseTab()
   loadPostsTab()
@@ -78,6 +79,184 @@ async function loadGiornateTab() {
   document.getElementById('giornata-stagione').addEventListener('change', loadExistingGiornata)
   addPlayerRow()  // riga iniziale
   await loadGiornateList()
+}
+
+// ── TAB: Calendario — gestione giornate pianificate ─────────────────
+async function loadCalendarioTab() {
+  await populateSeasonSelect('calendario-stagione')
+  const sel = document.getElementById('calendario-stagione')
+  if (!sel) return
+  sel.addEventListener('change', renderCalendario)
+  document.getElementById('btn-refresh-calendario').addEventListener('click', function () { renderCalendario() })
+  document.getElementById('btn-add-calendario-entry').addEventListener('click', async function () {
+    // create a tentative giornata with numero = max+1 and empty date
+    const seasonId = sel.value
+    if (!seasonId) return
+    // fetch existing to determine next numero
+    const { data } = await CSLAuth.client.from('giornate').select('id, numero').eq('season_id', seasonId).order('numero', { ascending: true })
+    const maxNum = (data && data.length) ? Math.max.apply(null, data.map(g => g.numero || 0)) : 0
+    const newRow = { season_id: seasonId, numero: maxNum + 1, data: null }
+    const { data: ins, error } = await CSLAuth.client.from('giornate').insert(newRow).select()
+    if (error) { showMsg('calendario-error', error.message, true); return }
+    showMsg('calendario-msg', '✓ Giornata aggiunta.', false)
+    renderCalendario()
+  })
+  // initial render
+  await renderCalendario()
+}
+
+async function renderCalendario() {
+  const sel = document.getElementById('calendario-stagione')
+  const seasonId = sel ? sel.value : null
+  const listEl = document.getElementById('calendario-list')
+  const errEl = document.getElementById('calendario-error')
+  if (!seasonId) { listEl.innerHTML = '<p class="text-muted">Seleziona una stagione.</p>'; return }
+  listEl.innerHTML = '<p class="text-muted">Caricamento…</p>'
+  hideMsg('calendario-error'); hideMsg('calendario-msg')
+
+  // fetch giornate for season and all risultati dates to mark which giornate have results
+  const [gRes, rRes] = await Promise.all([
+    CSLAuth.client.from('giornate').select('id, numero, data').eq('season_id', seasonId).order('numero', { ascending: true }),
+    CSLAuth.client.from('risultati').select('data').eq('stagione_id', seasonId)
+  ])
+  const gData = gRes.data || []
+  const rData = rRes.data || []
+  const haveResults = new Set((rData || []).map(r => r.data))
+
+  if (!gData.length) { listEl.innerHTML = '<p class="text-muted">Nessuna giornata pianificata.</p>'; return }
+
+  // default to current month
+  const now = new Date()
+  const monthLabelEl = document.getElementById('cal-month-label')
+  const grid = document.getElementById('calendario-grid')
+  let curMonth = now.getMonth()
+  let curYear = now.getFullYear()
+
+  document.getElementById('cal-prev').onclick = function () { curMonth--; if (curMonth < 0) { curMonth = 11; curYear--; } renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear) }
+  document.getElementById('cal-next').onclick = function () { curMonth++; if (curMonth > 11) { curMonth = 0; curYear++; } renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear) }
+  document.getElementById('btn-cal-show-list').onclick = function () { listEl.innerHTML = '<p class="text-muted">Torna alla lista non grafica (usa il pulsante Refresh per ripristinare la vista grafica).</p>'; setTimeout(renderCalendario, 500) }
+
+  renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear)
+}
+
+function renderCalendarGrid(seasonId, gData, haveResults, month, year) {
+  const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
+  const monthLabelEl = document.getElementById('cal-month-label')
+  const grid = document.getElementById('calendario-grid')
+  monthLabelEl.textContent = monthNames[month] + ' ' + year
+  grid.innerHTML = ''
+
+  // week day headers
+  const days = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom']
+  days.forEach(function(d) { const hd = document.createElement('div'); hd.style.textAlign='center'; hd.style.fontSize='0.75rem'; hd.style.opacity='0.8'; hd.textContent = d; grid.appendChild(hd) })
+
+  // first day of month (JS: 0=Sun). We want Monday-first layout
+  const first = new Date(year, month, 1)
+  let startDow = first.getDay() // 0=Sun
+  // convert to Monday=0..Sunday=6
+  startDow = (startDow + 6) % 7
+  const daysInMonth = new Date(year, month+1, 0).getDate()
+  // fill leading blanks
+  for (let i = 0; i < startDow; i++) { const cell = emptyCalCell(); grid.appendChild(cell) }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dd = new Date(year, month, d)
+    const dateStr = dd.getFullYear() + '-' + String(dd.getMonth()+1).padStart(2,'0') + '-' + String(dd.getDate()).padStart(2,'0')
+    const cell = document.createElement('div')
+    cell.style.minHeight = '72px'
+    cell.style.borderRadius = '6px'
+    cell.style.padding = '6px'
+    cell.style.background = 'transparent'
+    cell.style.cursor = 'pointer'
+    cell.style.display = 'flex'
+    cell.style.flexDirection = 'column'
+    cell.style.gap = '6px'
+
+    const top = document.createElement('div')
+    top.style.display='flex'; top.style.justifyContent='space-between'; top.style.alignItems='center'
+    const lbl = document.createElement('div'); lbl.textContent = d; lbl.style.fontWeight='700'; lbl.style.fontSize='0.95rem'
+    const badge = document.createElement('div'); badge.style.fontSize='0.75rem'; badge.style.color='var(--text-muted)'
+    top.appendChild(lbl); top.appendChild(badge)
+
+    const body = document.createElement('div'); body.style.flex='1'; body.style.fontSize='0.85rem'
+
+    // find giornata scheduled on this date
+    const g = gData.find(x => x.data === dateStr)
+    if (g) {
+      badge.textContent = 'G' + (g.numero || '—')
+      badge.style.color = hasValueStyle(g, haveResults, dateStr)
+      body.textContent = hasValueText(g, haveResults, dateStr)
+      cell.style.border = '1px solid rgba(0,0,0,0.06)'
+      cell.style.background = hasResultsStyle(g, haveResults, dateStr)
+    } else {
+      body.textContent = ''
+    }
+
+    cell.appendChild(top); cell.appendChild(body)
+    cell.addEventListener('click', function () { openCalendarDayEditor(seasonId, dateStr, g) })
+    grid.appendChild(cell)
+  }
+}
+
+function emptyCalCell() { const c = document.createElement('div'); c.style.minHeight='72px'; return c }
+
+function hasValueStyle(g, haveResults, dateStr) { return haveResults.has(dateStr) ? 'var(--sisal-green)' : 'var(--text-muted)' }
+function hasValueText(g, haveResults, dateStr) { return haveResults.has(dateStr) ? 'risultati presenti' : 'programmata' }
+function hasResultsStyle(g, haveResults, dateStr) { return haveResults.has(dateStr) ? 'rgba(77,182,172,0.06)' : 'transparent' }
+
+async function openCalendarDayEditor(seasonId, dateStr, giornata) {
+  // simple prompt-based editor for now
+  const editor = document.getElementById('calendario-editor')
+  editor.hidden = false
+  editor.innerHTML = ''
+  const title = document.createElement('div'); title.style.fontWeight='700'; title.style.marginBottom='6px'; title.textContent = 'Giornata: ' + formatDate(dateStr)
+  editor.appendChild(title)
+  const info = document.createElement('div'); info.style.marginBottom='8px'
+  info.textContent = giornata ? ('G' + (giornata.numero || '—')) : 'Nessuna giornata programmata'
+  editor.appendChild(info)
+
+  const btnGroup = document.createElement('div'); btnGroup.style.display='flex'; btnGroup.style.gap='8px'
+  const btnAdd = document.createElement('button'); btnAdd.className='btn-primary'; btnAdd.textContent = giornata ? 'Modifica numero' : 'Aggiungi giornata'
+  const btnDelete = document.createElement('button'); btnDelete.className='btn-danger'; btnDelete.textContent = 'Elimina giornata'
+  const btnClose = document.createElement('button'); btnClose.className='btn-secondary'; btnClose.textContent = 'Chiudi'
+  btnGroup.appendChild(btnAdd); if (giornata) btnGroup.appendChild(btnDelete); btnGroup.appendChild(btnClose)
+  editor.appendChild(btnGroup)
+
+  btnAdd.onclick = async function () {
+    const defaultNum = giornata && giornata.numero ? String(giornata.numero) : ''
+    const v = prompt('Numero giornata (es. 6)', defaultNum)
+    if (v === null) return
+    const num = parseInt(v, 10)
+    if (!isFinite(num)) { alert('Numero non valido'); return }
+    // upsert giornata with season_id, numero, data
+    const payload = { season_id: seasonId, numero: num, data: dateStr }
+    if (giornata && giornata.id) payload.id = giornata.id
+    const { error } = await CSLAuth.client.from('giornate').upsert(payload, { onConflict: 'id' })
+    if (error) { showMsg('calendario-error', error.message, true); return }
+    showMsg('calendario-msg', '✓ Giornata salvata.', false)
+    await refreshStagioniCache(); renderCalendario(); editor.hidden = true
+  }
+
+  btnDelete && (btnDelete.onclick = async function () {
+    if (!giornata || !giornata.id) return
+    if (!confirm('Eliminare questa giornata?')) return
+    const { error } = await CSLAuth.client.from('giornate').delete().eq('id', giornata.id)
+    if (error) { showMsg('calendario-error', error.message, true); return }
+    showMsg('calendario-msg', '✓ Giornata eliminata.', false)
+    await refreshStagioniCache(); renderCalendario(); editor.hidden = true
+  })
+
+  btnClose.onclick = function () { editor.hidden = true }
+}
+}
+
+async function refreshStagioniCache() {
+  if (typeof _loadStagioniFromSupabase === 'function') {
+    const live = await _loadStagioniFromSupabase()
+    if (live && live.length) CSL.stagioni = live
+  }
+  document.dispatchEvent(new CustomEvent('stagioni:updated'))
+  document.dispatchEvent(new CustomEvent('sisal:boards-ready'))
 }
 
 async function onGiornataDateChange() {

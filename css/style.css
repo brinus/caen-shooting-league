@@ -5512,3 +5512,302 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 @media (max-width: 640px) {
   .stats-analysis-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Site-wide mobile overrides ───────────────────────────── */
+@media (max-width: 900px) {
+  body::after {
+    width: 380px;
+    height: 380px;
+    opacity: 0.05;
+  }
+
+  .nav-inner {
+    height: auto;
+    min-height: 58px;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+    flex-wrap: wrap;
+    row-gap: 0.65rem;
+  }
+
+  .nav-links {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+  }
+
+  .nav-links li {
+    flex: 0 0 auto;
+  }
+
+  .nav-links a {
+    white-space: nowrap;
+  }
+
+  #nav-auth-placeholder {
+    margin-left: 0;
+  }
+
+  .container,
+  .container--wide {
+    padding: 0 1rem;
+  }
+
+  .page-header {
+    padding: 2.2rem 0 1.4rem;
+  }
+
+  .card,
+  .admin-section,
+  .classifica-calendar-shell {
+    padding: 1.1rem;
+  }
+
+  .season-banner,
+  .season-select-wrapper,
+  .posts-toolbar-head,
+  .sisal-teaser-head,
+  .sisal-marquee,
+  .sisal-section-header-band,
+  .bet-season-row {
+    align-items: stretch;
+  }
+
+  .season-select-wrapper,
+  .posts-toolbar-head,
+  .sisal-section-header-band {
+    gap: 0.75rem;
+  }
+
+  .admin-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.85rem;
+  }
+
+  .admin-tab,
+  .admin-tab-group-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .admin-tab-sep {
+    display: none;
+  }
+
+  #calendario-controls {
+    flex-wrap: wrap;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrapper > table,
+  .table-wrapper .bet-board-table,
+  .table-wrapper .classifica-window-table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 640px) {
+  body::after {
+    width: 260px;
+    height: 260px;
+  }
+
+  main {
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
+  }
+
+  .nav-logo {
+    font-size: 0.95rem;
+  }
+
+  .nav-logo-img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .nav-links {
+    gap: 0.35rem;
+  }
+
+  .nav-links a {
+    padding: 0.38rem 0.7rem;
+    font-size: 0.68rem;
+  }
+
+  .hero {
+    padding: 2.8rem 1rem 2rem;
+  }
+
+  .hero-title {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .hero-subtitle {
+    margin-bottom: 1.8rem;
+    line-height: 1.5;
+    letter-spacing: 0.12em;
+  }
+
+  .hero-stats {
+    gap: 1.2rem;
+  }
+
+  .hero-stat {
+    min-width: 88px;
+  }
+
+  .hero-stat-value {
+    font-size: 1.7rem;
+  }
+
+  .page-header p,
+  .note,
+  .sisal-section-desc,
+  .sisal-teaser-meta {
+    font-size: 0.82rem;
+  }
+
+  .card,
+  .admin-section,
+  .classifica-calendar-shell,
+  .season-banner,
+  .posts-toolbar {
+    padding: 0.95rem;
+  }
+
+  .season-banner,
+  .season-select-wrapper,
+  .lb-tabs-header,
+  .sisal-teaser-head,
+  .sisal-marquee,
+  .sisal-progress-wrap,
+  .sisal-section-header-band,
+  .posts-toolbar-head,
+  .bet-season-row {
+    flex-direction: column;
+  }
+
+  .season-select-wrapper label {
+    margin-bottom: 0.15rem;
+  }
+
+  .season-select-wrapper select,
+  .bet-season-row .form-input {
+    width: 100%;
+    max-width: none !important;
+  }
+
+  .lb-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .lb-tab {
+    flex: 1 0 auto;
+    text-align: center;
+  }
+
+  .classifica-pager,
+  .classifica-calendar-header,
+  .classifica-calendar-nav,
+  .classifica-calendar-summary {
+    gap: 0.55rem;
+  }
+
+  .classifica-calendar-header,
+  .classifica-calendar-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .classifica-calendar-month,
+  .classifica-calendar-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .classifica-giornata-detail {
+    padding: 0.95rem;
+  }
+
+  .table-wrapper > table,
+  .table-wrapper .bet-board-table,
+  .table-wrapper .classifica-window-table {
+    min-width: 640px;
+  }
+
+  thead th,
+  tbody td,
+  .bet-board-table thead th,
+  .bet-board-table tbody td {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.74rem;
+  }
+
+  .posts-filter-bar,
+  .admin-tabs,
+  .bet-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.2rem;
+  }
+
+  .bet-tab-btn,
+  .posts-filter-chip {
+    white-space: nowrap;
+  }
+
+  .sisal-ticker-item {
+    gap: 0.7rem;
+    padding: 0.55rem 0.8rem;
+  }
+
+  .sisal-section-body,
+  .sisal-chart-card.sisal-chart-sim-full {
+    padding: 0.95rem;
+  }
+
+  .sisal-progress-label-row,
+  .sisal-next-headline {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sisal-final-slide {
+    padding-left: 1.9rem;
+    padding-right: 1.9rem;
+  }
+
+  .admin-list-row,
+  .giornata-player-row {
+    align-items: stretch;
+  }
+
+  .admin-list-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    width: 100%;
+    justify-content: center;
+  }
+
+  footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

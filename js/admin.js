@@ -180,7 +180,10 @@ async function renderCalendario() {
     CSLAuth.client.from('giornate').select('id, numero, data, note').eq('season_id', seasonId).order('numero', { ascending: true }),
     CSLAuth.client.from('risultati').select('data').eq('stagione_id', seasonId)
   ])
-  const gData = (gRes.data || []).map(function(g) { return Object.assign({ isDefault: false }, g) })
+  const allRows = gRes.data || []
+  const gData = allRows
+    .filter(function(g) { return (g.note || '') !== 'deleted' })
+    .map(function(g) { return Object.assign({ isDefault: false }, g) })
   const rData = rRes.data || []
   const haveResults = new Set((rData || []).map(r => r.data))
 
@@ -267,7 +270,7 @@ async function ensureDefaultCalendarForSeason(season) {
   if (!defaults.length) return
   const { data: existing, error } = await CSLAuth.client
     .from('giornate')
-    .select('id, numero, data')
+    .select('id, numero, data, note')
     .eq('season_id', season.id)
     .order('numero', { ascending: true })
   if (error) {
@@ -375,7 +378,7 @@ function renderCalendarGrid(seasonId, gData, haveResults, month, year) {
     }
 
     cell.appendChild(top); cell.appendChild(body)
-    cell.addEventListener('click', function () { openCalendarDayEditor(seasonId, dateStr, g) })
+    cell.addEventListener('click', function () { openCalendarDayEditor(seasonId, dateStr, g, haveResults) })
     grid.appendChild(cell)
   }
 }
@@ -394,49 +397,116 @@ function hasValueStyle(g, haveResults, dateStr) { return haveResults.has(dateStr
 function hasValueText(g, haveResults, dateStr) { return haveResults.has(dateStr) ? 'risultati presenti' : 'programmata' }
 function hasResultsStyle(g, haveResults, dateStr) { return haveResults.has(dateStr) ? 'rgba(77,182,172,0.06)' : 'transparent' }
 
-async function openCalendarDayEditor(seasonId, dateStr, giornata) {
-  // simple prompt-based editor for now
+async function openCalendarDayEditor(seasonId, dateStr, giornata, haveResults) {
   const editor = document.getElementById('calendario-editor')
   editor.hidden = false
-  editor.innerHTML = ''
-  const title = document.createElement('div'); title.style.fontWeight='700'; title.style.marginBottom='6px'; title.textContent = 'Giornata: ' + formatDate(dateStr)
-  editor.appendChild(title)
-  const info = document.createElement('div'); info.style.marginBottom='8px'
-  info.textContent = giornata ? ('G' + (giornata.numero || '—')) : 'Nessuna giornata programmata'
-  editor.appendChild(info)
+  var currentNum = giornata && giornata.numero ? String(giornata.numero) : ''
+  var currentDate = giornata && giornata.data ? giornata.data : dateStr
+  editor.innerHTML =
+    '<div style="font-weight:700;margin-bottom:0.35rem">' + (giornata ? 'Modifica giornata' : 'Nuova giornata') + '</div>' +
+    '<div class="text-muted" style="margin-bottom:0.85rem;font-size:0.82rem">Selezione corrente: ' + escHtml(formatDate(dateStr)) + '</div>' +
+    '<div class="form-row" style="margin-bottom:0.75rem">' +
+      '<div class="form-group" style="min-width:140px">' +
+        '<label>Numero</label>' +
+        '<input type="number" min="1" class="form-input" id="cal-edit-num" value="' + escHtml(currentNum) + '" placeholder="es. 6">' +
+      '</div>' +
+      '<div class="form-group" style="min-width:220px">' +
+        '<label>Data</label>' +
+        '<input type="date" class="form-input" id="cal-edit-date" value="' + escHtml(currentDate) + '">' +
+      '</div>' +
+    '</div>' +
+    '<div class="form-hint" style="margin-bottom:0.8rem">Puoi spostare una giornata cambiando la data. Esempio: G6 dal 20 maggio al 22 maggio.</div>' +
+    '<div style="display:flex;gap:0.6rem;flex-wrap:wrap">' +
+      '<button type="button" class="btn-primary" id="cal-edit-save">Salva</button>' +
+      (giornata ? '<button type="button" class="btn-danger" id="cal-edit-delete">Elimina</button>' : '') +
+      '<button type="button" class="btn-secondary" id="cal-edit-close">Chiudi</button>' +
+    '</div>'
 
-  const btnGroup = document.createElement('div'); btnGroup.style.display='flex'; btnGroup.style.gap='8px'
-  const btnAdd = document.createElement('button'); btnAdd.className='btn-primary'; btnAdd.textContent = giornata ? 'Modifica numero' : 'Aggiungi giornata'
-  const btnDelete = document.createElement('button'); btnDelete.className='btn-danger'; btnDelete.textContent = 'Elimina giornata'
-  const btnClose = document.createElement('button'); btnClose.className='btn-secondary'; btnClose.textContent = 'Chiudi'
-  btnGroup.appendChild(btnAdd); if (giornata) btnGroup.appendChild(btnDelete); btnGroup.appendChild(btnClose)
-  editor.appendChild(btnGroup)
+  const saveBtn = document.getElementById('cal-edit-save')
+  const closeBtn = document.getElementById('cal-edit-close')
+  const deleteBtn = document.getElementById('cal-edit-delete')
 
-  btnAdd.onclick = async function () {
-    const defaultNum = giornata && giornata.numero ? String(giornata.numero) : ''
-    const v = prompt('Numero giornata (es. 6)', defaultNum)
-    if (v === null) return
-    const num = parseInt(v, 10)
-    if (!isFinite(num)) { alert('Numero non valido'); return }
-    // upsert giornata with season_id, numero, data
-    const payload = { season_id: seasonId, numero: num, data: dateStr }
+  saveBtn.onclick = async function () {
+    hideMsg('calendario-error')
+    const num = parseInt(document.getElementById('cal-edit-num').value, 10)
+    const targetDate = document.getElementById('cal-edit-date').value
+    if (!isFinite(num) || num < 1) {
+      showMsg('calendario-error', 'Numero giornata non valido.', true)
+      return
+    }
+    if (!targetDate) {
+      showMsg('calendario-error', 'Seleziona una data valida.', true)
+      return
+    }
+
+    const [{ data: sameNumero, error: numErr }, { data: sameDate, error: dateErr }] = await Promise.all([
+      CSLAuth.client.from('giornate').select('id, numero, note').eq('season_id', seasonId).eq('numero', num),
+      CSLAuth.client.from('giornate').select('id, numero, note').eq('season_id', seasonId).eq('data', targetDate)
+    ])
+    if (numErr) { showMsg('calendario-error', numErr.message, true); return }
+    if (dateErr) { showMsg('calendario-error', dateErr.message, true); return }
+
+    var payload = { season_id: seasonId, numero: num, data: targetDate, note: (giornata && giornata.note) ? giornata.note : 'manuale' }
+    var existingNumero = (sameNumero || []).find(function(r) { return (r.note || '') !== 'deleted' && (!giornata || r.id !== giornata.id) })
+    if (existingNumero) {
+      showMsg('calendario-error', 'Esiste gia una G' + num + ' attiva. Spostala o cancellala prima.', true)
+      return
+    }
+    var existingDeletedNumero = (sameNumero || []).find(function(r) { return (r.note || '') === 'deleted' })
     if (giornata && giornata.id) payload.id = giornata.id
+    else if (existingDeletedNumero) payload.id = existingDeletedNumero.id
+
+    var dateConflict = (sameDate || []).find(function(r) { return (r.note || '') !== 'deleted' && (!giornata || r.id !== giornata.id) })
+    if (dateConflict) {
+      showMsg('calendario-error', 'La data scelta ospita gia G' + dateConflict.numero + '.', true)
+      return
+    }
+
+    if (giornata && giornata.data && giornata.data !== targetDate && haveResults && haveResults.has(giornata.data)) {
+      var moveResults = confirm('Esistono gia risultati per ' + formatDate(giornata.data) + '. Vuoi spostare anche i risultati alla nuova data?')
+      if (moveResults) {
+        const { error: moveErr } = await CSLAuth.client
+          .from('risultati')
+          .update({ data: targetDate })
+          .eq('stagione_id', seasonId)
+          .eq('data', giornata.data)
+        if (moveErr) {
+          showMsg('calendario-error', 'Errore spostando i risultati: ' + moveErr.message, true)
+          return
+        }
+      }
+    }
+
     const { error } = await CSLAuth.client.from('giornate').upsert(payload, { onConflict: 'id' })
     if (error) { showMsg('calendario-error', error.message, true); return }
     showMsg('calendario-msg', '✓ Giornata salvata.', false)
-    await refreshStagioniCache(); renderCalendario(); editor.hidden = true
+    await refreshStagioniCache()
+    renderCalendario()
+    editor.hidden = true
   }
 
-  btnDelete && (btnDelete.onclick = async function () {
-    if (!giornata || !giornata.id) return
-    if (!confirm('Eliminare questa giornata?')) return
-    const { error } = await CSLAuth.client.from('giornate').delete().eq('id', giornata.id)
-    if (error) { showMsg('calendario-error', error.message, true); return }
-    showMsg('calendario-msg', '✓ Giornata eliminata.', false)
-    await refreshStagioniCache(); renderCalendario(); editor.hidden = true
-  })
+  if (deleteBtn) {
+    deleteBtn.onclick = async function () {
+      if (!giornata || !giornata.id) return
+      hideMsg('calendario-error')
+      if (haveResults && haveResults.has(giornata.data)) {
+        showMsg('calendario-error', 'Questa giornata ha gia risultati registrati. Spostala oppure gestisci prima i risultati.', true)
+        return
+      }
+      if (!confirm('Eliminare G' + giornata.numero + ' dal calendario?')) return
+      const { error } = await CSLAuth.client
+        .from('giornate')
+        .update({ note: 'deleted' })
+        .eq('id', giornata.id)
+      if (error) { showMsg('calendario-error', error.message, true); return }
+      showMsg('calendario-msg', '✓ Giornata rimossa dal calendario.', false)
+      await refreshStagioniCache()
+      renderCalendario()
+      editor.hidden = true
+    }
+  }
 
-  btnClose.onclick = function () { editor.hidden = true }
+  closeBtn.onclick = function () { editor.hidden = true }
 }
 
 async function refreshStagioniCache() {

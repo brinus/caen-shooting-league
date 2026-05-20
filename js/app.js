@@ -1664,7 +1664,9 @@ function _findSisalNextMatchday(stagione) {
   var sortedAll   = giornate.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
   // Consider only played giornate (have risultati) when deciding next number/date
   var played = giornate.filter(function(g) { return g && g.risultati && g.risultati.length; });
-  var planned = (stagione._plannedGiornate || []).filter(function(g) { return g && g.data; })
+  var planned = (stagione._plannedGiornate || []).filter(function(g) {
+    return g && g.data && (g.note || '') !== 'deleted';
+  })
     .sort(function(a, b) {
       var an = a.numero || 0, bn = b.numero || 0;
       return an !== bn ? an - bn : a.data.localeCompare(b.data);
@@ -2099,7 +2101,7 @@ async function initSisal() {
         try {
           const { data: dbGiornate, error: dbErr } = await CSLAuth.client
             .from('giornate')
-            .select('id, season_id, numero, data')
+            .select('id, season_id, numero, data, note')
             .eq('season_id', stagione.id)
             .order('numero', { ascending: true });
           if (!dbErr && Array.isArray(dbGiornate) && dbGiornate.length) {
@@ -3129,6 +3131,102 @@ async function _loadStagioniFromSupabase() {
   });
 }
 
+var _sisalRealtimeChannel = null;
+var _sisalRealtimeTimer = null;
+var _sisalRealtimeInFlight = false;
+
+async function _refreshSisalPageFromSupabase() {
+  if (!_supabaseActive()) return;
+  if (_sisalRealtimeInFlight) return;
+  _sisalRealtimeInFlight = true;
+
+  try {
+    var sel = document.getElementById('sisal-season-select');
+    var previousSeasonId = sel && sel.value ? sel.value : null;
+
+    var liveStagioni = await _loadStagioniFromSupabase();
+    if (liveStagioni && liveStagioni.length) {
+      CSL.stagioni = liveStagioni;
+    }
+
+    await initSisal();
+
+    var targetSeasonId = previousSeasonId;
+    if (!targetSeasonId) {
+      var active = getCurrentSeason();
+      targetSeasonId = active ? active.id : null;
+    }
+
+    if (targetSeasonId) {
+      renderSisalBoard(targetSeasonId);
+      var refreshedBoard = (CSL.sisal || []).find(function(item) { return item.season_id === targetSeasonId; });
+      if (refreshedBoard) _renderSisalTicker(refreshedBoard);
+      if (sel) sel.value = targetSeasonId;
+    }
+  } catch (e) {
+    console.error('SISAL live refresh failed', e);
+  } finally {
+    _sisalRealtimeInFlight = false;
+  }
+}
+
+function _scheduleSisalRealtimeRefresh(reason) {
+  if (_sisalRealtimeTimer) clearTimeout(_sisalRealtimeTimer);
+  _sisalRealtimeTimer = setTimeout(function() {
+    _sisalRealtimeTimer = null;
+    _refreshSisalPageFromSupabase();
+  }, 250);
+}
+
+function _initSisalRealtimeSync() {
+  if (!_supabaseActive() || !window.CSLAuth || !CSLAuth.client || _sisalRealtimeChannel) return;
+
+  try {
+    _sisalRealtimeChannel = CSLAuth.client
+      .channel('csl-sisal-live-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'giornate' }, function() {
+        _scheduleSisalRealtimeRefresh('giornate');
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'risultati' }, function() {
+        _scheduleSisalRealtimeRefresh('risultati');
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stagioni' }, function() {
+        _scheduleSisalRealtimeRefresh('stagioni');
+      })
+      .subscribe(function(status) {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('SISAL realtime channel error');
+        }
+      });
+
+    window.addEventListener('beforeunload', function() {
+      if (_sisalRealtimeChannel && CSLAuth && CSLAuth.client) {
+        CSLAuth.client.removeChannel(_sisalRealtimeChannel);
+        _sisalRealtimeChannel = null;
+      }
+    }, { once: true });
+  } catch (e) {
+    console.warn('Failed to init SISAL realtime sync', e);
+  }
+}
+
+var _sisalFocusRefreshBound = false;
+
+function _bindSisalVisibilityRefresh() {
+  if (_sisalFocusRefreshBound) return;
+  _sisalFocusRefreshBound = true;
+
+  window.addEventListener('focus', function() {
+    _scheduleSisalRealtimeRefresh('window-focus');
+  });
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      _scheduleSisalRealtimeRefresh('visibility-visible');
+    }
+  });
+}
+
 // ── Router ─────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -3161,6 +3259,8 @@ document.addEventListener('DOMContentLoaded', function() {
         initStats();
         break;
       case 'sisal.html':
+        _initSisalRealtimeSync();
+        _bindSisalVisibilityRefresh();
         initSisal();
         break;
     }
@@ -3221,6 +3321,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Recompute SISAL boards when stagioni/giornate are updated elsewhere (admin)
   document.addEventListener('stagioni:updated', function() {
     try {
+      if (page === 'sisal.html') {
+        _scheduleSisalRealtimeRefresh('stagioni:updated');
+        return;
+      }
+
       // Rebuild live boards and re-render current selection
       initSisal().then(function() {
         var sel = document.getElementById('sisal-season-select');

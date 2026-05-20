@@ -1664,8 +1664,15 @@ function _findSisalNextMatchday(stagione) {
   var sortedAll   = giornate.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
   // Consider only played giornate (have risultati) when deciding next number/date
   var played = giornate.filter(function(g) { return g && g.risultati && g.risultati.length; });
+  var planned = (stagione._plannedGiornate || []).filter(function(g) { return g && g.data; })
+    .sort(function(a, b) {
+      var an = a.numero || 0, bn = b.numero || 0;
+      return an !== bn ? an - bn : a.data.localeCompare(b.data);
+    });
   var lastData = null;
   var nextNum  = 1;
+  var DAYS     = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+
   if (played.length) {
     var sortedPlayed = played.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
     lastData = sortedPlayed[sortedPlayed.length - 1].data;
@@ -1674,7 +1681,25 @@ function _findSisalNextMatchday(stagione) {
     lastData = sortedAll[sortedAll.length - 1].data;
     nextNum  = Math.max.apply(null, giornate.map(function(g){ return g.numero || 0; })) + 1;
   }
-  var DAYS     = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+  // Prefer explicit planned calendar from DB when available.
+  // This allows moving a giornata to a non-standard day (e.g. Friday) from admin.
+  if (planned.length) {
+    var todayStr = (function() {
+      var t = new Date();
+      t.setHours(0, 0, 0, 0);
+      return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    })();
+    var plannedNext = planned.find(function(g) { return (g.numero || 0) >= nextNum; })
+      || planned.find(function(g) { return g.data >= todayStr; });
+    if (plannedNext) {
+      var pd = new Date(plannedNext.data + 'T00:00:00');
+      return {
+        numero: plannedNext.numero || nextNum,
+        data: plannedNext.data,
+        giorno: DAYS[pd.getDay()]
+      };
+    }
+  }
 
   // Start from day after lastData; if that's in the past, advance to today
   // (accounts for stale static data that doesn't include recent matchdays)
@@ -2068,17 +2093,17 @@ async function initSisal() {
   // Compute live boards from CSL.stagioni and update CSL.sisal in-place
   if (CSL.stagioni && CSL.stagioni.length) {
     for (const stagione of CSL.stagioni) {
-      // If Supabase client available, attempt to fetch latest giornate from DB
+      // If Supabase client available, attempt to fetch planned calendar from DB.
+      // Do not overwrite played results-based giornate coming from CSLRanking.
       if (window.CSLAuth && CSLAuth.client) {
         try {
           const { data: dbGiornate, error: dbErr } = await CSLAuth.client
             .from('giornate')
-            .select('*, risultati(*)')
+            .select('id, season_id, numero, data')
             .eq('season_id', stagione.id)
             .order('numero', { ascending: true });
           if (!dbErr && Array.isArray(dbGiornate) && dbGiornate.length) {
-            // Use DB-provided giornate (assume schema compatible)
-            stagione.giornate = dbGiornate;
+            stagione._plannedGiornate = dbGiornate;
           }
         } catch (e) {
           console.warn('Failed to load giornate from Supabase for', stagione.id, e);
@@ -3087,6 +3112,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Se Supabase è attivo, aspetta auth-ready per dati live; altrimenti rende subito.
   var _rendered = false;
+  var _liveBootStarted = false;
 
   function _run() {
     if (_rendered) return;
@@ -3115,9 +3141,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  if (_supabaseActive()) {
-    // Aspetta auth-ready per poi caricare dati live e ri-renderizzare
-    document.addEventListener('csl:auth-ready', async function() {
+  async function _bootLiveAndRun() {
+    if (_liveBootStarted) return;
+    _liveBootStarted = true;
+
+    try {
       var liveStagioni = await _loadStagioniFromSupabase();
       if (liveStagioni && liveStagioni.length) {
         CSL.stagioni = liveStagioni;
@@ -3128,7 +3156,6 @@ document.addEventListener('DOMContentLoaded', function() {
         CSL.posts = livePosts;
       }
 
-      // Carica regolamento da Supabase in regolamento.html
       if (page === 'regolamento.html' && _supabaseActive()) {
         try {
           var regRes = await CSLAuth.client
@@ -3137,7 +3164,6 @@ document.addEventListener('DOMContentLoaded', function() {
             var rulesContent = document.querySelector('.rules-content');
             if (rulesContent) {
               rulesContent.innerHTML = regRes.data.content;
-              // Mostra pulsante modifica per admin
               if (CSLAuth.isAdmin()) {
                 _injectRegolamentoAdminBtn(rulesContent);
               }
@@ -3146,16 +3172,22 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) { /* usa HTML statico */ }
       }
 
-      // Aggiungi pulsante "Modifica" su post.html per admin
       if (page === 'post.html' && CSLAuth.isAdmin()) {
         document.addEventListener('csl:post-loaded', function(ev) {
           _injectPostAdminBtn(ev.detail.postId);
         });
       }
+    } catch (e) {
+      console.warn('Live bootstrap failed, using current in-memory data.', e);
+    }
 
-      _run();
-    });
-    // Timeout fallback: se auth-ready non arriva entro 3s, renderizza con dati statici
+    _run();
+  }
+
+  if (_supabaseActive()) {
+    // Boot live data immediately; keep auth-ready as an extra signal in case session arrives later.
+    _bootLiveAndRun();
+    document.addEventListener('csl:auth-ready', _bootLiveAndRun);
     setTimeout(_run, 3000);
   } else {
     _run();

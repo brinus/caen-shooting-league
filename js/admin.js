@@ -1,14 +1,37 @@
 // CAEN Shooting League — Admin Panel Logic
 
-document.addEventListener('csl:auth-ready', function (ev) {
-  if (!CSLAuth.isLoggedIn()) {
+let _adminBooted = false
+
+async function bootAdminPanel() {
+  if (_adminBooted) return
+  if (!window.CSLAuth || !CSLAuth.client) return
+
+  let session = CSLAuth.getSession()
+  if (!session) {
+    try {
+      const res = await CSLAuth.client.auth.getSession()
+      session = res && res.data ? res.data.session : null
+    } catch (e) {
+      console.warn('Admin panel: getSession failed', e)
+    }
+  }
+
+  if (!session) {
     window.location.href = 'login.html?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)
     return
   }
-  if (!CSLAuth.isAdmin()) {
-    document.getElementById('admin-guard').hidden = false
+
+  const isAdmin = !!(session.user && session.user.app_metadata && session.user.app_metadata.user_role === 'admin') || CSLAuth.isAdmin()
+  if (!isAdmin) {
+    const guard = document.getElementById('admin-guard')
+    if (guard) {
+      guard.hidden = false
+      guard.textContent = 'Accesso negato. Solo gli admin possono visualizzare questa pagina.'
+    }
     return
   }
+
+  _adminBooted = true
   document.getElementById('admin-content').hidden = false
   initTabs()
   loadGiornateTab()
@@ -19,20 +42,26 @@ document.addEventListener('csl:auth-ready', function (ev) {
   loadRegolamentoTab()
   loadCommentiTab()
   loadUtentiTab()
-})
+}
 
-// Fallback: se csl:auth-ready non arriva entro 3s mostriamo un messaggio utile per il debug
+document.addEventListener('csl:auth-ready', bootAdminPanel)
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootAdminPanel, { once: true })
+} else {
+  bootAdminPanel()
+}
+
 setTimeout(function() {
-  try {
-    if (!window.CSLAuth || !CSLAuth.getSession()) {
-      const guard = document.getElementById('admin-guard')
-      if (guard) {
-        guard.hidden = false
-        guard.textContent = 'Autenticazione non pronta: controlla la console per eventuali errori di rete o di Supabase. Prova a ricaricare la pagina.'
-      }
-      console.warn('Admin panel: csl:auth-ready non ricevuto o sessione assente.')
+  if (_adminBooted) return
+  bootAdminPanel().catch(function(e) {
+    console.error('Admin auth fallback error', e)
+    const guard = document.getElementById('admin-guard')
+    if (guard) {
+      guard.hidden = false
+      guard.textContent = 'Autenticazione non pronta: controlla la console per eventuali errori di rete o di Supabase. Prova a ricaricare la pagina.'
     }
-  } catch (e) { console.error('Admin auth fallback error', e) }
+  })
 }, 3000)
 
 // ── Tabs ───────────────────────────────────────────────────────

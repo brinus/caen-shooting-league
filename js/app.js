@@ -1707,6 +1707,7 @@ function _randNorm(mu, sigma) {
  * Monte Carlo season simulation.
  * Simulates N_SIM full seasons from the current standings.
  * Sigma per player: (record - media) / sqrt(2*ln(k)), floor 3, cap 9.
+ * Mean shrunk toward league average (prior_k=3) to handle small-sample players.
  * Championship points by giornata rank: [10,8,6,4,4,2,2,1,1,1,0,...].
  * Returns per-player { pTitolo, pPodio, pTop5, pBest30, pAvg18 }.
  */
@@ -1724,6 +1725,16 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
   var gPlayed = classifica.map(function(p) { return p.partite || giocate; });
   var curPts  = classifica.map(function(p) { return p.punti_campionato || 0; });
   var curSums = medias.map(function(m, i) { return m * gPlayed[i]; });
+
+  // Bayesian shrinkage: pull mean toward league average for players with few games.
+  // adjMedia = (k * media + PRIOR_K * leagueMean) / (k + PRIOR_K)
+  // With PRIOR_K=3 a player needs ~6 games before their own mean dominates (75%).
+  var PRIOR_K    = 3;
+  var leagueMean = medias.reduce(function(s, m) { return s + m; }, 0) / Math.max(1, n);
+  var adjMedias  = classifica.map(function(p, i) {
+    var k = Math.max(1, p.partite || giocate);
+    return (k * medias[i] + PRIOR_K * leagueMean) / (k + PRIOR_K);
+  });
 
   // Season already over: deterministic result
   if (rimaste === 0) {
@@ -1760,7 +1771,7 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
     for (var g = 0; g < rimaste; g++) {
       // Simulate punteggio (best attempt) for each player
       for (var i = 0; i < n; i++) {
-        var sc    = Math.round(Math.min(50, Math.max(0, _randNorm(medias[i], sigmas[i]))));
+        var sc    = Math.round(Math.min(50, Math.max(0, _randNorm(adjMedias[i], sigmas[i]))));
         scores[i] = sc;
         simSums[i] += sc;
         if (sc >= 30) hitBest30[i] = true;
@@ -1946,7 +1957,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     specials:        specials,
     methodology: [
       'Simulazione Monte Carlo: 5 000 stagioni complete simulate per ciascun aggiornamento del board.',
-      'Per ogni simulazione, le giornate rimanenti vengono giocate estraendo i punteggi da N(media, σ²), con σ stimato da (record − media) / √(2·ln(k)) — la formula esatta per il valore atteso del massimo di k variabili normali.',
+      'Per ogni simulazione, le giornate rimanenti vengono giocate estraendo i punteggi da N(μ_adj, σ²), con σ stimato da (record − media) / √(2·ln(k)). La media attesa è corretta con shrinkage bayesiano: μ_adj = (k·μ + 3·μ_league) / (k+3), che riduce il peso di singole partite eccezionali per i giocatori con poche gare disputate.',
       'I punteggi simulati vengono classificati secondo il sistema punti ufficiale (10-8-6-4-4-2-2-1-1-1); in caso di parità si usa il punteggio cumulativo come spareggio.',
       'Le probabilità di titolo, podio e top5 emergono direttamente dal conteggio dei risultati finali su 5 000 run — garantendo per costruzione che P(titolo) ≤ P(podio) ≤ P(top5).',
       'Best 30+: frazione di simulazioni in cui il giocatore registra almeno una giornata con punteggio ≥ 30.',

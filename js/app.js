@@ -2168,9 +2168,9 @@ async function initSisal() {
   }) || orderedBoards[0];
 
   select.value = defaultBoard.season_id;
-  select.addEventListener('change', function() {
+  select.onchange = function() {
     renderSisalBoard(select.value);
-  });
+  };
 
   renderSisalBoard(defaultBoard.season_id);
   _renderSisalTicker(defaultBoard);
@@ -3134,6 +3134,35 @@ async function _loadStagioniFromSupabase() {
 var _sisalRealtimeChannel = null;
 var _sisalRealtimeTimer = null;
 var _sisalRealtimeInFlight = false;
+var _sisalRealtimeDirty = false;
+
+function _isSisalRefreshDeferred() {
+  if (document.visibilityState === 'hidden') return true;
+
+  var betOverlay = document.getElementById('bet-modal-overlay');
+  if (betOverlay && !betOverlay.hidden) return true;
+
+  var active = document.activeElement;
+  if (!active || typeof active.matches !== 'function') return false;
+
+  if (active.matches('input, textarea, select')) return true;
+  if (typeof active.closest === 'function' && active.closest('.bet-modal, .sisal-sim-wrap')) return true;
+
+  return false;
+}
+
+function _flushSisalRealtimeRefresh() {
+  _sisalRealtimeTimer = null;
+  if (!_sisalRealtimeDirty) return;
+
+  if (_isSisalRefreshDeferred() || _sisalRealtimeInFlight) {
+    _sisalRealtimeTimer = setTimeout(_flushSisalRealtimeRefresh, 1200);
+    return;
+  }
+
+  _sisalRealtimeDirty = false;
+  _refreshSisalPageFromSupabase();
+}
 
 async function _refreshSisalPageFromSupabase() {
   if (!_supabaseActive()) return;
@@ -3167,15 +3196,17 @@ async function _refreshSisalPageFromSupabase() {
     console.error('SISAL live refresh failed', e);
   } finally {
     _sisalRealtimeInFlight = false;
+    if (_sisalRealtimeDirty && !_sisalRealtimeTimer) {
+      _sisalRealtimeTimer = setTimeout(_flushSisalRealtimeRefresh, 300);
+    }
   }
 }
 
 function _scheduleSisalRealtimeRefresh(reason) {
+  _sisalRealtimeDirty = true;
   if (_sisalRealtimeTimer) clearTimeout(_sisalRealtimeTimer);
-  _sisalRealtimeTimer = setTimeout(function() {
-    _sisalRealtimeTimer = null;
-    _refreshSisalPageFromSupabase();
-  }, 250);
+  if (_isSisalRefreshDeferred()) return;
+  _sisalRealtimeTimer = setTimeout(_flushSisalRealtimeRefresh, 250);
 }
 
 function _initSisalRealtimeSync() {
@@ -3217,12 +3248,14 @@ function _bindSisalVisibilityRefresh() {
   _sisalFocusRefreshBound = true;
 
   window.addEventListener('focus', function() {
-    _scheduleSisalRealtimeRefresh('window-focus');
+    if (_sisalRealtimeDirty) {
+      _scheduleSisalRealtimeRefresh('window-focus-resume');
+    }
   });
 
   document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible') {
-      _scheduleSisalRealtimeRefresh('visibility-visible');
+    if (document.visibilityState === 'visible' && _sisalRealtimeDirty) {
+      _scheduleSisalRealtimeRefresh('visibility-visible-resume');
     }
   });
 }

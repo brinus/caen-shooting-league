@@ -2550,14 +2550,33 @@ function renderSisalCharts(board) {
           posPct = Math.round(1000 * (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][shown] ? board.mc_summary.posMatrix[pi][shown] : 0) / board.mc_summary.sims) / 10;
         }
         var color = palette[shown % palette.length];
-          items += '<div class="sisal-final-row" style="--accent-color:' + color + '">'
-            + '<span class="sisal-final-rank">' + (shown+1) + '</span>'
-            + '<span class="sisal-final-name">' + escapeHtml(p.nome) + '</span>'
+        var rowCls = 'sisal-final-row' + (shown < 3 ? ' sisal-final-row--podium' : '');
+          items += '<div class="' + rowCls + '" style="--accent-color:' + color + '">'
+            + '<span class="sisal-final-rank">' + (shown + 1) + '</span>'
+            + '<div class="sisal-final-main">'
+              + '<span class="sisal-final-name">' + escapeHtml(p.nome) + '</span>'
+              + '<span class="sisal-final-meta">Prob. chiusura P' + (shown + 1) + '</span>'
+            + '</div>'
             + '<span class="sisal-final-pospct">' + posPct + '%</span></div>';
         shown++;
       }
-      return '<div class="sisal-final-slide" data-idx="' + si + '"' + (si===0? ' style="display:block"' : '') + '>' +
-        '<div class="sisal-final-header">Possibile classifica — ' + (o.pct || 0) + '%</div>' + items + '</div>';
+      return '<div class="sisal-final-slide" data-idx="' + si + '">' +
+        '<div class="sisal-final-shell">'
+          + '<div class="sisal-final-slide-head">'
+            + '<div class="sisal-final-slide-copy">'
+              + '<span class="sisal-chip">Scenario ' + (si + 1) + '</span>'
+              + '<div class="sisal-final-header">Classifica finale piu probabile</div>'
+              + '<div class="sisal-final-kicker">Ordine Monte Carlo ricorrente tra gli esiti finali piu frequenti</div>'
+            + '</div>'
+            + '<div class="sisal-final-scenario-share">'
+              + '<span class="sisal-final-share-label">Frequenza</span>'
+              + '<strong class="sisal-final-share-value">' + (o.pct || 0) + '%</strong>'
+            + '</div>'
+          + '</div>'
+          + '<div class="sisal-final-list">' + items + '</div>'
+          + '<div class="sisal-final-footer">Top 10 giocatori del campionato corrente, ordinati per scenario simulato.</div>'
+        + '</div>'
+      + '</div>';
     }).join('');
 
     var dots = tops.map(function(_, di) { return '<button class="sisal-final-dot' + (di===0? ' active' : '') + '" data-idx="' + di + '"></button>'; }).join('');
@@ -2568,7 +2587,13 @@ function renderSisalCharts(board) {
       + '<div class="sisal-final-dots">' + dots + '</div>'
       + '</div>';
   } else {
-    chartFinal = '<div id="sisal-final-carousel-wrap"><p class="text-muted">Nessun dato Monte Carlo disponibile.</p></div>';
+    chartFinal = '<div class="sisal-final-carousel sisal-final-carousel--empty">'
+      + '<div class="sisal-final-empty">'
+        + '<span class="sisal-chip">Monte Carlo</span>'
+        + '<div class="sisal-final-empty-title">Scenari finali non ancora disponibili</div>'
+        + '<p class="text-muted">Servono classifica live e giornate valide per costruire le combinazioni finali piu probabili.</p>'
+      + '</div>'
+    + '</div>';
   }
 
   // ── 8. Simulatore quota ──────────────────────────────────────────
@@ -2623,7 +2648,7 @@ function renderSisalCharts(board) {
   el.innerHTML =
     '<div class="sisal-charts-note">📊 Analisi basata sui top ' + allP.length + ' giocatori per classifica campionato corrente</div>' +
     '<div class="sisal-charts-grid">' +
-      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🔁 Possibili classifiche finali (Top 10)</div>' + chartFinal + '</div>' +
+      '<div class="sisal-chart-card sisal-chart-card--final sisal-reveal"><div class="sisal-chart-title">🔁 Possibili classifiche finali (Top 10)</div>' + chartFinal + '</div>' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">' + nmLabel + '</div>' + chart2 + '</div>' +
     '</div>' +
     '<div class="sisal-charts-grid">' +

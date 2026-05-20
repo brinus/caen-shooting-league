@@ -291,7 +291,6 @@ async function openCalendarDayEditor(seasonId, dateStr, giornata) {
 
   btnClose.onclick = function () { editor.hidden = true }
 }
-}
 
 async function refreshStagioniCache() {
   if (typeof _loadStagioniFromSupabase === 'function') {

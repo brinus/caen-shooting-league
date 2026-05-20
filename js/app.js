@@ -2403,19 +2403,31 @@ function renderSisalCharts(board) {
     '<text x="10" y="' + (pT + plotH / 2) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.35)" transform="rotate(-90 10 ' + (pT + plotH / 2) + ')">Record →</text>' +
   '</svg>';
 
-  // ── Final standings carousel (top MC orders) ─────────────────────
+  // ── Final standings carousel (top MC orders, top10 filtered) ─────
   var chartFinal = '';
+  var palette = ['#ffd700','#ffb74d','#ff8a65','#4db6ac','#64b5f6','#ba68c8','#e57373','#ffd54f','#aed581','#90a4ae'];
   if (board && board.mc_summary && board.mc_summary.topOrders && board.mc_summary.topOrders.length) {
-    var tops = board.mc_summary.topOrders.slice(0,5);
+    var tops = board.mc_summary.topOrders.filter(function(o){ return o.order && o.order.length; }).slice(0,5);
     var slides = tops.map(function(o, si) {
-      var items = o.order.map(function(pi, idx) {
+      var items = '';
+      // only show top10 players (allP indexes)
+      var shown = 0;
+      for (var idx = 0; idx < o.order.length && shown < 10; idx++) {
+        var pi = o.order[idx];
+        // skip if player not in top10
+        if (allP.map(function(x){return x.nome; }).indexOf((board.players[pi]||{}).nome) === -1) continue;
         var p = board.players[pi] || { nome: '—' };
         var posPct = 0;
         if (board.mc_summary.posMatrix && board.mc_summary.sims) {
-          posPct = Math.round(1000 * (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][idx] ? board.mc_summary.posMatrix[pi][idx] : 0) / board.mc_summary.sims) / 10;
+          posPct = Math.round(1000 * (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][shown] ? board.mc_summary.posMatrix[pi][shown] : 0) / board.mc_summary.sims) / 10;
         }
-        return '<div class="sisal-final-row"><span class="sisal-final-rank">' + (idx+1) + '</span><span class="sisal-final-name">' + escapeHtml(p.nome) + '</span><span class="sisal-final-pospct">' + posPct + '%</span></div>';
-      }).join('');
+        var color = palette[shown % palette.length];
+        items += '<div class="sisal-final-row" style="border-left:4px solid ' + color + '">'
+              + '<span class="sisal-final-rank">' + (shown+1) + '</span>'
+              + '<span class="sisal-final-name">' + escapeHtml(p.nome) + '</span>'
+              + '<span class="sisal-final-pospct">' + posPct + '%</span></div>';
+        shown++;
+      }
       return '<div class="sisal-final-slide" data-idx="' + si + '"' + (si===0? ' style="display:block"' : '') + '>' +
         '<div class="sisal-final-header">Possibile classifica — ' + (o.pct || 0) + '%</div>' + items + '</div>';
     }).join('');
@@ -2471,7 +2483,7 @@ function renderSisalCharts(board) {
   el.innerHTML =
     '<div class="sisal-charts-note">📊 Analisi basata sui top ' + allP.length + ' giocatori per classifica campionato corrente</div>' +
     '<div class="sisal-charts-grid">' +
-      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🏆 Probabilità Titolo</div>' + chart1 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🔁 Possibili classifiche finali (Top 10)</div>' + chartFinal + '</div>' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">' + nmLabel + '</div>' + chart2 + '</div>' +
     '</div>' +
     '<div class="sisal-charts-grid">' +

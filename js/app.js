@@ -1661,9 +1661,19 @@ function getSisalQuoteClass(q) {
 function _findSisalNextMatchday(stagione) {
   var giornate = stagione.giornate || [];
   if (!giornate.length) return null;
-  var sorted   = giornate.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
-  var lastData = sorted[sorted.length - 1].data;
-  var nextNum  = sorted.length + 1;
+  var sortedAll   = giornate.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
+  // Consider only played giornate (have risultati) when deciding next number/date
+  var played = giornate.filter(function(g) { return g && g.risultati && g.risultati.length; });
+  var lastData = null;
+  var nextNum  = 1;
+  if (played.length) {
+    var sortedPlayed = played.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
+    lastData = sortedPlayed[sortedPlayed.length - 1].data;
+    nextNum  = Math.max.apply(null, played.map(function(g){ return g.numero || 0; })) + 1;
+  } else {
+    lastData = sortedAll[sortedAll.length - 1].data;
+    nextNum  = Math.max.apply(null, giornate.map(function(g){ return g.numero || 0; })) + 1;
+  }
   var DAYS     = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
 
   // Start from day after lastData; if that's in the past, advance to today
@@ -1900,14 +1910,16 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   if (!stagione || !stagione.classifica || !stagione.classifica.length) return staticBoard || null;
 
   var classifica  = stagione.classifica;
-  var giornate    = stagione.giornate || [];
-  var giocate     = giornate.length;
+  var giornateAll = stagione.giornate || [];
+  // consider only played giornate (those with risultati) for giocate / histories
+  var giornate     = giornateAll.filter(function(g) { return g && g.risultati && g.risultati.length; });
+  var giocate      = giornate.length;
   var totali      = stagione.giornate_totali || 26;
   var rimaste     = Math.max(0, totali - giocate);
   var MARGIN  = 1.08;
 
   // ── Monte Carlo season simulation (5 000 runs) ────────────────────
-  var mc = _runMonteCarlo(classifica, (stagione && stagione.giornate) ? stagione.giornate : [], giocate, totali, 5000);
+  var mc = _runMonteCarlo(classifica, giornate, giocate, totali, 5000);
   var mcPerPlayer = (mc && mc.perPlayer) ? mc.perPlayer : [];
 
   // ── Per-player season odds (from Monte Carlo) ─────────────────────

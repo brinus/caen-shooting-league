@@ -123,6 +123,13 @@
                 <div style="flex:1"></div>
                 <button id="btn-cal-show-list" class="btn-secondary">Mostra lista</button>
               </div>
+              <div id="calendario-summary" class="admin-calendar-summary"></div>
+              <div id="calendario-legend" class="admin-calendar-legend">
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--today"></span> Oggi</span>
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--played"></span> Giocata</span>
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--planned"></span> Programmata</span>
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--default"></span> Default lun/mer</span>
+              </div>
               <div id="calendario-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:var(--card-bg);padding:8px;border-radius:6px"></div>
               <div id="calendario-editor" hidden style="margin-top:0.75rem;padding:0.75rem;border:1px solid var(--border);border-radius:6px;background:var(--panel-bg)"></div>
             </div>

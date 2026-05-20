@@ -138,7 +138,10 @@ async function loadCalendarioTab() {
     // fetch existing to determine next numero
     const { data } = await CSLAuth.client.from('giornate').select('id, numero').eq('season_id', seasonId).order('numero', { ascending: true })
     const maxNum = (data && data.length) ? Math.max.apply(null, data.map(g => g.numero || 0)) : 0
-    const newRow = { season_id: seasonId, numero: maxNum + 1, data: null }
+    const season = await loadSeasonCalendarMeta(seasonId)
+    const defaults = season ? buildDefaultSeasonSchedule(season.inizio, season.fine) : []
+    const target = defaults[maxNum] || null
+    const newRow = { season_id: seasonId, numero: maxNum + 1, data: target ? target.data : null }
     const { data: ins, error } = await CSLAuth.client.from('giornate').insert(newRow).select()
     if (error) { showMsg('calendario-error', error.message, true); return }
     showMsg('calendario-msg', '✓ Giornata aggiunta.', false)
@@ -151,35 +154,171 @@ async function loadCalendarioTab() {
 async function renderCalendario() {
   const sel = document.getElementById('calendario-stagione')
   const seasonId = sel ? sel.value : null
-  const listEl = document.getElementById('calendario-list')
-  const errEl = document.getElementById('calendario-error')
-  if (!seasonId) { listEl.innerHTML = '<p class="text-muted">Seleziona una stagione.</p>'; return }
-  listEl.innerHTML = '<p class="text-muted">Caricamento…</p>'
+  const grid = document.getElementById('calendario-grid')
+  const editor = document.getElementById('calendario-editor')
+  const summary = document.getElementById('calendario-summary')
+  if (!seasonId) {
+    if (grid) grid.innerHTML = '<p class="text-muted" style="grid-column:1/-1">Seleziona una stagione.</p>'
+    if (summary) summary.innerHTML = ''
+    return
+  }
+  if (grid) grid.innerHTML = '<p class="text-muted" style="grid-column:1/-1">Caricamento…</p>'
+  if (editor) { editor.hidden = true; editor.innerHTML = '' }
   hideMsg('calendario-error'); hideMsg('calendario-msg')
+
+  const season = await loadSeasonCalendarMeta(seasonId)
+  if (!season) {
+    if (grid) grid.innerHTML = '<p class="text-muted" style="grid-column:1/-1">Stagione non trovata.</p>'
+    return
+  }
+
+  // Ensure default lun/mer schedule exists in DB up to season end.
+  await ensureDefaultCalendarForSeason(season)
 
   // fetch giornate for season and all risultati dates to mark which giornate have results
   const [gRes, rRes] = await Promise.all([
-    CSLAuth.client.from('giornate').select('id, numero, data').eq('season_id', seasonId).order('numero', { ascending: true }),
+    CSLAuth.client.from('giornate').select('id, numero, data, note').eq('season_id', seasonId).order('numero', { ascending: true }),
     CSLAuth.client.from('risultati').select('data').eq('stagione_id', seasonId)
   ])
-  const gData = gRes.data || []
+  const gData = (gRes.data || []).map(function(g) { return Object.assign({ isDefault: false }, g) })
   const rData = rRes.data || []
   const haveResults = new Set((rData || []).map(r => r.data))
 
-  if (!gData.length) { listEl.innerHTML = '<p class="text-muted">Nessuna giornata pianificata.</p>'; return }
+  if (!gData.length) {
+    if (grid) grid.innerHTML = '<p class="text-muted" style="grid-column:1/-1">Nessuna giornata pianificata.</p>'
+    return
+  }
+
+  const defaultSchedule = buildDefaultSeasonSchedule(season.inizio, season.fine)
+  const byNumero = Object.create(null)
+  gData.forEach(function(g) { byNumero[g.numero] = g })
+  defaultSchedule.forEach(function(def) {
+    if (byNumero[def.numero] && byNumero[def.numero].data === def.data) {
+      byNumero[def.numero].isDefault = true
+    }
+  })
+
+  renderCalendarSummary(season, gData, haveResults)
 
   // default to current month
   const now = new Date()
-  const monthLabelEl = document.getElementById('cal-month-label')
-  const grid = document.getElementById('calendario-grid')
-  let curMonth = now.getMonth()
-  let curYear = now.getFullYear()
+  let anchorDate = new Date(now)
+  anchorDate.setHours(0, 0, 0, 0)
+  var seasonStart = new Date(season.inizio + 'T00:00:00')
+  var seasonEnd = new Date(season.fine + 'T00:00:00')
+  if (anchorDate < seasonStart) anchorDate = seasonStart
+  if (anchorDate > seasonEnd && gData.length) anchorDate = new Date(gData[gData.length - 1].data + 'T00:00:00')
+  let curMonth = anchorDate.getMonth()
+  let curYear = anchorDate.getFullYear()
 
-  document.getElementById('cal-prev').onclick = function () { curMonth--; if (curMonth < 0) { curMonth = 11; curYear--; } renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear) }
-  document.getElementById('cal-next').onclick = function () { curMonth++; if (curMonth > 11) { curMonth = 0; curYear++; } renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear) }
-  document.getElementById('btn-cal-show-list').onclick = function () { listEl.innerHTML = '<p class="text-muted">Torna alla lista non grafica (usa il pulsante Refresh per ripristinare la vista grafica).</p>'; setTimeout(renderCalendario, 500) }
+  document.getElementById('cal-prev').onclick = function () {
+    curMonth--
+    if (curMonth < 0) { curMonth = 11; curYear-- }
+    renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear)
+  }
+  document.getElementById('cal-next').onclick = function () {
+    curMonth++
+    if (curMonth > 11) { curMonth = 0; curYear++ }
+    renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear)
+  }
+  document.getElementById('btn-cal-show-list').onclick = function () {
+    renderCalendarList(gData, haveResults)
+  }
 
   renderCalendarGrid(seasonId, gData, haveResults, curMonth, curYear)
+}
+
+async function loadSeasonCalendarMeta(seasonId) {
+  const { data, error } = await CSLAuth.client
+    .from('stagioni')
+    .select('id, nome, anno, inizio, fine, status')
+    .eq('id', seasonId)
+    .single()
+  if (error) {
+    showMsg('calendario-error', error.message, true)
+    return null
+  }
+  return data || null
+}
+
+function buildDefaultSeasonSchedule(inizio, fine) {
+  if (!inizio || !fine) return []
+  const result = []
+  let n = 0
+  let d = new Date(inizio + 'T00:00:00')
+  const end = new Date(fine + 'T00:00:00')
+  while (d <= end) {
+    const dow = d.getDay()
+    if (dow === 1 || dow === 3) {
+      n++
+      result.push({
+        numero: n,
+        data: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+      })
+    }
+    d.setDate(d.getDate() + 1)
+  }
+  return result
+}
+
+async function ensureDefaultCalendarForSeason(season) {
+  if (!season) return
+  const defaults = buildDefaultSeasonSchedule(season.inizio, season.fine)
+  if (!defaults.length) return
+  const { data: existing, error } = await CSLAuth.client
+    .from('giornate')
+    .select('id, numero, data')
+    .eq('season_id', season.id)
+    .order('numero', { ascending: true })
+  if (error) {
+    showMsg('calendario-error', error.message, true)
+    return
+  }
+
+  const existingByNumero = Object.create(null)
+  ;(existing || []).forEach(function(g) { existingByNumero[g.numero] = g })
+  const missing = defaults.filter(function(def) { return !existingByNumero[def.numero] })
+  if (!missing.length) return
+
+  const rows = missing.map(function(def) {
+    return {
+      season_id: season.id,
+      numero: def.numero,
+      data: def.data,
+      note: 'auto-programmata'
+    }
+  })
+  const { error: insertErr } = await CSLAuth.client.from('giornate').insert(rows)
+  if (insertErr && !String(insertErr.message || '').toLowerCase().includes('duplicate')) {
+    showMsg('calendario-error', insertErr.message, true)
+  }
+}
+
+function renderCalendarSummary(season, gData, haveResults) {
+  const summary = document.getElementById('calendario-summary')
+  if (!summary) return
+  const played = gData.filter(function(g) { return haveResults.has(g.data) })
+  const upcoming = gData.filter(function(g) { return !haveResults.has(g.data) })
+  const next = upcoming[0] || null
+  summary.innerHTML =
+    '<div class="admin-calendar-pill"><strong>' + escHtml(season.nome) + ' ' + escHtml(String(season.anno || '')) + '</strong></div>' +
+    '<div class="admin-calendar-pill">Giocate: <strong>' + played.length + '</strong></div>' +
+    '<div class="admin-calendar-pill">Programmate: <strong>' + gData.length + '</strong></div>' +
+    '<div class="admin-calendar-pill">Range: <strong>' + escHtml(formatDate(season.inizio)) + '</strong> → <strong>' + escHtml(formatDate(season.fine)) + '</strong></div>' +
+    (next ? '<div class="admin-calendar-pill admin-calendar-pill--accent">Prossima: <strong>G' + escHtml(String(next.numero)) + '</strong> · ' + escHtml(formatDate(next.data)) + '</div>' : '')
+}
+
+function renderCalendarList(gData, haveResults) {
+  const grid = document.getElementById('calendario-grid')
+  if (!grid) return
+  const ordered = gData.slice().sort(function(a, b) { return a.numero - b.numero })
+  grid.innerHTML = ordered.map(function(g) {
+    return '<div class="admin-calendar-list-row">'
+      + '<span class="admin-calendar-list-rank">G' + escHtml(String(g.numero)) + '</span>'
+      + '<span class="admin-calendar-list-date">' + escHtml(formatDate(g.data)) + '</span>'
+      + '<span class="admin-calendar-list-status">' + (haveResults.has(g.data) ? 'Giocata' : 'Programmata') + '</span>'
+      + '</div>'
+  }).join('')
 }
 
 function renderCalendarGrid(seasonId, gData, haveResults, month, year) {
@@ -191,7 +330,12 @@ function renderCalendarGrid(seasonId, gData, haveResults, month, year) {
 
   // week day headers
   const days = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom']
-  days.forEach(function(d) { const hd = document.createElement('div'); hd.style.textAlign='center'; hd.style.fontSize='0.75rem'; hd.style.opacity='0.8'; hd.textContent = d; grid.appendChild(hd) })
+  days.forEach(function(d) {
+    const hd = document.createElement('div')
+    hd.className = 'admin-calendar-weekday'
+    hd.textContent = d
+    grid.appendChild(hd)
+  })
 
   // first day of month (JS: 0=Sun). We want Monday-first layout
   const first = new Date(year, month, 1)
@@ -206,33 +350,28 @@ function renderCalendarGrid(seasonId, gData, haveResults, month, year) {
     const dd = new Date(year, month, d)
     const dateStr = dd.getFullYear() + '-' + String(dd.getMonth()+1).padStart(2,'0') + '-' + String(dd.getDate()).padStart(2,'0')
     const cell = document.createElement('div')
-    cell.style.minHeight = '72px'
-    cell.style.borderRadius = '6px'
-    cell.style.padding = '6px'
-    cell.style.background = 'transparent'
-    cell.style.cursor = 'pointer'
-    cell.style.display = 'flex'
-    cell.style.flexDirection = 'column'
-    cell.style.gap = '6px'
+    cell.className = 'admin-calendar-day'
 
     const top = document.createElement('div')
-    top.style.display='flex'; top.style.justifyContent='space-between'; top.style.alignItems='center'
-    const lbl = document.createElement('div'); lbl.textContent = d; lbl.style.fontWeight='700'; lbl.style.fontSize='0.95rem'
-    const badge = document.createElement('div'); badge.style.fontSize='0.75rem'; badge.style.color='var(--text-muted)'
+    top.className = 'admin-calendar-day-top'
+    const lbl = document.createElement('div'); lbl.className = 'admin-calendar-day-num'; lbl.textContent = d
+    const badge = document.createElement('div'); badge.className = 'admin-calendar-day-badge'
     top.appendChild(lbl); top.appendChild(badge)
 
-    const body = document.createElement('div'); body.style.flex='1'; body.style.fontSize='0.85rem'
+    const body = document.createElement('div'); body.className = 'admin-calendar-day-body'
+    const isToday = isSameCalendarDate(dd, new Date())
+    if (isToday) cell.classList.add('is-today')
 
     // find giornata scheduled on this date
     const g = gData.find(x => x.data === dateStr)
     if (g) {
       badge.textContent = 'G' + (g.numero || '—')
-      badge.style.color = hasValueStyle(g, haveResults, dateStr)
       body.textContent = hasValueText(g, haveResults, dateStr)
-      cell.style.border = '1px solid rgba(0,0,0,0.06)'
-      cell.style.background = hasResultsStyle(g, haveResults, dateStr)
+      cell.classList.add(haveResults.has(dateStr) ? 'is-played' : 'is-planned')
+      if (g.isDefault) cell.classList.add('is-default')
     } else {
-      body.textContent = ''
+      body.textContent = dd.getDay() === 1 || dd.getDay() === 3 ? 'slot lun/mer' : ''
+      if (body.textContent) cell.classList.add('is-available')
     }
 
     cell.appendChild(top); cell.appendChild(body)
@@ -241,7 +380,15 @@ function renderCalendarGrid(seasonId, gData, haveResults, month, year) {
   }
 }
 
-function emptyCalCell() { const c = document.createElement('div'); c.style.minHeight='72px'; return c }
+function emptyCalCell() {
+  const c = document.createElement('div')
+  c.className = 'admin-calendar-empty'
+  return c
+}
+
+function isSameCalendarDate(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
 
 function hasValueStyle(g, haveResults, dateStr) { return haveResults.has(dateStr) ? 'var(--sisal-green)' : 'var(--text-muted)' }
 function hasValueText(g, haveResults, dateStr) { return haveResults.has(dateStr) ? 'risultati presenti' : 'programmata' }
@@ -750,7 +897,7 @@ async function populateSeasonSelect(selectId) {
   if (!sel) return
 
   let seasons = CSL.stagioni || []
-  const { data } = await CSLAuth.client.from('stagioni').select('id, nome, anno').order('anno').order('numero')
+  const { data } = await CSLAuth.client.from('stagioni').select('id, nome, anno, status').order('anno').order('numero')
   if (data?.length) seasons = data
 
   sel.innerHTML = seasons.map(s =>

@@ -1711,7 +1711,7 @@ function _randNorm(mu, sigma) {
  * Championship points by giornata rank: [10,8,6,4,4,2,2,1,1,1,0,...].
  * Returns per-player { pTitolo, pPodio, pTop5, pBest30, pAvg18 }.
  */
-function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
+function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM) {
   var n       = classifica.length;
   var rimaste = Math.max(0, totali - giocate);
   var PTS     = [10, 8, 6, 4, 4, 2, 2, 1, 1, 1];
@@ -1725,6 +1725,24 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
   var gPlayed = classifica.map(function(p) { return p.partite || giocate; });
   var curPts  = classifica.map(function(p) { return p.punti_campionato || 0; });
   var curSums = medias.map(function(m, i) { return m * gPlayed[i]; });
+
+  // Build per-player historical scores from provided giornate (chronological)
+  var nameIndex = Object.create(null);
+  classifica.forEach(function(p, i) { nameIndex[p.nome] = i; });
+  var histories = new Array(n);
+  for (var i = 0; i < n; i++) histories[i] = [];
+  if (Array.isArray(giornate) && giornate.length) {
+    // iterate oldest -> newest to keep chronological order
+    for (var gi = giornate.length - 1; gi >= 0; gi--) {
+      var gday = giornate[gi];
+      if (!gday || !gday.risultati) continue;
+      for (var ri = 0; ri < gday.risultati.length; ri++) {
+        var r = gday.risultati[ri];
+        var idx = nameIndex[r.nome];
+        if (typeof idx !== 'undefined') histories[idx].push(Number(r.punteggio) || 0);
+      }
+    }
+  }
 
   // Bayesian shrinkage: pull mean toward league average for players with few games.
   // adjMedia = (k * media + PRIOR_K * leagueMean) / (k + PRIOR_K)
@@ -1771,14 +1789,58 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
       hitBest30[i] = false;
     }
 
+    // copy histories for this simulation so simulated days feed future predictions
+    var simHist = new Array(n);
+    for (var i = 0; i < n; i++) simHist[i] = histories[i] ? histories[i].slice() : [];
+
     for (var g = 0; g < rimaste; g++) {
-      // Simulate punteggio (best attempt) for each player
+      // For each player, predict expected score for this future giornata using a simple linear fit
       for (var i = 0; i < n; i++) {
-        var sc    = Math.round(Math.min(50, Math.max(0, _randNorm(adjMedias[i], sigmas[i]))));
+        var hist = simHist[i] || [];
+        var m = hist.length;
+        var expected = adjMedias[i];
+        var sigmaVal = sigmas[i];
+
+        // Use last up to 5 scores for fit if available
+        var window = m > 5 ? hist.slice(m - 5) : hist.slice();
+        if (window.length >= 2) {
+          // linear regression y ~ a + b*t  (t = 0..L-1)
+          var L = window.length;
+          var sumT = 0, sumY = 0;
+          for (var tt = 0; tt < L; tt++) { sumT += tt; sumY += window[tt]; }
+          var meanT = sumT / L, meanY = sumY / L;
+          var cov = 0, varT = 0;
+          for (var tt2 = 0; tt2 < L; tt2++) { cov += (tt2 - meanT) * (window[tt2] - meanY); varT += (tt2 - meanT) * (tt2 - meanT); }
+          var slope = varT > 0 ? cov / varT : 0;
+          var intercept = meanY - slope * meanT;
+          expected = intercept + slope * L; // predict next index
+          // compute sample stddev for window
+          var sumSq = 0;
+          for (var tt3 = 0; tt3 < L; tt3++) sumSq += Math.pow(window[tt3] - meanY, 2);
+          var sdev = Math.sqrt(Math.max(0, sumSq / Math.max(1, L - 1)));
+          if (!isFinite(sdev) || sdev < 1.5) sdev = sigmaVal;
+          sigmaVal = sdev;
+        } else if (window.length === 1) {
+          expected = window[0];
+          sigmaVal = Math.max(sigmaVal * 0.9, 2.5);
+        } else {
+          // no history: fall back to adjusted mean
+          expected = adjMedias[i];
+          sigmaVal = sigmas[i];
+        }
+
+        // clamp expected
+        expected = Math.max(0, Math.min(50, expected));
+
+        var sc = Math.round(Math.min(50, Math.max(0, _randNorm(expected, sigmaVal))));
         scores[i] = sc;
         simSums[i] += sc;
         if (sc >= 30) hitBest30[i] = true;
+
+        // push simulated score so next future day uses it in fit
+        simHist[i].push(sc);
       }
+
       // Rank by score desc, tiebreak by cumulative score
       for (var i = 0; i < n; i++) order[i] = i;
       order.sort(function(a, b) {
@@ -1786,7 +1848,6 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
       });
       for (var r = 0; r < n; r++) simPts[order[r]] += (PTS[r] || 0);
     }
-
     // Final championship standings
     for (var i = 0; i < n; i++) order[i] = i;
     order.sort(function(a, b) {
@@ -1846,7 +1907,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   var MARGIN  = 1.08;
 
   // ── Monte Carlo season simulation (5 000 runs) ────────────────────
-  var mc = _runMonteCarlo(classifica, giocate, totali, 5000);
+  var mc = _runMonteCarlo(classifica, (stagione && stagione.giornate) ? stagione.giornate : [], giocate, totali, 5000);
   var mcPerPlayer = (mc && mc.perPlayer) ? mc.perPlayer : [];
 
   // ── Per-player season odds (from Monte Carlo) ─────────────────────
@@ -1988,16 +2049,46 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   };
 }
 
-function initSisal() {
+async function initSisal() {
   var select = document.getElementById('sisal-season-select');
   if (!select) return;
 
   // Compute live boards from CSL.stagioni and update CSL.sisal in-place
   if (CSL.stagioni && CSL.stagioni.length) {
-    CSL.stagioni.forEach(function(stagione) {
+    for (const stagione of CSL.stagioni) {
+      // If Supabase client available, attempt to fetch latest giornate from DB
+      if (window.CSLAuth && CSLAuth.client) {
+        try {
+          const { data: dbGiornate, error: dbErr } = await CSLAuth.client
+            .from('giornate')
+            .select('*, risultati(*)')
+            .eq('season_id', stagione.id)
+            .order('numero', { ascending: true });
+          if (!dbErr && Array.isArray(dbGiornate) && dbGiornate.length) {
+            // Use DB-provided giornate (assume schema compatible)
+            stagione.giornate = dbGiornate;
+          }
+        } catch (e) {
+          console.warn('Failed to load giornate from Supabase for', stagione.id, e);
+        }
+      }
+
       var staticBoard = (CSL.sisal || []).find(function(b) { return b.season_id === stagione.id; });
       var liveBoard   = computeLiveSisalBoard(stagione, staticBoard);
-      if (!liveBoard) return;
+      if (!liveBoard) continue;
+      // Ensure records are consistent with per-giornata aggregation
+      try {
+        var statsPlayers = buildPlayerStats([stagione]);
+        var spMap = Object.create(null);
+        statsPlayers.forEach(function(sp) { spMap[sp.nome] = sp; });
+        liveBoard.players.forEach(function(lp) {
+          var sp = spMap[lp.nome];
+          if (sp && typeof sp.record !== 'undefined' && sp.record !== lp.record) {
+            console.warn('SISAL record mismatch for', lp.nome, 'CSL.classifica:', lp.record, 'aggregated:', sp.record);
+            lp.record = sp.record; // align to aggregated history
+          }
+        });
+      } catch (e) { console.error('record consistency check failed', e); }
       if (!CSL.sisal) CSL.sisal = [];
       var idx = CSL.sisal.findIndex(function(b) { return b.season_id === stagione.id; });
       if (idx >= 0) {
@@ -2005,7 +2096,7 @@ function initSisal() {
       } else {
         CSL.sisal.push(liveBoard);
       }
-    });
+    }
     // Notify bet modal so it can re-populate with fresh data
     document.dispatchEvent(new CustomEvent('sisal:boards-ready'));
   }

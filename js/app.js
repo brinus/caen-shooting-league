@@ -2422,10 +2422,10 @@ function renderSisalCharts(board) {
           posPct = Math.round(1000 * (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][shown] ? board.mc_summary.posMatrix[pi][shown] : 0) / board.mc_summary.sims) / 10;
         }
         var color = palette[shown % palette.length];
-        items += '<div class="sisal-final-row" style="border-left:4px solid ' + color + '">'
-              + '<span class="sisal-final-rank">' + (shown+1) + '</span>'
-              + '<span class="sisal-final-name">' + escapeHtml(p.nome) + '</span>'
-              + '<span class="sisal-final-pospct">' + posPct + '%</span></div>';
+          items += '<div class="sisal-final-row" style="--accent-color:' + color + '">'
+            + '<span class="sisal-final-rank">' + (shown+1) + '</span>'
+            + '<span class="sisal-final-name">' + escapeHtml(p.nome) + '</span>'
+            + '<span class="sisal-final-pospct">' + posPct + '%</span></div>';
         shown++;
       }
       return '<div class="sisal-final-slide" data-idx="' + si + '"' + (si===0? ' style="display:block"' : '') + '>' +
@@ -2985,6 +2985,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function _run() {
     if (_rendered) return;
     _rendered = true;
+    try { _initScrollReveal(); } catch (e) { /* ignore if unavailable */ }
     switch (page) {
       case 'index.html':
       case '':

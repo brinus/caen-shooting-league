@@ -1753,6 +1753,9 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
   var cntTop5   = new Array(n).fill(0);
   var cntBest30 = new Array(n).fill(0);
   var cntAvg18  = new Array(n).fill(0);
+  var posCounts = new Array(n);
+  for (var i = 0; i < n; i++) posCounts[i] = new Array(n).fill(0);
+  var orderMap = Object.create(null);
 
   // Pre-allocate to avoid GC pressure in the hot loop
   var simPts    = new Array(n);
@@ -1791,6 +1794,8 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
     });
     for (var r2 = 0; r2 < n; r2++) {
       var fi = order[r2];
+      // record position frequency for matrix
+      posCounts[fi][r2]++;
       if (r2 === 0) cntTitolo[fi]++;
       if (r2 < 3)  cntPodio[fi]++;
       if (r2 < 5)  cntTop5[fi]++;
@@ -1799,9 +1804,12 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
       if (hitBest30[i]) cntBest30[i]++;
       if (simSums[i] / (gPlayed[i] + rimaste) >= 18) cntAvg18[i]++;
     }
+    // serialize order to key and count
+    var key = order.join('|');
+    orderMap[key] = (orderMap[key] || 0) + 1;
   }
-
-  return classifica.map(function(_, i) {
+  // build per-player probabilities
+  var perPlayer = classifica.map(function(_, i) {
     return {
       pTitolo: Math.max(0.001, cntTitolo[i] / N_SIM),
       pPodio:  Math.max(0.005, cntPodio[i]  / N_SIM),
@@ -1810,6 +1818,15 @@ function _runMonteCarlo(classifica, giocate, totali, N_SIM) {
       pAvg18:  Math.max(0.005, cntAvg18[i]  / N_SIM)
     };
   });
+
+  // top orders
+  var orders = Object.keys(orderMap).map(function(k) { return { key: k, cnt: orderMap[k] }; });
+  orders.sort(function(a, b) { return b.cnt - a.cnt; });
+  var topOrders = orders.slice(0, 10).map(function(o) {
+    return { order: o.key.split('|').map(function(x) { return parseInt(x, 10); }), count: o.cnt, pct: Math.round(1000 * o.cnt / N_SIM) / 10 };
+  });
+
+  return { perPlayer: perPlayer, posMatrix: posCounts, topOrders: topOrders, sims: N_SIM };
 }
 
 /**
@@ -1829,11 +1846,12 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   var MARGIN  = 1.08;
 
   // ── Monte Carlo season simulation (5 000 runs) ────────────────────
-  var mcProbs = _runMonteCarlo(classifica, giocate, totali, 5000);
+  var mc = _runMonteCarlo(classifica, giocate, totali, 5000);
+  var mcPerPlayer = (mc && mc.perPlayer) ? mc.perPlayer : [];
 
   // ── Per-player season odds (from Monte Carlo) ─────────────────────
   var players = classifica.map(function(p, i) {
-    var probs   = mcProbs[i];
+    var probs   = mcPerPlayer[i] || { pTitolo:0.001, pPodio:0.02, pTop5:0.05, pBest30:0.01, pAvg18:0.01 };
     var pT      = probs.pTitolo;
     var pPodio  = probs.pPodio;
     var pTop5   = probs.pTop5;
@@ -1954,6 +1972,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     _isLive:         true,
     players:         players,
     highlights:      highlights,
+    mc_summary:      mc || null,
     specials:        specials,
     methodology: [
       'Simulazione Monte Carlo: 5 000 stagioni complete simulate per ciascun aggiornamento del board.',
@@ -2384,6 +2403,28 @@ function renderSisalCharts(board) {
     '<text x="10" y="' + (pT + plotH / 2) + '" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.35)" transform="rotate(-90 10 ' + (pT + plotH / 2) + ')">Record →</text>' +
   '</svg>';
 
+  // ── Final standings carousel (top MC orders) ─────────────────────
+  var chartFinal = '';
+  if (board && board.mc_summary && board.mc_summary.topOrders && board.mc_summary.topOrders.length) {
+    var tops = board.mc_summary.topOrders.slice(0,5);
+    var slides = tops.map(function(o, si) {
+      var items = o.order.map(function(pi, idx) {
+        var p = board.players[pi] || { nome: '—' };
+        var posPct = 0;
+        if (board.mc_summary.posMatrix && board.mc_summary.sims) {
+          posPct = Math.round(1000 * (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][idx] ? board.mc_summary.posMatrix[pi][idx] : 0) / board.mc_summary.sims) / 10;
+        }
+        return '<div class="sisal-final-row"><span class="sisal-final-rank">' + (idx+1) + '</span><span class="sisal-final-name">' + escapeHtml(p.nome) + '</span><span class="sisal-final-pospct">' + posPct + '%</span></div>';
+      }).join('');
+      return '<div class="sisal-final-slide" data-idx="' + si + '"' + (si===0? ' style="display:block"' : '') + '>' +
+        '<div class="sisal-final-header">Possibile classifica — ' + (o.pct || 0) + '%</div>' + items + '</div>';
+    }).join('');
+
+    chartFinal = '<div id="sisal-final-carousel-wrap">' + slides + '</div>';
+  } else {
+    chartFinal = '<div id="sisal-final-carousel-wrap"><p class="text-muted">Nessun dato Monte Carlo disponibile.</p></div>';
+  }
+
   // ── 8. Simulatore quota ──────────────────────────────────────────
   var simOpts = allP.map(function(p, i) {
     return '<option value="' + i + '">' + escapeHtml(p.nome) + '</option>';
@@ -2444,6 +2485,7 @@ function renderSisalCharts(board) {
     '</div>' +
     '<div class="sisal-charts-grid sisal-charts-grid--halfleft">' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🎛 Simulatore quote</div>' + chart8 + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🔁 Possibili classifiche finali</div>' + chartFinal + '</div>' +
     '</div>';
 
   // ── Animate + init interactive ───────────────────────────────────
@@ -2463,6 +2505,19 @@ function renderSisalCharts(board) {
       });
     });
     _initSisalSimulatore(el, allP, board);
+    // Init final-standings carousel (cycle top MC orders)
+    var carouselWrap = el.querySelector('#sisal-final-carousel-wrap');
+    if (carouselWrap) {
+      var slides = carouselWrap.querySelectorAll('.sisal-final-slide');
+      if (slides && slides.length > 1) {
+        var cidx = 0;
+        setInterval(function() {
+          slides[cidx].style.display = 'none';
+          cidx = (cidx + 1) % slides.length;
+          slides[cidx].style.display = 'block';
+        }, 5000);
+      }
+    }
   }, 200);
 }
 

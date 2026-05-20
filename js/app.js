@@ -1613,10 +1613,15 @@ function showPostError(msg) {
 // ── SISAL Page ────────────────────────────────────────────────
 
 function formatQuote(value) {
-  return Number(value || 0).toLocaleString('it-IT', {
+  if (!isQuoteAvailable(value)) return 'ND';
+  return Number(value).toLocaleString('it-IT', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function isQuoteAvailable(value) {
+  return value != null && isFinite(Number(value)) && Number(value) > 0;
 }
 
 function formatCount(value, singular, plural) {
@@ -1647,8 +1652,59 @@ function _probToOdds(p, margin) {
   return Math.round(Math.max(1.02, (margin || 1.08) / Math.max(0.005, p)) * 100) / 100;
 }
 
+function _clampProbability(p) {
+  return Math.max(0, Math.min(1, Number(p) || 0));
+}
+
+function _resolveBest30Market(player, remainingGames, probability, margin) {
+  if (player && (player.record || 0) >= 30) {
+    return { probability: 1, quote: null, state: 'won' };
+  }
+  if (remainingGames <= 0) {
+    return { probability: 0, quote: null, state: 'lost' };
+  }
+
+  var p = _clampProbability(probability);
+  return {
+    probability: p,
+    quote: _probToOdds(Math.max(0.01, p), margin),
+    state: 'open'
+  };
+}
+
+function _resolveAvg18Market(player, remainingGames, probability, margin) {
+  var played = Math.max(0, (player && player.partite) || 0);
+  var totalGames = played + Math.max(0, remainingGames);
+  if (!totalGames) {
+    var p0 = _clampProbability(probability);
+    return {
+      probability: p0,
+      quote: _probToOdds(Math.max(0.01, p0), margin),
+      state: 'open'
+    };
+  }
+
+  var currentTotal = ((player && player.media_tiro) || 0) * played;
+  var minFinalAvg = currentTotal / totalGames;
+  var maxFinalAvg = (currentTotal + (Math.max(0, remainingGames) * 50)) / totalGames;
+  if (minFinalAvg >= 18) {
+    return { probability: 1, quote: null, state: 'won' };
+  }
+  if (maxFinalAvg < 18) {
+    return { probability: 0, quote: null, state: 'lost' };
+  }
+
+  var p = _clampProbability(probability);
+  return {
+    probability: p,
+    quote: _probToOdds(Math.max(0.01, p), margin),
+    state: 'open'
+  };
+}
+
 /** Compute CSS class for quote color-coding */
 function getSisalQuoteClass(q) {
+  if (!isQuoteAvailable(q)) return 'sisal-quote--closed';
   if (q < 2.0)  return 'sisal-quote--fav';
   if (q < 4.0)  return 'sisal-quote--mid';
   if (q < 10.0) return 'sisal-quote--long';
@@ -1781,6 +1837,15 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM) {
     }
   }
 
+  var alreadyHitBest30 = classifica.map(function(p, i) {
+    if ((p.record || 0) >= 30) return true;
+    var hist = histories[i] || [];
+    for (var hi = 0; hi < hist.length; hi++) {
+      if ((hist[hi] || 0) >= 30) return true;
+    }
+    return false;
+  });
+
   // Bayesian shrinkage: pull mean toward league average for players with few games.
   // adjMedia = (k * media + PRIOR_K * leagueMean) / (k + PRIOR_K)
   // With PRIOR_K=3 a player needs ~6 games before their own mean dominates (75%).
@@ -1823,7 +1888,7 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM) {
     for (var i = 0; i < n; i++) {
       simPts[i]    = curPts[i];
       simSums[i]   = curSums[i];
-      hitBest30[i] = false;
+      hitBest30[i] = alreadyHitBest30[i];
     }
 
     // copy histories for this simulation so simulated days feed future predictions
@@ -1957,6 +2022,8 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     var pTop5   = probs.pTop5;
     var pBest30 = probs.pBest30;
     var pAvg18  = probs.pAvg18;
+    var best30Market = _resolveBest30Market(p, rimaste, pBest30, MARGIN);
+    var avg18Market = _resolveAvg18Market(p, rimaste, pAvg18, MARGIN);
 
     // Trend: use static board data if available, else derive
     var staticP = staticBoard && staticBoard.players
@@ -1983,11 +2050,18 @@ function computeLiveSisalBoard(stagione, staticBoard) {
       record:              p.record,
       trend:               trend,
       confidence:          confidence,
+      prob_titolo:         _clampProbability(pT),
+      prob_podio:          _clampProbability(pPodio),
+      prob_top5:           _clampProbability(pTop5),
+      prob_best_30:        best30Market.probability,
+      prob_avg_18:         avg18Market.probability,
+      market_best_30_state: best30Market.state,
+      market_avg_18_state:  avg18Market.state,
       quote_titolo:        _probToOdds(pT,     MARGIN),
       quote_podio:         _probToOdds(pPodio, MARGIN),
       quote_top5:          _probToOdds(pTop5,  MARGIN),
-      quote_best_30:       _probToOdds(Math.max(0.01, pBest30), MARGIN),
-      quote_avg_18:        _probToOdds(pAvg18, MARGIN),
+      quote_best_30:       best30Market.quote,
+      quote_avg_18:        avg18Market.quote,
       note:                note
     };
   });
@@ -2045,15 +2119,38 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   }
 
   // ── Highlights ─────────────────────────────────────────────────────
-  var leaderP   = players[0];
-  var best30P   = players.slice().sort(function(a, b) { return a.quote_best_30 - b.quote_best_30; })[0];
-  var bestAvg18 = players.slice().sort(function(a, b) { return a.quote_avg_18  - b.quote_avg_18;  })[0];
+  function _best30Blurb(player) {
+    if (!player) return '';
+    if (player.market_best_30_state === 'won') {
+      return 'Record attuale ' + player.record + '/50: il 30+ e gia stato centrato, mercato chiuso.';
+    }
+    if (player.market_best_30_state === 'lost') {
+      return 'Record attuale ' + player.record + '/50: stagione chiusa, 30+ non piu raggiungibile.';
+    }
+    return 'Record attuale ' + player.record + '/50 — il piu vicino al muro dei trenta.';
+  }
+
+  function _avg18Blurb(player) {
+    if (!player) return '';
+    var avg = (player.media_tiro || 0).toFixed(1);
+    if (player.market_avg_18_state === 'won') {
+      return 'Media attuale ' + avg + ': over 18 finale gia blindato, mercato chiuso.';
+    }
+    if (player.market_avg_18_state === 'lost') {
+      return 'Media attuale ' + avg + ': over 18 finale ormai irraggiungibile.';
+    }
+    return 'Media attuale ' + avg + ': margine stretto ma giocabile, almeno sulla carta.';
+  }
+
+  var leaderP   = players.slice().sort(function(a, b) { return (b.prob_titolo || 0) - (a.prob_titolo || 0); })[0];
+  var best30P   = players.slice().sort(function(a, b) { return (b.prob_best_30 || 0) - (a.prob_best_30 || 0); })[0];
+  var bestAvg18 = players.slice().sort(function(a, b) { return (b.prob_avg_18  || 0) - (a.prob_avg_18  || 0); })[0];
   var outsiderP = players.filter(function(p, i) { return i >= 4; })
-    .sort(function(a, b) { return a.quote_podio - b.quote_podio; })[0] || players[Math.min(4, players.length - 1)];
+    .sort(function(a, b) { return (b.prob_podio || 0) - (a.prob_podio || 0); })[0] || players[Math.min(4, players.length - 1)];
   var highlights = [
-    { label: 'Favorito titolo',     market: 'Campione stagionale',   player: leaderP.nome,   quota: leaderP.quote_titolo,   blurb: 'Quota più bassa del board: posizione 1, record ' + leaderP.record + ' e ' + leaderP.partite + ' partite registrate.' },
-    { label: 'Cecchino 30+',        market: 'Best score over 30',    player: best30P.nome,   quota: best30P.quote_best_30,  blurb: 'Record attuale ' + best30P.record + '/50 — il più vicino al muro dei trenta.' },
-    { label: 'Value bet',           market: 'Media finale over 18',  player: bestAvg18.nome, quota: bestAvg18.quote_avg_18, blurb: 'Media attuale ' + (bestAvg18.media_tiro || 0).toFixed(1) + ': margine stretto ma giocabile, almeno sulla carta.' },
+    { label: 'Favorito titolo',     market: 'Campione stagionale',   player: leaderP.nome,   quota: leaderP.quote_titolo,   blurb: 'Probabilità titolo più alta del board: posizione ' + leaderP.posizione_attuale + ', record ' + leaderP.record + ' e ' + leaderP.partite + ' partite registrate.' },
+    { label: 'Cecchino 30+',        market: 'Best score 30+',        player: best30P.nome,   quota: best30P.quote_best_30,  blurb: _best30Blurb(best30P) },
+    { label: 'Value bet',           market: 'Media finale over 18',  player: bestAvg18.nome, quota: bestAvg18.quote_avg_18, blurb: _avg18Blurb(bestAvg18) },
     { label: 'Outsider con senso',  market: 'Podio finale',          player: outsiderP.nome, quota: outsiderP.quote_podio,  blurb: 'Record ' + (outsiderP.record || '—') + ' che fa sperare. Fuori dal podio ma non troppo lontano.' }
   ];
 
@@ -2403,6 +2500,7 @@ function renderSisalCharts(board) {
     return raw.map(function(r) { return r / tot; });
   }
   function _bPct(val, max) { return Math.max(0, Math.min(100, Math.round((val / (max || 1)) * 100))); }
+  function _p(prob) { return _clampProbability(prob); }
   function _bRow(name, pct, val, cc, tip) {
     return '<div class="sisal-bar-row" title="' + (tip ? escapeHtml(tip) : '') + '">' +
       '<span class="sisal-bar-name">' + escapeHtml(name) + '</span>' +
@@ -2412,10 +2510,10 @@ function renderSisalCharts(board) {
   }
 
   // ── 1. Probabilità Titolo ────────────────────────────────────────
-  var tProbs = _nProbs(allP.map(function(p) { return p.quote_titolo || 99; }));
+  var tProbs = allP.map(function(p) { return _p(p.prob_titolo); });
   var maxTP  = Math.max.apply(null, tProbs) || 1;
   var chart1 = allP.map(function(p, i) {
-    var prob = Math.round(tProbs[i] * 100);
+    var prob = Math.round(tProbs[i] * 1000) / 10;
     var cc   = prob > 25 ? 'sisal-bar-fill--green' : prob > 12 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
     return _bRow(p.nome, _bPct(tProbs[i], maxTP), '@' + formatQuote(p.quote_titolo), cc, p.nome + ' — prob. ' + prob + '%');
   }).join('');
@@ -2456,17 +2554,17 @@ function renderSisalCharts(board) {
 
   // ── 4. Temperatura mercato (probabilità cumulata su tutti i mercati) ─────────────
   var tempScores = allP.map(function(p) {
-    return (1 / Math.max(p.quote_titolo  || 99, 0.01)) +
-           (1 / Math.max(p.quote_podio   || 99, 0.01)) +
-           (1 / Math.max(p.quote_best_30 || 99, 0.01)) +
-           (1 / Math.max(p.quote_avg_18  || 99, 0.01));
+    return _p(p.prob_titolo) +
+           _p(p.prob_podio) +
+           _p(p.prob_best_30) +
+           _p(p.prob_avg_18);
   });
   var maxTemp = Math.max.apply(null, tempScores) || 1;
   var chart4 = allP.map(function(p, i) {
     var temp = tempScores[i];
     var pct  = Math.round(temp / maxTemp * 100);
     var cc   = pct > 60 ? 'sisal-bar-fill--green' : pct > 35 ? 'sisal-bar-fill--orange' : 'sisal-bar-fill--yellow';
-    var tip  = p.nome + ' — T:@' + formatQuote(p.quote_titolo) + ' P:@' + formatQuote(p.quote_podio) + ' 30+:@' + formatQuote(p.quote_best_30) + ' 18+:@' + formatQuote(p.quote_avg_18);
+    var tip  = p.nome + ' — titolo ' + Math.round(_p(p.prob_titolo) * 1000) / 10 + '% · podio ' + Math.round(_p(p.prob_podio) * 1000) / 10 + '% · 30+ ' + Math.round(_p(p.prob_best_30) * 1000) / 10 + '% · 18+ ' + Math.round(_p(p.prob_avg_18) * 1000) / 10 + '%';
     return _bRow(p.nome, pct, pct + '%', cc, tip);
   }).join('');
 
@@ -2482,10 +2580,10 @@ function renderSisalCharts(board) {
     return {
       nome: p.nome.split(' ')[0],
       dims: [
-        1 / (p.quote_titolo  || 99),
-        1 / (p.quote_podio   || 99),
-        1 / (p.quote_best_30 || 99),
-        1 / (p.quote_avg_18  || 99),
+        _p(p.prob_titolo),
+        _p(p.prob_podio),
+        _p(p.prob_best_30),
+        _p(p.prob_avg_18),
         (p.confidence || 0) / 100
       ]
     };
@@ -2901,13 +2999,22 @@ function _initSisalSimulatore(container, allP, board) {
   var MARGIN    = 1.08;
   var totalR    = board.giornate_totali  || 8;
   var played    = board.giornate_giocate || 1;
-  var remaining = Math.max(1, totalR - played);
+  var remaining = Math.max(0, totalR - played);
+
+  function _quoteLabel(q) {
+    return isQuoteAvailable(q) ? '@' + formatQuote(q) : 'ND';
+  }
 
   function _updateCard(qId, dId, q, origQ) {
     var qEl = container.querySelector('#' + qId);
     var dEl = container.querySelector('#' + dId);
-    if (qEl) qEl.textContent = '@' + q.toFixed(2).replace('.', ',');
+    if (qEl) qEl.textContent = _quoteLabel(q);
     if (dEl) {
+      if (!isQuoteAvailable(q) || !isQuoteAvailable(origQ)) {
+        dEl.textContent = 'mercato chiuso';
+        dEl.className = 'sisal-sim-market-delta';
+        return;
+      }
       var delta = origQ - q;
       if (Math.abs(delta) < 0.05) {
         dEl.textContent = '\u2248 quota attuale';
@@ -2947,36 +3054,38 @@ function _initSisalSimulatore(container, allP, board) {
     var dist30  = 30 - record;
     var pBest30;
     if (dist30 <= 0) {
-      pBest30 = 0.90;
+      pBest30 = 1;
     } else {
       var sigma30 = Math.max(2.0, record * 0.25);
       pBest30 = Math.min(0.93, 1 - Math.pow(1 - Math.max(0.005, _normCDF(-dist30 / sigma30)), Math.max(1, remaining)));
     }
-    var qBest30 = _probToOdds(Math.max(0.01, pBest30), MARGIN);
+    var best30Market = _resolveBest30Market({ record: record }, remaining, pBest30, MARGIN);
+    var qBest30 = best30Market.quote;
 
     // Media 18+
     var gPlayed   = allP[idx].partite || Math.max(1, played);
     var currTot   = media * gPlayed;
     var pAvg18;
     if (remaining <= 0) {
-      pAvg18 = media >= 18 ? 0.92 : 0.03;
+      pAvg18 = media >= 18 ? 1 : 0;
     } else {
       var neededFut = (18 * (gPlayed + remaining) - currTot) / remaining;
       if (neededFut <= 0) {
-        pAvg18 = 0.92;
+        pAvg18 = 1;
       } else if (neededFut > 49) {
-        pAvg18 = 0.01;
+        pAvg18 = 0;
       } else {
         var sigma18 = Math.max(3.0, (record - media) * 0.4 + 3.0);
         pAvg18 = _normCDF(-((neededFut - media) / sigma18));
       }
     }
-    var qAvg18 = _probToOdds(Math.max(0.01, Math.min(0.93, pAvg18)), MARGIN);
+    var avg18Market = _resolveAvg18Market({ media_tiro: media, partite: gPlayed }, remaining, pAvg18, MARGIN);
+    var qAvg18 = avg18Market.quote;
 
-    _updateCard('sisal-sim-q-titolo', 'sisal-sim-d-titolo', qT,      allP[idx].quote_titolo  || qT);
-    _updateCard('sisal-sim-q-podio',  'sisal-sim-d-podio',  qPodio,  allP[idx].quote_podio   || qPodio);
-    _updateCard('sisal-sim-q-best30', 'sisal-sim-d-best30', qBest30, allP[idx].quote_best_30 || qBest30);
-    _updateCard('sisal-sim-q-avg18',  'sisal-sim-d-avg18',  qAvg18,  allP[idx].quote_avg_18  || qAvg18);
+    _updateCard('sisal-sim-q-titolo', 'sisal-sim-d-titolo', qT,      allP[idx].quote_titolo);
+    _updateCard('sisal-sim-q-podio',  'sisal-sim-d-podio',  qPodio,  allP[idx].quote_podio);
+    _updateCard('sisal-sim-q-best30', 'sisal-sim-d-best30', qBest30, allP[idx].quote_best_30);
+    _updateCard('sisal-sim-q-avg18',  'sisal-sim-d-avg18',  qAvg18,  allP[idx].quote_avg_18);
 
     // Update simulator charts: market comparison bars and delta list
     try {
@@ -2984,34 +3093,38 @@ function _initSisalSimulatore(container, allP, board) {
       var distEl = container.querySelector('#sisal-sim-chart-dist');
       if (barsEl) {
         var markets = [
-          { id: 'titolo', label: 'Titolo', simQ: qT, origQ: allP[idx].quote_titolo || qT },
-          { id: 'podio',  label: 'Podio',  simQ: qPodio, origQ: allP[idx].quote_podio  || qPodio },
-          { id: 'best30', label: 'Best30', simQ: qBest30, origQ: allP[idx].quote_best_30 || qBest30 },
-          { id: 'avg18',  label: 'Media18',simQ: qAvg18,  origQ: allP[idx].quote_avg_18  || qAvg18 }
+          { id: 'titolo', label: 'Titolo', simQ: qT,      origQ: allP[idx].quote_titolo,  simP: _clampProbability(pT),                    origP: _clampProbability(allP[idx].prob_titolo) },
+          { id: 'podio',  label: 'Podio',  simQ: qPodio,  origQ: allP[idx].quote_podio,   simP: _clampProbability(pPodio),                origP: _clampProbability(allP[idx].prob_podio) },
+          { id: 'best30', label: 'Best30', simQ: qBest30, origQ: allP[idx].quote_best_30, simP: best30Market.probability,                 origP: _clampProbability(allP[idx].prob_best_30) },
+          { id: 'avg18',  label: 'Media18',simQ: qAvg18,  origQ: allP[idx].quote_avg_18,  simP: avg18Market.probability,                  origP: _clampProbability(allP[idx].prob_avg_18) }
         ];
-        // compute pseudo-prob (inverse of quote) for visual comparison
         var maxV = 0;
-        markets.forEach(function(m){ m.origP = 1 / Math.max(1.01, m.origQ); m.simP = 1 / Math.max(1.01, m.simQ); maxV = Math.max(maxV, m.origP, m.simP); });
+        markets.forEach(function(m) { maxV = Math.max(maxV, m.origP, m.simP); });
+        if (maxV <= 0) maxV = 1;
         var html = markets.map(function(m){
           var origW = Math.round((m.origP / maxV) * 100);
           var simW  = Math.round((m.simP  / maxV) * 100);
           return '<div class="sisal-sim-bar-row"><div class="sisal-sim-bar-label">' + m.label + '</div>' +
             '<div class="sisal-sim-bar-wrap"><div class="sisal-sim-bar orig" style="width:' + origW + '%"></div><div class="sisal-sim-bar sim" style="width:' + simW + '%"></div></div>' +
-            '<div class="sisal-sim-bar-vals">@' + m.origQ.toFixed(2).replace('.',',') + ' → @' + m.simQ.toFixed(2).replace('.',',') + '</div></div>';
+            '<div class="sisal-sim-bar-vals">' + _quoteLabel(m.origQ) + ' → ' + _quoteLabel(m.simQ) + '</div></div>';
         }).join('');
         barsEl.innerHTML = html;
       }
       if (distEl) {
         var deltas = [
-          { k: 'Titolo', d: (allP[idx].quote_titolo || qT) - qT },
-          { k: 'Podio',  d: (allP[idx].quote_podio  || qPodio) - qPodio },
-          { k: 'Best30', d: (allP[idx].quote_best_30|| qBest30) - qBest30 },
-          { k: 'Media18',d: (allP[idx].quote_avg_18 || qAvg18) - qAvg18 }
+          { k: 'Titolo',  origQ: allP[idx].quote_titolo,  simQ: qT },
+          { k: 'Podio',   origQ: allP[idx].quote_podio,   simQ: qPodio },
+          { k: 'Best30',  origQ: allP[idx].quote_best_30, simQ: qBest30 },
+          { k: 'Media18', origQ: allP[idx].quote_avg_18,  simQ: qAvg18 }
         ];
         var html2 = '<ul class="sisal-sim-delta-list">' + deltas.map(function(x){
-          var cls = x.d > 0 ? 'better' : (x.d < 0 ? 'worse' : 'equal');
-          var sym = x.d > 0 ? '\u25b2' : (x.d < 0 ? '\u25bc' : '\u2248');
-          return '<li class="sisal-sim-delta-' + cls + '"><span class="k">' + x.k + '</span> <span class="v">' + sym + ' ' + Math.abs(x.d).toFixed(2) + '</span></li>';
+          if (!isQuoteAvailable(x.origQ) || !isQuoteAvailable(x.simQ)) {
+            return '<li class="sisal-sim-delta-equal"><span class="k">' + x.k + '</span> <span class="v">chiusa</span></li>';
+          }
+          var d = x.origQ - x.simQ;
+          var cls = d > 0 ? 'better' : (d < 0 ? 'worse' : 'equal');
+          var sym = d > 0 ? '\u25b2' : (d < 0 ? '\u25bc' : '\u2248');
+          return '<li class="sisal-sim-delta-' + cls + '"><span class="k">' + x.k + '</span> <span class="v">' + sym + ' ' + Math.abs(d).toFixed(2) + '</span></li>';
         }).join('') + '</ul>';
         distEl.innerHTML = html2;
       }

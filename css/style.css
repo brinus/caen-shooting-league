@@ -4098,6 +4098,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 .sisal-ticker-item-q.sisal-quote--mid    { color: var(--secondary); }
 .sisal-ticker-item-q.sisal-quote--long   { color: var(--primary); }
 .sisal-ticker-item-q.sisal-quote--extreme { color: var(--text-muted); }
+.sisal-ticker-item-q.sisal-quote--closed { color: var(--text-muted); }
 
 /* ── Quote color classes ── */
 .sisal-quote--fav {
@@ -4119,6 +4120,13 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.06);
   color: var(--text-muted);
+}
+.sisal-quote--closed {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Quote enter animation (triggered via JS) */

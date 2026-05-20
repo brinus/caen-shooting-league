@@ -2449,39 +2449,45 @@ function renderSisalCharts(board) {
   }).join('');
   var chart8 =
     '<div class="sisal-sim-wrap">' +
-      '<div class="sisal-sim-row">' +
-        '<label class="sisal-sim-label">Giocatore</label>' +
-        '<select id="sisal-sim-player" class="sisal-sim-select">' + simOpts + '</select>' +
+      '<div class="sisal-sim-left">' +
+        '<div class="sisal-sim-row">' +
+          '<label class="sisal-sim-label">Giocatore</label>' +
+          '<select id="sisal-sim-player" class="sisal-sim-select">' + simOpts + '</select>' +
+        '</div>' +
+        '<div class="sisal-sim-row">' +
+          '<label class="sisal-sim-label">Media tiro <span id="sisal-sim-media-val"></span></label>' +
+          '<input type="range" id="sisal-sim-media" min="5" max="40" step="0.5" class="sisal-sim-range">' +
+        '</div>' +
+        '<div class="sisal-sim-row">' +
+          '<label class="sisal-sim-label">Record personale <span id="sisal-sim-record-val"></span></label>' +
+          '<input type="range" id="sisal-sim-record" min="5" max="50" step="1" class="sisal-sim-range">' +
+        '</div>' +
+        '<div class="sisal-sim-multi">' +
+          '<div class="sisal-sim-market-card">' +
+            '<div class="sisal-sim-market-label">🏆 Titolo</div>' +
+            '<div class="sisal-sim-market-value" id="sisal-sim-q-titolo">—</div>' +
+            '<div class="sisal-sim-market-delta" id="sisal-sim-d-titolo"></div>' +
+          '</div>' +
+          '<div class="sisal-sim-market-card">' +
+            '<div class="sisal-sim-market-label">🥉 Podio</div>' +
+            '<div class="sisal-sim-market-value" id="sisal-sim-q-podio">—</div>' +
+            '<div class="sisal-sim-market-delta" id="sisal-sim-d-podio"></div>' +
+          '</div>' +
+          '<div class="sisal-sim-market-card">' +
+            '<div class="sisal-sim-market-label">🎯 Best 30+</div>' +
+            '<div class="sisal-sim-market-value" id="sisal-sim-q-best30">—</div>' +
+            '<div class="sisal-sim-market-delta" id="sisal-sim-d-best30"></div>' +
+          '</div>' +
+          '<div class="sisal-sim-market-card">' +
+            '<div class="sisal-sim-market-label">📈 Media 18+</div>' +
+            '<div class="sisal-sim-market-value" id="sisal-sim-q-avg18">—</div>' +
+            '<div class="sisal-sim-market-delta" id="sisal-sim-d-avg18"></div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
-      '<div class="sisal-sim-row">' +
-        '<label class="sisal-sim-label">Media tiro <span id="sisal-sim-media-val"></span></label>' +
-        '<input type="range" id="sisal-sim-media" min="5" max="40" step="0.5" class="sisal-sim-range">' +
-      '</div>' +
-      '<div class="sisal-sim-row">' +
-        '<label class="sisal-sim-label">Record personale <span id="sisal-sim-record-val"></span></label>' +
-        '<input type="range" id="sisal-sim-record" min="5" max="50" step="1" class="sisal-sim-range">' +
-      '</div>' +
-      '<div class="sisal-sim-multi">' +
-        '<div class="sisal-sim-market-card">' +
-          '<div class="sisal-sim-market-label">🏆 Titolo</div>' +
-          '<div class="sisal-sim-market-value" id="sisal-sim-q-titolo">—</div>' +
-          '<div class="sisal-sim-market-delta" id="sisal-sim-d-titolo"></div>' +
-        '</div>' +
-        '<div class="sisal-sim-market-card">' +
-          '<div class="sisal-sim-market-label">🥉 Podio</div>' +
-          '<div class="sisal-sim-market-value" id="sisal-sim-q-podio">—</div>' +
-          '<div class="sisal-sim-market-delta" id="sisal-sim-d-podio"></div>' +
-        '</div>' +
-        '<div class="sisal-sim-market-card">' +
-          '<div class="sisal-sim-market-label">🎯 Best 30+</div>' +
-          '<div class="sisal-sim-market-value" id="sisal-sim-q-best30">—</div>' +
-          '<div class="sisal-sim-market-delta" id="sisal-sim-d-best30"></div>' +
-        '</div>' +
-        '<div class="sisal-sim-market-card">' +
-          '<div class="sisal-sim-market-label">📈 Media 18+</div>' +
-          '<div class="sisal-sim-market-value" id="sisal-sim-q-avg18">—</div>' +
-          '<div class="sisal-sim-market-delta" id="sisal-sim-d-avg18"></div>' +
-        '</div>' +
+      '<div class="sisal-sim-right">' +
+        '<div id="sisal-sim-chart-bars" class="sisal-sim-chart"></div>' +
+        '<div id="sisal-sim-chart-dist" class="sisal-sim-chart" style="margin-top:10px"></div>' +
       '</div>' +
     '</div>';
 
@@ -2502,12 +2508,7 @@ function renderSisalCharts(board) {
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">✦ Media × Record</div>' + chart7 + '</div>' +
     '</div>' +
     '<div class="sisal-charts-grid">' +
-      '<div class="sisal-chart-card sisal-reveal sisal-chart-sim-full"><div class="sisal-chart-title">🎛 Simulatore quote</div>' + chart8 +
-        '<div class="sisal-sim-charts">' +
-          '<div id="sisal-sim-chart-bars" class="sisal-sim-chart"></div>' +
-          '<div id="sisal-sim-chart-dist" class="sisal-sim-chart"></div>' +
-        '</div>' +
-      '</div>' +
+      '<div class="sisal-chart-card sisal-reveal sisal-chart-sim-full"><div class="sisal-chart-title">🎛 Simulatore quote</div>' + chart8 + '</div>' +
     '</div>';
 
   // ── Animate + init interactive ───────────────────────────────────

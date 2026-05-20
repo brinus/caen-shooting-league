@@ -1,6 +1,6 @@
 // CAEN Shooting League — Admin Panel Logic
 
-document.addEventListener('csl:auth-ready', function () {
+document.addEventListener('csl:auth-ready', function (ev) {
   if (!CSLAuth.isLoggedIn()) {
     window.location.href = 'login.html?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)
     return
@@ -20,6 +20,20 @@ document.addEventListener('csl:auth-ready', function () {
   loadCommentiTab()
   loadUtentiTab()
 })
+
+// Fallback: se csl:auth-ready non arriva entro 3s mostriamo un messaggio utile per il debug
+setTimeout(function() {
+  try {
+    if (!window.CSLAuth || !CSLAuth.getSession()) {
+      const guard = document.getElementById('admin-guard')
+      if (guard) {
+        guard.hidden = false
+        guard.textContent = 'Autenticazione non pronta: controlla la console per eventuali errori di rete o di Supabase. Prova a ricaricare la pagina.'
+      }
+      console.warn('Admin panel: csl:auth-ready non ricevuto o sessione assente.')
+    }
+  } catch (e) { console.error('Admin auth fallback error', e) }
+}, 3000)
 
 // ── Tabs ───────────────────────────────────────────────────────
 

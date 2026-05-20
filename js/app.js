@@ -3160,6 +3160,21 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     _run();
   }
+
+  // Recompute SISAL boards when stagioni/giornate are updated elsewhere (admin)
+  document.addEventListener('stagioni:updated', function() {
+    try {
+      // Rebuild live boards and re-render current selection
+      initSisal().then(function() {
+        var sel = document.getElementById('sisal-season-select');
+        if (sel && sel.value) renderSisalBoard(sel.value);
+        else {
+          var active = getCurrentSeason();
+          if (active) renderSisalBoard(active.id);
+        }
+      }).catch(function(e){ console.error('stagioni:updated handler failed', e); });
+    } catch (e) { console.error(e); }
+  });
 });
 
 function _injectRegolamentoAdminBtn(container) {

@@ -1011,6 +1011,8 @@ async function reloadScommesse() {
     const live = await _loadStagioniFromSupabase()
     if (live && live.length) CSL.stagioni = live
   }
+  _betSnapshotCache = Object.create(null)
+  _betCareerBestCache = Object.create(null)
   await Promise.all([loadScommesseSingole(), loadScommesseMultiple()])
 }
 
@@ -1019,7 +1021,301 @@ async function reloadScommesse() {
 
 function _normName(s) { return (s || '').toLowerCase().trim() }
 
-function getBetCurrentStatus(betType, playerName, giornataDate, seasonId) {
+var _betSnapshotCache = Object.create(null)
+var _betCareerBestCache = Object.create(null)
+
+function _normBetLabel(s) {
+  return _normName(String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s+]/g, ' ')
+    .replace(/\s+/g, ' '))
+}
+
+function _dateKeyFromTimestamp(ts) {
+  if (!ts) return null
+  const d = ts instanceof Date ? new Date(ts.getTime()) : new Date(ts)
+  if (Number.isNaN(d.getTime())) return null
+  return d.getFullYear() + '-'
+    + String(d.getMonth() + 1).padStart(2, '0') + '-'
+    + String(d.getDate()).padStart(2, '0')
+}
+
+function _buildRowsFromGiornate(giornate) {
+  const rows = []
+  const playerRecuperi = {}
+  ;(giornate || []).forEach(function(g) {
+    ;(g.risultati || []).forEach(function(r) {
+      const t1 = Number.isFinite(Number(r.t1)) ? Number(r.t1) : 0
+      const t2 = Number.isFinite(Number(r.t2)) ? Number(r.t2) : 0
+      const t3 = Number.isFinite(Number(r.t3)) ? Number(r.t3) : 0
+      rows.push({
+        data: g.data,
+        giocatore: r.nome,
+        iniziali: r.iniziali || '??',
+        t1, t2, t3,
+        gara: true,
+        recupero: !!r.recupero,
+        data_effettiva: r.data_effettiva || null,
+      })
+      if (r.recupero) playerRecuperi[r.nome] = (playerRecuperi[r.nome] || 0) + 1
+    })
+  })
+  return { rows, playerRecuperi }
+}
+
+function _getSeasonSnapshotBeforeDate(stagione, beforeDateStr) {
+  if (!stagione || !beforeDateStr) return null
+  const cacheKey = stagione.id + '|' + beforeDateStr
+  if (_betSnapshotCache[cacheKey]) return _betSnapshotCache[cacheKey]
+
+  const pastGiornate = (stagione.giornate || []).filter(function(g) {
+    return g && g.data && g.data < beforeDateStr
+  })
+
+  const empty = { classifica: [], byName: Object.create(null), leaders: [], top5: [] }
+  if (!pastGiornate.length || !window.CSLRanking || typeof CSLRanking.computeClassifica !== 'function') {
+    _betSnapshotCache[cacheKey] = empty
+    return empty
+  }
+
+  const built = _buildRowsFromGiornate(pastGiornate)
+  const classifica = CSLRanking.computeClassifica(
+    stagione,
+    built.rows,
+    pastGiornate.slice(),
+    built.playerRecuperi,
+    stagione.max_recuperi
+  ) || []
+
+  const byName = Object.create(null)
+  classifica.forEach(function(p) { byName[_normName(p.nome)] = p })
+
+  const snapshot = {
+    classifica,
+    byName,
+    leaders: classifica.filter(function(p) { return p.posizione === 1 }),
+    top5: classifica.filter(function(p) { return p.posizione <= 5 }),
+  }
+  _betSnapshotCache[cacheKey] = snapshot
+  return snapshot
+}
+
+function _getCareerBestBeforeDate(playerName, beforeDateStr) {
+  const pn = _normName(playerName)
+  if (!pn || !beforeDateStr) return 0
+  const cacheKey = pn + '|' + beforeDateStr
+  if (cacheKey in _betCareerBestCache) return _betCareerBestCache[cacheKey]
+
+  let best = 0
+  ;(CSL.stagioni || []).forEach(function(stagione) {
+    ;(stagione.giornate || []).forEach(function(g) {
+      if (!g || !g.data || g.data >= beforeDateStr) return
+      ;(g.risultati || []).forEach(function(r) {
+        if (_normName(r.nome) !== pn) return
+        best = Math.max(best, Number(r.punteggio) || 0)
+      })
+    })
+  })
+
+  _betCareerBestCache[cacheKey] = best
+  return best
+}
+
+function _getGiornataStatusContext(stagione, giornataDate) {
+  if (!giornataDate) return { status: _betUnknown('Giornata non specificata'), giornata: null }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const ggDate = new Date(giornataDate + 'T00:00:00')
+  if (ggDate > today) return { status: _betPending('Non ancora disputata'), giornata: null }
+
+  const giornata = (stagione.giornate || []).find(function(g) { return g.data === giornataDate })
+  if (!giornata) return { status: _betUnknown('Risultati non ancora inseriti'), giornata: null }
+
+  return { status: null, giornata }
+}
+
+function _resolveSpecialeGiornata(stagione, label, playerName, giornataDate) {
+  const ctx = _getGiornataStatusContext(stagione, giornataDate)
+  if (ctx.status) return ctx.status
+
+  const giornata = ctx.giornata
+  const risultati = (giornata && giornata.risultati) || []
+  if (!risultati.length) return _betUnknown('Giornata senza risultati')
+
+  const normalizedLabel = _normBetLabel(label)
+  const pn = _normName(playerName)
+  const isValidPlayer = pn && pn !== '—'
+  const winners = risultati.filter(function(r) { return r.posizione === 1 })
+
+  if (isValidPlayer) {
+    const pr = risultati.find(function(r) { return _normName(r.nome) === pn })
+    if (!pr) return _betUnknown('Giocatore assente')
+
+    const pos = pr.posizione
+    const score = pr.punteggio
+    if (normalizedLabel.includes('vince la giornata')) {
+      return pos === 1 ? _betWin(`1° — ${score}pt. ✓`) : _betLose(`${pos}° — ${score}pt.`)
+    }
+    if (normalizedLabel.includes('podio prossima giornata') || normalizedLabel.includes('podio g')) {
+      return pos <= 3 ? _betWin(`${pos}° — ${score}pt. ✓`) : _betLose(`${pos}° — ${score}pt.`)
+    }
+    if (normalizedLabel.includes('score over 25') || normalizedLabel.includes('punteggio giornata over 25') || normalizedLabel.includes('25+ in canna') || normalizedLabel.includes('25 in canna')) {
+      return score >= 25 ? _betWin(`${score}pt. ✓`) : _betLose(`${score}pt. — serve 25+`)
+    }
+    if (normalizedLabel.includes('score over 20') || normalizedLabel.includes('punteggio giornata over 20')) {
+      return score >= 20 ? _betWin(`${score}pt. ✓`) : _betLose(`${score}pt. — serve 20+`)
+    }
+    if (normalizedLabel.includes('score over 30') || normalizedLabel.includes('punteggio giornata over 30')) {
+      return score >= 30 ? _betWin(`${score}pt. ✓`) : _betLose(`${score}pt. — serve 30+`)
+    }
+  }
+
+  if (normalizedLabel.includes('nessuno sotto 10')) {
+    const minScore = risultati.reduce(function(minVal, r) { return Math.min(minVal, Number(r.punteggio) || 0) }, 50)
+    return minScore >= 10
+      ? _betWin(`Minimo ${minScore}pt. ✓`)
+      : _betLose(`Minimo ${minScore}pt. — serve tutti ≥10`)
+  }
+
+  if (normalizedLabel.includes('record personale battuto')) {
+    const hits = risultati.map(function(r) {
+      const prevBest = _getCareerBestBeforeDate(r.nome, giornataDate)
+      return { nome: r.nome, score: Number(r.punteggio) || 0, prevBest }
+    }).filter(function(item) {
+      return item.score > item.prevBest
+    })
+    if (hits.length) {
+      const top = hits[0]
+      return _betWin(`${top.nome}: ${top.score} > ${top.prevBest} ✓`)
+    }
+    return _betLose('Nessun personale superato')
+  }
+
+  if (normalizedLabel.includes('vincitore con 25')) {
+    const winner = winners[0] || risultati[0]
+    if (!winner) return _betUnknown('Vincitore non determinabile')
+    return (Number(winner.punteggio) || 0) >= 25
+      ? _betWin(`${winner.nome} ${winner.punteggio}pt. ✓`)
+      : _betLose(`${winner.nome} ${winner.punteggio}pt. — serve 25+`)
+  }
+
+  if (normalizedLabel.includes('arrivo in due punti') || normalizedLabel.includes('separati da massimo due punti')) {
+    if (risultati.length < 2) return _betUnknown('Servono almeno due classificati')
+    const sorted = risultati.slice().sort(function(a, b) {
+      return a.posizione - b.posizione || (b.punteggio - a.punteggio)
+    })
+    const gap = (Number(sorted[0].punteggio) || 0) - (Number(sorted[1].punteggio) || 0)
+    return gap <= 2
+      ? _betWin(`Gap ${gap}pt. ✓`)
+      : _betLose(`Gap ${gap}pt. — serve ≤2`)
+  }
+
+  const snapshot = _getSeasonSnapshotBeforeDate(stagione, giornataDate)
+
+  if (normalizedLabel.includes('leader attuale vince ancora') || normalizedLabel.includes('capolista conferma il comando')) {
+    if (!snapshot || !snapshot.leaders.length) return _betUnknown('Nessuna classifica pre-gara')
+    const leaderNames = snapshot.leaders.map(function(p) { return _normName(p.nome) })
+    const hit = winners.find(function(r) { return leaderNames.indexOf(_normName(r.nome)) !== -1 })
+    return hit
+      ? _betWin(`${hit.nome} conferma ✓`)
+      : _betLose('Il leader pre-gara non ha vinto')
+  }
+
+  if (normalizedLabel.includes('outsider vince la giornata') || normalizedLabel.includes('attuali fuori top 5')) {
+    if (!snapshot || !snapshot.classifica.length) return _betUnknown('Nessuna classifica pre-gara')
+    const hit = winners.find(function(r) {
+      const pre = snapshot.byName[_normName(r.nome)]
+      return !pre || pre.posizione > 5
+    })
+    return hit
+      ? _betWin(`${hit.nome} outsider ✓`)
+      : _betLose('Ha vinto un giocatore già in top 5')
+  }
+
+  return null
+}
+
+function _resolveSpecialeStagione(stagione, label, playerName, createdAt) {
+  const normalizedLabel = _normBetLabel(label)
+  const classifica = (stagione.classifica || []).slice()
+  if (!classifica.length) return null
+
+  const byName = Object.create(null)
+  classifica.forEach(function(p) { byName[_normName(p.nome)] = p })
+
+  const pn = _normName(playerName)
+  const isValidPlayer = pn && pn !== '—'
+  const creationDate = _dateKeyFromTimestamp(createdAt)
+  const preSnapshot = creationDate ? _getSeasonSnapshotBeforeDate(stagione, creationDate) : null
+
+  if (isValidPlayer) {
+    const p = byName[pn]
+    if (!p) return _betUnknown('Giocatore non trovato')
+
+    if (normalizedLabel.includes('campione stagionale')) {
+      return p.posizione === 1 ? _betWin('1° ✓') : _betLose(`${p.posizione}°`)
+    }
+    if (normalizedLabel.includes('podio finale')) {
+      if (normalizedLabel.includes('outsider') && preSnapshot && preSnapshot.classifica.length) {
+        const pre = preSnapshot.byName[pn]
+        const wasOutsider = !pre || pre.posizione > 5
+        if (!wasOutsider) return _betLose('Non era outsider al momento della giocata')
+      }
+      return p.posizione <= 3 ? _betWin(`${p.posizione}° ✓`) : _betLose(`${p.posizione}°`)
+    }
+    if (normalizedLabel.includes('best score 30')) {
+      return p.record >= 30 ? _betWin(`Record ${p.record} ✓`) : _betLose(`Record ${p.record} — serve 30+`)
+    }
+    if (normalizedLabel.includes('media finale over 18')) {
+      return p.media_tiro >= 18 ? _betWin(`Media ${p.media_tiro.toFixed(1)} ✓`) : _betLose(`Media ${p.media_tiro.toFixed(1)} — serve ≥18`)
+    }
+  }
+
+  const sorted = classifica.slice().sort(function(a, b) {
+    return a.posizione - b.posizione || b.punti_campionato - a.punti_campionato
+  })
+
+  if (normalizedLabel.includes('record assoluto 30')) {
+    const hit = sorted.find(function(p) { return (p.record || 0) >= 30 })
+    return hit
+      ? _betWin(`${hit.nome} ${hit.record} ✓`)
+      : _betLose('Nessun 30+ registrato')
+  }
+
+  if (normalizedLabel.includes('finale al fotofinish') || normalizedLabel.includes('massimo un punto campionato')) {
+    if (sorted.length < 2) return _betUnknown('Classifica incompleta')
+    const gap = (sorted[0].punti_campionato || 0) - (sorted[1].punti_campionato || 0)
+    return gap <= 1
+      ? _betWin(`Gap ${gap}pt. ✓`)
+      : _betLose(`Gap ${gap}pt. — serve ≤1`)
+  }
+
+  if (normalizedLabel.includes('campione con almeno 2 vittorie')) {
+    const hit = sorted.filter(function(p) { return p.posizione === 1 }).find(function(p) {
+      return (p.vittorie || 0) >= 2
+    })
+    return hit
+      ? _betWin(`${hit.nome} con ${(hit.vittorie || 0)} vittorie ✓`)
+      : _betLose('Capolista sotto le 2 vittorie')
+  }
+
+  if (normalizedLabel.includes('outsider a podio')) {
+    if (!preSnapshot || !preSnapshot.classifica.length) return _betUnknown('Nessuna classifica pre-bet')
+    const hit = sorted.filter(function(p) { return p.posizione <= 3 }).find(function(p) {
+      const pre = preSnapshot.byName[_normName(p.nome)]
+      return !pre || pre.posizione > 5
+    })
+    return hit
+      ? _betWin(`${hit.nome} outsider a podio ✓`)
+      : _betLose('Nessun outsider è arrivato a podio')
+  }
+
+  return null
+}
+
+function getBetCurrentStatus(betType, playerName, giornataDate, seasonId, marketLabel, createdAt) {
   const stagione = (CSL.stagioni || []).find(st => st.id === seasonId)
   if (!stagione) return null
 
@@ -1080,11 +1376,20 @@ function getBetCurrentStatus(betType, playerName, giornataDate, seasonId) {
     }
   }
 
+  if (betType === 'speciale') {
+    if (giornataDate) {
+      return _resolveSpecialeGiornata(stagione, marketLabel, playerName, giornataDate)
+    }
+    return _resolveSpecialeStagione(stagione, marketLabel, playerName, createdAt)
+  }
+
   return null // speciale o non determinabile
 }
 
 function _betWin(label)  { return { label, cls: 'winning' } }
 function _betLose(label) { return { label, cls: 'losing' }  }
+function _betPending(label) { return { label, cls: 'pending' } }
+function _betUnknown(label) { return { label, cls: 'unknown' } }
 
 function betCurrentStatusHtml(status) {
   if (!status) return ''
@@ -1191,7 +1496,7 @@ async function loadScommesseSingole() {
 
     // Indicatore vincente/perdente (solo per scommesse attive)
     const curStatus    = s.status === 'attiva'
-      ? getBetCurrentStatus(s.bet_type, s.player_name, s.giornata_date, s.season_id)
+      ? getBetCurrentStatus(s.bet_type, s.player_name, s.giornata_date, s.season_id, s.market_label, s.created_at)
       : null
     const curStatusHtml = betCurrentStatusHtml(curStatus)
 
@@ -1310,7 +1615,7 @@ async function loadScommesseMultiple() {
       // Indicatore per la singola gamba
       const legDate   = l.giornata_date || s.giornata_date   // usa data dal leg o dalla parlay
       const legStatus = s.status === 'attiva'
-        ? getBetCurrentStatus(l.bet_type, l.player_name, legDate, s.season_id)
+        ? getBetCurrentStatus(l.bet_type, l.player_name, legDate, s.season_id, l.market_label, s.created_at)
         : null
       const legStatusHtml = betCurrentStatusHtml(legStatus)
       return `<div class="bet-leg-row">
@@ -1331,7 +1636,7 @@ async function loadScommesseMultiple() {
     let parlayOverallHtml = ''
     if (s.status === 'attiva' && legs.length > 0) {
       const legStatuses = legs.map(function (l) {
-        return getBetCurrentStatus(l.bet_type, l.player_name, l.giornata_date || s.giornata_date, s.season_id)
+        return getBetCurrentStatus(l.bet_type, l.player_name, l.giornata_date || s.giornata_date, s.season_id, l.market_label, s.created_at)
       })
       const winning = legStatuses.filter(st => st?.cls === 'winning').length
       const losing  = legStatuses.filter(st => st?.cls === 'losing').length

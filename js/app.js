@@ -2435,7 +2435,7 @@ function renderSisalCharts(board) {
     var dots = tops.map(function(_, di) { return '<button class="sisal-final-dot' + (di===0? ' active' : '') + '" data-idx="' + di + '"></button>'; }).join('');
     chartFinal = '<div class="sisal-final-carousel">'
       + '<button class="sisal-final-prev" aria-label="Prev">◀</button>'
-      + '<div id="sisal-final-carousel-wrap">' + slides + '</div>'
+      + '<div id="sisal-final-carousel-wrap"><div class="sisal-final-carousel-track">' + slides + '</div></div>'
       + '<button class="sisal-final-next" aria-label="Next">▶</button>'
       + '<div class="sisal-final-dots">' + dots + '</div>'
       + '</div>';
@@ -2532,20 +2532,23 @@ function renderSisalCharts(board) {
     var carouselContainer = el.querySelector('.sisal-final-carousel');
     if (carouselContainer) {
       var wrap = carouselContainer.querySelector('#sisal-final-carousel-wrap');
-      var slides = wrap ? wrap.querySelectorAll('.sisal-final-slide') : [];
+      var track = wrap ? wrap.querySelector('.sisal-final-carousel-track') : null;
+      var slides = track ? track.querySelectorAll('.sisal-final-slide') : [];
       var dots = carouselContainer.querySelectorAll('.sisal-final-dot');
       var prevBtn = carouselContainer.querySelector('.sisal-final-prev');
       var nextBtn = carouselContainer.querySelector('.sisal-final-next');
       if (slides && slides.length) {
         var cidx = 0;
         function showSlide(i) {
-          for (var j = 0; j < slides.length; j++) { slides[j].style.display = 'none'; }
-          slides[i].style.display = 'block';
+          if (!track) return;
+          track.style.transform = 'translateX(' + (-i * 100) + '%)';
           if (dots && dots.length) {
             dots.forEach(function(d) { d.classList.remove('active'); });
             if (dots[i]) dots[i].classList.add('active');
           }
         }
+        // ensure initial position
+        if (track) track.style.transform = 'translateX(0)';
         showSlide(0);
         var carouselTimer = setInterval(function() { cidx = (cidx + 1) % slides.length; showSlide(cidx); }, 5000);
         if (prevBtn) prevBtn.addEventListener('click', function() { clearInterval(carouselTimer); cidx = (cidx - 1 + slides.length) % slides.length; showSlide(cidx); carouselTimer = setInterval(function() { cidx = (cidx + 1) % slides.length; showSlide(cidx); }, 5000); });

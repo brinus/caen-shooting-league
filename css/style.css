@@ -4473,7 +4473,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 
 .sisal-sim-market-value {
   font-family: 'Orbitron', monospace;
-  font-size: 1.05rem;
+  font-size: 1.28rem;
   color: var(--sisal-green);
   line-height: 1;
   margin-bottom: 0.2rem;
@@ -4568,9 +4568,9 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   padding: 1rem 1.1rem;
 }
 
-/* Final standings carousel */
-#sisal-final-carousel-wrap { padding: 0.6rem; }
-.sisal-final-slide { display: none; }
+.sisal-final-carousel-track { display:flex; transition:transform 420ms cubic-bezier(.2,.9,.25,1); }
+#sisal-final-carousel-wrap { padding: 0.6rem; overflow:hidden; }
+.sisal-final-slide { flex:0 0 100%; }
 .sisal-final-header { font-weight: 700; color: var(--primary); margin-bottom: 0.6rem; font-size: 0.9rem; }
 .sisal-final-row { position:relative; display:flex; align-items:center; gap:0.6rem; padding:0.45rem 0.5rem 0.45rem 12px; border-radius:4px; margin-bottom:0.3rem; background: rgba(255,255,255,0.01); }
 .sisal-final-row::before { content: ''; position: absolute; left:8px; top:8px; bottom:8px; width:4px; border-radius:3px; background: var(--accent-color, rgba(255,255,255,0.06)); }
@@ -4581,11 +4581,11 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 /* Simulator full-width card extras */
 .sisal-sim-wrap { display:flex; gap:18px; align-items:flex-start; box-sizing:border-box; }
 .sisal-sim-left { flex:1 1 60%; min-width:260px; }
-.sisal-sim-right { flex:0 0 340px; min-width:260px; display:flex; flex-direction:column; gap:10px; }
+.sisal-sim-right { flex:0 0 34%; min-width:200px; display:flex; flex-direction:column; gap:10px; }
 .sisal-sim-chart { background:var(--card-bg); border-radius:6px; padding:8px; box-shadow:var(--card-shadow); min-height:90px; width:100%; box-sizing:border-box; }
 .sisal-sim-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
 .sisal-sim-bar-label { width:72px; font-size:0.86rem; color:var(--text-muted); }
-.sisal-sim-bar-wrap { flex:1; background:rgba(0,0,0,0.04); height:14px; position:relative; border-radius:8px; overflow:hidden; }
+.sisal-sim-bar-wrap { flex:1; background:rgba(0,0,0,0.04); height:18px; position:relative; border-radius:8px; overflow:hidden; }
 .sisal-sim-bar { height:100%; position:absolute; top:0; left:0; }
 .sisal-sim-bar.orig { background:rgba(33,150,243,0.45); z-index:1; }
 .sisal-sim-bar.sim  { background:rgba(76,175,80,0.6); z-index:2; opacity:0.9; }

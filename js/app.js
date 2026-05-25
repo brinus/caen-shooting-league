@@ -3079,6 +3079,49 @@ function renderSisalBoard(seasonId) {
       el.classList.add('sisal-quote--entered');
     });
   }, 80);
+    // Initialize Position Explorer widget
+    try {
+      var explorer = el.querySelector('#sisal-pos-explorer');
+      if (explorer && board && board.mc_summary && board.mc_summary.posMatrix) {
+        var sims = board.mc_summary.sims || 1;
+        var players = board.players.slice(0, board.players.length);
+        // controls
+        var controls = document.createElement('div'); controls.className = 'controls';
+        var lbl = document.createElement('label'); lbl.textContent = 'Seleziona giocatore: '; lbl.style.color = 'var(--text-muted)'; lbl.style.fontSize = '0.82rem';
+        var sel = document.createElement('select'); sel.style.minWidth = '220px';
+        players.forEach(function(p, idx) {
+          var opt = document.createElement('option'); opt.value = idx; opt.textContent = p.nome; sel.appendChild(opt);
+        });
+        controls.appendChild(lbl); controls.appendChild(sel);
+        explorer.appendChild(controls);
+
+        var barsWrap = document.createElement('div'); barsWrap.className = 'sisal-pos-bars'; explorer.appendChild(barsWrap);
+
+        function renderPlayerPos(idx) {
+          barsWrap.innerHTML = '';
+          var counts = (board.mc_summary.posMatrix && board.mc_summary.posMatrix[idx]) || [];
+          var maxPos = Math.min(players.length, counts.length || players.length);
+          for (var pos = 0; pos < maxPos; pos++) {
+            var cnt = counts[pos] || 0;
+            var pct = Math.round((cnt / sims) * 1000) / 10; // one decimal
+            var row = document.createElement('div'); row.className = 'sisal-pos-row';
+            var name = document.createElement('div'); name.className = 'sisal-pos-name'; name.textContent = (pos + 1) + '. Posizione';
+            var track = document.createElement('div'); track.className = 'sisal-pos-track';
+            var fill = document.createElement('div'); fill.className = 'sisal-pos-fill'; fill.style.width = '0%'; fill.setAttribute('data-pct', pct);
+            track.appendChild(fill);
+            var val = document.createElement('div'); val.className = 'sisal-pos-val'; val.textContent = pct + '%';
+            row.appendChild(name); row.appendChild(track); row.appendChild(val);
+            barsWrap.appendChild(row);
+            // animate
+            setTimeout((function(f, p2){ return function(){ f.style.width = p2 + '%'; }; })(fill, pct), 40 + pos * 30);
+          }
+        }
+
+        sel.addEventListener('change', function() { renderPlayerPos(Number(sel.value)); });
+        // render first
+        renderPlayerPos(Number(sel.value || 0));
+      }
+    } catch (e) { console.error('pos-explorer init failed', e); }
 
   // Charts and scroll reveal
   renderSisalCharts(board);
@@ -3352,6 +3395,7 @@ function renderSisalCharts(board) {
     '<div class="sisal-charts-note">📊 Analisi basata sui top ' + allP.length + ' giocatori per classifica campionato corrente</div>' +
     '<div class="sisal-charts-grid">' +
       '<div class="sisal-chart-card sisal-chart-card--final sisal-reveal"><div class="sisal-chart-title">🔁 Possibili classifiche finali (Top 10)</div>' + chartFinal + '</div>' +
+      '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">🔎 Esplora quote posizioni</div><div id="sisal-pos-explorer" class="sisal-pos-explorer"></div></div>' +
       '<div class="sisal-chart-card sisal-reveal"><div class="sisal-chart-title">' + nmLabel + '</div>' + chart2 + '</div>' +
     '</div>' +
     '<div class="sisal-charts-grid">' +

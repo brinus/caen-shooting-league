@@ -2489,7 +2489,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     return { probability: p, quote: _probToOdds(Math.max(0.001, p), MARGIN), state: 'open' };
   }
 
-  // ── Monte Carlo season simulation (20 000 runs) ───────────────────
+  // ── Monte Carlo season simulation (10 000 runs) ───────────────────
   // Build per-player thresholds: next multiple of 5 > record, and next multiple of 5 > (record+5)
   var thresholdsPerPlayer = classifica.map(function(p) {
     var r = Math.max(0, (p && p.record) || 0);
@@ -2507,7 +2507,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     if (t2 <= 50 && t2 !== t1) arr.push(t2);
     return arr;
   });
-  var mc = _runMonteCarlo(classifica, giornate, giocate, totali, 20000, thresholdsPerPlayer);
+  var mc = _runMonteCarlo(classifica, giornate, giocate, totali, 10000, thresholdsPerPlayer);
   var mcPerPlayer = (mc && mc.perPlayer) ? mc.perPlayer : [];
 
   // ── Per-player season odds (from Monte Carlo) ─────────────────────
@@ -2715,7 +2715,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     mc_summary:      mc || null,
     specials:        specials,
     methodology: [
-      'Simulazione Monte Carlo: 20 000 stagioni complete simulate per ciascun aggiornamento del board.',
+      'Simulazione Monte Carlo: 10 000 stagioni complete simulate per ciascun aggiornamento del board.',
       'Per ogni simulazione, le giornate rimanenti vengono giocate estraendo i punteggi da N(μ_adj, σ²), con σ stimato da (record − media) / √(2·ln(k)). La media attesa è corretta con shrinkage bayesiano: μ_adj = (k·μ + 3·μ_league) / (k+3), che riduce il peso di singole partite eccezionali per i giocatori con poche gare disputate.',
       'I punteggi simulati vengono classificati secondo il sistema punti ufficiale (10-8-6-4-4-2-2-1-1-1); in caso di parità si usa il punteggio cumulativo come spareggio.',
       'Le probabilità di titolo, podio e top5 emergono direttamente dal conteggio dei risultati finali su N_SIM run — garantendo per costruzione che P(titolo) ≤ P(podio) ≤ P(top5).',

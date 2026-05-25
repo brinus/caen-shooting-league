@@ -5315,6 +5315,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 .sisal-chart-card.sisal-chart-sim-full {
   min-height: 0;
   padding: 1.15rem 1.35rem 1.25rem;
+  grid-column: 1 / -1;
 }
 
 /* Position explorer widget */

@@ -259,12 +259,18 @@ function initHome() {
   }
   
     // add collapsible raw Monte Carlo summary for transparency / debugging
-    if (board && board.mc_summary) {
-      try {
-        var mcDebug = '<div style="margin-top:12px"><details><summary>Mostra Monte Carlo (raw)</summary><pre style="max-height:320px;overflow:auto;background:rgba(0,0,0,0.03);padding:10px;border-radius:6px">' + escapeHtml(JSON.stringify(board.mc_summary, null, 2)) + '</pre></details></div>';
-        el.innerHTML += mcDebug;
-      } catch (e) { /* ignore */ }
-    }
+    try {
+      var sisalBoard = (CSL.sisal || []).find(function(b) { return b.season_id === (season && season.id); });
+      if (sisalBoard && sisalBoard.mc_summary) {
+        var mcDebug = '<div style="margin-top:12px"><details><summary>Mostra Monte Carlo (raw)</summary><pre style="max-height:320px;overflow:auto;background:rgba(0,0,0,0.03);padding:10px;border-radius:6px">' + escapeHtml(JSON.stringify(sisalBoard.mc_summary, null, 2)) + '</pre></details></div>';
+        var target = document.getElementById('season-dates') || document.getElementById('season-name');
+        if (target && typeof target.insertAdjacentHTML === 'function') {
+          target.insertAdjacentHTML('beforeend', mcDebug);
+        } else {
+          console.log('Sisal MC summary for season', season && season.id, sisalBoard.mc_summary);
+        }
+      }
+    } catch (e) { /* ignore */ }
 
   // Clic sul banner → classifica
   var banner = document.querySelector('.season-banner');

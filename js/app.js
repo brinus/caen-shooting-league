@@ -3416,7 +3416,7 @@ function renderSisalCharts(board) {
           var players = board.players.slice(0);
           var controls = document.createElement('div'); controls.className = 'controls';
           var lbl = document.createElement('label'); lbl.textContent = 'Seleziona giocatore: '; lbl.style.color = 'var(--text-muted)'; lbl.style.fontSize = '0.82rem';
-          var sel = document.createElement('select'); sel.style.minWidth = '220px';
+          var sel = document.createElement('select'); sel.className = 'sisal-pos-player-select';
           players.forEach(function(p, idx) { var opt = document.createElement('option'); opt.value = idx; opt.textContent = p.nome; sel.appendChild(opt); });
           controls.appendChild(lbl); controls.appendChild(sel); explorer.appendChild(controls);
           var barsWrap = document.createElement('div'); barsWrap.className = 'sisal-pos-bars'; explorer.appendChild(barsWrap);

@@ -5338,6 +5338,8 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   border-radius: 8px;
   font-size:0.92rem;
 }
+
+.sisal-pos-player-select { min-width: 160px; }
 .sisal-pos-bars { display:flex; flex-direction:column; gap:0.25rem; }
 .sisal-pos-row { display:flex; gap:0.4rem; align-items:center; flex-wrap:nowrap; }
 .sisal-pos-name { width: 48px; min-width:40px; font-size:0.88rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

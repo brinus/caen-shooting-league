@@ -1036,7 +1036,7 @@
 
       // Carica stagioni
       var stagioni = CSL.stagioni
-      if (window.CSLRanking && CSLAuth.isLoggedIn()) {
+      if (window.CSLRanking) {
         try {
           await new Promise(function(resolve) {
             CSLRanking.loadStagioniFromSupabase(function(data) { if (data) stagioni = data; resolve() })

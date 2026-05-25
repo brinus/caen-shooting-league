@@ -2675,26 +2675,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
         { label: 'Record personale battuto', quota: 3.50, note: 'Almeno un giocatore supera il proprio personal best.' }
       ]
     };
-    // Add per-player likely exact scores (top 3 probabilities) as giornata specials
-    try {
-      nmPlayers.forEach(function(pl) {
-        var mu = pl.expected_score || (pl.media_tiro || 0);
-        var sigma = Math.max(2.5, ((pl.record || 0) - (pl.media_tiro || 0)) * 0.5 + 2.5);
-        var probs = [];
-        for (var s = 0; s <= 50; s++) {
-          var lo = (s - 0.5 - mu) / sigma;
-          var hi = (s + 0.5 - mu) / sigma;
-          var p = Math.max(0, _normCDF(hi) - _normCDF(lo));
-          probs.push({ s: s, p: p });
-        }
-        probs.sort(function(a, b) { return b.p - a.p; });
-        for (var k = 0; k < Math.min(3, probs.length); k++) {
-          var it = probs[k];
-          if (it.p <= 0) continue;
-          nextMatchday.specials.push({ label: 'Esatto G' + nextInfo.numero + ' — ' + pl.nome + ' ' + it.s + ' punti', quota: _probToOdds(Math.max(0.001, it.p), MARGIN), note: 'Probabilità stimata ' + Math.round(1000 * it.p) / 10 + '%' });
-        }
-      });
-    } catch (e) { /* ignore */ }
+    // Exact-score specials intentionally removed to disable exact-score markets
   }
 
   // ── Highlights ─────────────────────────────────────────────────────

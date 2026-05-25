@@ -406,6 +406,11 @@
                          giornata_date:null, giornata_num:null })
           })
         }
+        // Remove any exact-score items (server or static) — these markets are deprecated
+        items = items.filter(function(item) {
+          var lbl = (item.label || '') + ' ' + (item.sub || '') + ' ' + (item.market || '');
+          return !/\bEsatto\b/i.test(lbl);
+        });
         if (!items.length) {
           listEl.innerHTML = '<p class="text-muted">Nessun mercato speciale disponibile.</p>'
           return

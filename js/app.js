@@ -2207,14 +2207,35 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
   var PTS     = [10, 8, 6, 4, 4, 2, 2, 1, 1, 1];
 
   var medias  = classifica.map(function(p) { return p.media_tiro  || 0; });
-  var sigmas  = classifica.map(function(p) {
-    var k   = Math.max(2, p.partite || giocate);
-    var z_k = Math.sqrt(2 * Math.log(k));
-    return Math.min(9, Math.max(3.0, ((p.record || 0) - (p.media_tiro || 0)) / z_k));
-  });
+  // Robust sigma estimation and precomputed stats
   var gPlayed = classifica.map(function(p) { return p.partite || giocate; });
   var curPts  = classifica.map(function(p) { return p.punti_campionato || 0; });
   var curSums = medias.map(function(m, i) { return m * gPlayed[i]; });
+
+  // Base sigma: fallback formula (used for players with few scores)
+  function baseSigmaFor(p) {
+    var k = Math.max(2, p.partite || giocate);
+    var z_k = Math.sqrt(2 * Math.log(k));
+    return Math.max(1.5, Math.min(9, ((p.record || 0) - (p.media_tiro || 0)) / Math.max(1e-6, z_k)));
+  }
+
+  // Empirical stddev when enough history is available (>=5 games), else fallback
+  var sigmas = new Array(n);
+  for (var i = 0; i < n; i++) {
+    var hist = histories[i] || [];
+    if (hist && hist.length >= 5) {
+      var mean = 0;
+      for (var hh = 0; hh < hist.length; hh++) mean += hist[hh];
+      mean /= hist.length;
+      var sumsq = 0;
+      for (var hh2 = 0; hh2 < hist.length; hh2++) sumsq += Math.pow(hist[hh2] - mean, 2);
+      var sdev = Math.sqrt(sumsq / Math.max(1, hist.length - 1));
+      // clamp empirical sdev to sensible range
+      sigmas[i] = Math.max(1.5, Math.min(9, sdev));
+    } else {
+      sigmas[i] = baseSigmaFor(classifica[i]);
+    }
+  }
 
   // Build per-player historical scores from provided giornate (chronological)
   var nameIndex = Object.create(null);
@@ -2287,57 +2308,93 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
   var scores    = new Array(n);
   var order     = new Array(n);
 
+  // Optional seeded RNG support: thresholdsPerPlayer may be an object { thresholds: [...], seed: 123 }
+  var rng = Math.random;
+  var seed = null;
+  if (thresholdsPerPlayer && typeof thresholdsPerPlayer === 'object' && !Array.isArray(thresholdsPerPlayer) && thresholdsPerPlayer.seed) {
+    seed = Number(thresholdsPerPlayer.seed) || 0;
+    // mulberry32
+    var tseed = seed >>> 0;
+    rng = function() {
+      tseed += 0x6D2B79F5;
+      var t = Math.imul(tseed ^ tseed >>> 15, 1 | tseed);
+      t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    // if thresholdsPerPlayer contains thresholds array, extract it
+    if (Array.isArray(thresholdsPerPlayer.thresholds)) thresholdsPerPlayer = thresholdsPerPlayer.thresholds;
+  }
+
+  // local normal sampler using selected rng
+  function _randNormLocal(mu, sigma) {
+    // Box-Muller using rng()
+    var u1 = rng(), u2 = rng();
+    var z  = Math.sqrt(-2 * Math.log(Math.max(1e-12, u1))) * Math.cos(2 * Math.PI * u2);
+    return mu + sigma * z;
+  }
+
   for (var s = 0; s < N_SIM; s++) {
+    // initialize per-simulation state
     for (var i = 0; i < n; i++) {
       simPts[i]    = curPts[i];
       simSums[i]   = curSums[i];
       hitBest30[i] = alreadyHitBest30[i];
+      scores[i]    = 0;
     }
 
-    // copy histories for this simulation so simulated days feed future predictions
-    var simHist = new Array(n);
-    for (var i = 0; i < n; i++) simHist[i] = histories[i] ? histories[i].slice() : [];
-
-    for (var g = 0; g < rimaste; g++) {
-      // For each player, predict expected score for this future giornata using a simple linear fit
-      for (var i = 0; i < n; i++) {
-        var hist = simHist[i] || [];
-        var m = hist.length;
-        var expected = adjMedias[i];
-        var sigmaVal = sigmas[i];
-
-        // Use last up to 5 scores for fit if available
+    // For each player prepare a starting point for AR(1) mean-reverting process
+    var lastSim = new Array(n);
+    var phiArr  = new Array(n);
+    var sigmaArr = new Array(n);
+    for (var i = 0; i < n; i++) {
+      var hist = histories[i] || [];
+      var m = hist.length;
+      // trendPrediction: linear fit on last up to 5 historical scores ONLY (never include simulated values)
+      var trendPred = adjMedias[i];
+      if (m >= 2) {
         var window = m > 5 ? hist.slice(m - 5) : hist.slice();
-        if (window.length >= 2) {
-          // linear regression y ~ a + b*t  (t = 0..L-1)
-          var L = window.length;
-          var sumT = 0, sumY = 0;
-          for (var tt = 0; tt < L; tt++) { sumT += tt; sumY += window[tt]; }
-          var meanT = sumT / L, meanY = sumY / L;
-          var cov = 0, varT = 0;
-          for (var tt2 = 0; tt2 < L; tt2++) { cov += (tt2 - meanT) * (window[tt2] - meanY); varT += (tt2 - meanT) * (tt2 - meanT); }
-          var slope = varT > 0 ? cov / varT : 0;
-          var intercept = meanY - slope * meanT;
-          expected = intercept + slope * L; // predict next index
-          // compute sample stddev for window
-          var sumSq = 0;
-          for (var tt3 = 0; tt3 < L; tt3++) sumSq += Math.pow(window[tt3] - meanY, 2);
-          var sdev = Math.sqrt(Math.max(0, sumSq / Math.max(1, L - 1)));
-          if (!isFinite(sdev) || sdev < 1.5) sdev = sigmaVal;
-          sigmaVal = sdev;
-        } else if (window.length === 1) {
-          expected = window[0];
-          sigmaVal = Math.max(sigmaVal * 0.9, 2.5);
-        } else {
-          // no history: fall back to adjusted mean
-          expected = adjMedias[i];
-          sigmaVal = sigmas[i];
-        }
+        var L = window.length;
+        var sumT = 0, sumY = 0;
+        for (var tt = 0; tt < L; tt++) { sumT += tt; sumY += window[tt]; }
+        var meanT = sumT / L, meanY = sumY / L;
+        var cov = 0, varT = 0;
+        for (var tt2 = 0; tt2 < L; tt2++) { cov += (tt2 - meanT) * (window[tt2] - meanY); varT += (tt2 - meanT) * (tt2 - meanT); }
+        var slope = varT > 0 ? cov / varT : 0;
+        var intercept = meanY - slope * meanT;
+        trendPred = intercept + slope * L;
+      }
+      // alpha shrinkage: low with few data, cap at ALPHA_MAX
+      var ALPHA_MIN = 0.05, ALPHA_MAX = 0.42;
+      var alpha = ALPHA_MIN + (Math.min(8, m) / 8) * (ALPHA_MAX - ALPHA_MIN);
+      alpha = Math.max(ALPHA_MIN, Math.min(ALPHA_MAX, alpha));
+      // blended expected (trend shrinkage towards adjusted mean)
+      var blended = alpha * trendPred + (1 - alpha) * adjMedias[i];
+      // initialize lastSim: prefer last observed score if exists, else blended
+      lastSim[i] = (hist && hist.length) ? hist[hist.length - 1] : blended;
+      // phi: persistence parameter (higher with more history but bounded)
+      var phi = Math.max(0.30, Math.min(0.70, 0.35 + 0.02 * Math.min(m, 10)));
+      phiArr[i] = phi;
+      // sigma for dynamic sampling: start from empirical/base estimate, allow slight inflation for early sims
+      sigmaArr[i] = sigmas[i];
+    }
 
-        // clamp expected
-        expected = Math.max(0, Math.min(50, expected));
-
-        var sc = Math.round(Math.min(50, Math.max(0, _randNorm(expected, sigmaVal))));
+    // simulate remaining giornate using AR(1) mean reversion: X_{t+1} = mu + phi*(X_t - mu) + epsilon
+    for (var g = 0; g < rimaste; g++) {
+      for (var i = 0; i < n; i++) {
+        var mu = adjMedias[i];
+        var phi = phiArr[i];
+        var last = lastSim[i];
+        // AR(1) mean reversion expectation
+        var arMean = mu + phi * (last - mu);
+        // dynamic sigma: allow modest shrink toward mu when streaks are long (softly reduce sigma)
+        var sigmaVal = sigmaArr[i];
+        // sample and soft-clip extremes (tame heavy tails)
+        var raw = _randNormLocal(arMean, sigmaVal);
+        // soft clipping: compress values beyond 3*sigma from mu
+        var upper = mu + 3 * sigmaVal, lower = mu - 3 * sigmaVal;
+        if (raw > upper) raw = upper + Math.tanh((raw - upper) / sigmaVal) * sigmaVal;
+        if (raw < lower) raw = lower + Math.tanh((raw - lower) / sigmaVal) * sigmaVal;
+        var sc = Math.round(Math.min(50, Math.max(0, raw)));
         scores[i] = sc;
         simSums[i] += sc;
         if (sc >= 30) hitBest30[i] = true;
@@ -2345,16 +2402,12 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
         if (thresholdsPerPlayer && thresholdsPerPlayer[i] && thresholdsPerPlayer[i].length) {
           for (var tj = 0; tj < thresholdsPerPlayer[i].length; tj++) {
             var thr = thresholdsPerPlayer[i][tj];
-            if (typeof thr === 'number' && thr >= 0 && sc >= thr) {
-              cntThresholds[i][tj]++;
-            }
+            if (typeof thr === 'number' && thr >= 0 && sc >= thr) cntThresholds[i][tj]++;
           }
         }
-
-        // push simulated score so next future day uses it in fit
-        simHist[i].push(sc);
+        // update lastSim with the sampled score (AR(1) uses simulated value for next step)
+        lastSim[i] = sc;
       }
-
       // Rank by score desc, tiebreak by cumulative score
       for (var i = 0; i < n; i++) order[i] = i;
       order.sort(function(a, b) {
@@ -2427,7 +2480,16 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   var rimaste     = Math.max(0, totali - giocate);
   var MARGIN  = 1.08;
 
-  // ── Monte Carlo season simulation (5 000 runs) ────────────────────
+  // Generic threshold market resolver used for per-player threshold markets
+  function _resolveThresholdMarket(player, remainingGames, pVal, thrVal) {
+    if (!thrVal || thrVal <= 0) return { probability: pVal || 0, quote: null, state: 'na' };
+    if ((player && (player.record || 0)) >= thrVal) return { probability: 1, quote: null, state: 'won' };
+    if (remainingGames <= 0) return { probability: 0, quote: null, state: 'lost' };
+    var p = _clampProbability(pVal);
+    return { probability: p, quote: _probToOdds(Math.max(0.001, p), MARGIN), state: 'open' };
+  }
+
+  // ── Monte Carlo season simulation (20 000 runs) ───────────────────
   // Build per-player thresholds: next multiple of 5 > record, and next multiple of 5 > (record+5)
   var thresholdsPerPlayer = classifica.map(function(p) {
     var r = Math.max(0, (p && p.record) || 0);
@@ -2458,6 +2520,12 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     var pAvg18  = probs.pAvg18;
     var best30Market = _resolveBest30Market(p, rimaste, pBest30, MARGIN);
     var avg18Market = _resolveAvg18Market(p, rimaste, pAvg18, MARGIN);
+
+    // threshold markets (determine per-player thr markets using MC-provided pThresholds)
+    var thr1Val = (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][0]) ? thresholdsPerPlayer[i][0] : null;
+    var thr2Val = (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][1]) ? thresholdsPerPlayer[i][1] : null;
+    var thr1Market = _resolveThresholdMarket(p, rimaste, (mcPerPlayer[i] && mcPerPlayer[i].pThresholds && mcPerPlayer[i].pThresholds[0]) ? mcPerPlayer[i].pThresholds[0] : 0, thr1Val);
+    var thr2Market = _resolveThresholdMarket(p, rimaste, (mcPerPlayer[i] && mcPerPlayer[i].pThresholds && mcPerPlayer[i].pThresholds[1]) ? mcPerPlayer[i].pThresholds[1] : 0, thr2Val);
 
     // Trend: use static board data if available, else derive
     var staticP = staticBoard && staticBoard.players
@@ -2650,7 +2718,7 @@ function computeLiveSisalBoard(stagione, staticBoard) {
       'Simulazione Monte Carlo: 20 000 stagioni complete simulate per ciascun aggiornamento del board.',
       'Per ogni simulazione, le giornate rimanenti vengono giocate estraendo i punteggi da N(μ_adj, σ²), con σ stimato da (record − media) / √(2·ln(k)). La media attesa è corretta con shrinkage bayesiano: μ_adj = (k·μ + 3·μ_league) / (k+3), che riduce il peso di singole partite eccezionali per i giocatori con poche gare disputate.',
       'I punteggi simulati vengono classificati secondo il sistema punti ufficiale (10-8-6-4-4-2-2-1-1-1); in caso di parità si usa il punteggio cumulativo come spareggio.',
-      'Le probabilità di titolo, podio e top5 emergono direttamente dal conteggio dei risultati finali su 5 000 run — garantendo per costruzione che P(titolo) ≤ P(podio) ≤ P(top5).',
+      'Le probabilità di titolo, podio e top5 emergono direttamente dal conteggio dei risultati finali su N_SIM run — garantendo per costruzione che P(titolo) ≤ P(podio) ≤ P(top5).',
       'Best over / Best over +5: frazione di simulazioni in cui il giocatore registra almeno una giornata con punteggio ≥ soglia personale (calcolata live).',
       'Media ≥18: frazione di simulazioni in cui la media finale di stagione supera 18 punti.',
       'Giornata successiva: modello strength-based con CDF normale per le quote over/under.',

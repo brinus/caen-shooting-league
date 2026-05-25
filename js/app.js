@@ -2212,29 +2212,18 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
   var curPts  = classifica.map(function(p) { return p.punti_campionato || 0; });
   var curSums = medias.map(function(m, i) { return m * gPlayed[i]; });
 
-  // Base sigma: fallback formula (used for players with few scores)
-  function baseSigmaFor(p) {
-    var k = Math.max(2, p.partite || giocate);
-    var z_k = Math.sqrt(2 * Math.log(k));
-    return Math.max(1.5, Math.min(9, ((p.record || 0) - (p.media_tiro || 0)) / Math.max(1e-6, z_k)));
-  }
-
-  // Empirical stddev when enough history is available (>=5 games), else fallback
-  var sigmas = new Array(n);
-  for (var i = 0; i < n; i++) {
-    var hist = histories[i] || [];
-    if (hist && hist.length >= 5) {
-      var mean = 0;
-      for (var hh = 0; hh < hist.length; hh++) mean += hist[hh];
-      mean /= hist.length;
-      var sumsq = 0;
-      for (var hh2 = 0; hh2 < hist.length; hh2++) sumsq += Math.pow(hist[hh2] - mean, 2);
-      var sdev = Math.sqrt(sumsq / Math.max(1, hist.length - 1));
-      // clamp empirical sdev to sensible range
-      sigmas[i] = Math.max(1.5, Math.min(9, sdev));
-    } else {
-      sigmas[i] = baseSigmaFor(classifica[i]);
-    }
+  // Parse thresholds/options without mutating the incoming parameter
+  var options = null;
+  var thresholdsLocal = null;
+  var debug = false;
+  var seed = null;
+  if (thresholdsPerPlayer && typeof thresholdsPerPlayer === 'object' && !Array.isArray(thresholdsPerPlayer)) {
+    options = thresholdsPerPlayer;
+    thresholdsLocal = Array.isArray(options.thresholds) ? options.thresholds : null;
+    seed = options.seed != null ? Number(options.seed) : null;
+    debug = !!options.debug;
+  } else {
+    thresholdsLocal = thresholdsPerPlayer;
   }
 
   // Build per-player historical scores from provided giornate (chronological)
@@ -2252,6 +2241,33 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
         var idx = nameIndex[r.nome];
         if (typeof idx !== 'undefined') histories[idx].push(Number(r.punteggio) || 0);
       }
+    }
+  }
+
+  // Base sigma: fallback formula (used for players with few scores)
+  function baseSigmaFor(p) {
+    var k = Math.max(2, p.partite || giocate);
+    var z_k = Math.sqrt(2 * Math.log(Math.max(2, k)));
+    var delta = ((p.record || 0) - (p.media_tiro || 0));
+    var est = delta / Math.max(1e-6, z_k);
+    return Math.max(1.5, Math.min(9, isFinite(est) ? est : 3.0));
+  }
+
+  // Empirical stddev when enough history is available (>=5 games), else fallback
+  var sigmas = new Array(n);
+  for (var i = 0; i < n; i++) {
+    var hist = histories[i] || [];
+    if (hist && hist.length >= 5) {
+      var mean = 0;
+      for (var hh = 0; hh < hist.length; hh++) mean += hist[hh];
+      mean /= hist.length;
+      var sumsq = 0;
+      for (var hh2 = 0; hh2 < hist.length; hh2++) sumsq += Math.pow(hist[hh2] - mean, 2);
+      var sdev = Math.sqrt(Math.max(0, sumsq / Math.max(1, hist.length - 1)));
+      // clamp empirical sdev to sensible range
+      sigmas[i] = Math.max(1.5, Math.min(9, isFinite(sdev) ? sdev : 3.0));
+    } else {
+      sigmas[i] = baseSigmaFor(classifica[i]);
     }
   }
 
@@ -2294,7 +2310,7 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
   // counts for arbitrary thresholds per player (e.g. next multiple of 5)
   var cntThresholds = new Array(n);
   for (var i = 0; i < n; i++) {
-    var ths = (thresholdsPerPlayer && thresholdsPerPlayer[i]) ? thresholdsPerPlayer[i] : [];
+    var ths = (thresholdsLocal && thresholdsLocal[i]) ? thresholdsLocal[i] : [];
     cntThresholds[i] = new Array(ths.length).fill(0);
   }
   var posCounts = new Array(n);
@@ -2308,28 +2324,33 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
   var scores    = new Array(n);
   var order     = new Array(n);
 
-  // Optional seeded RNG support: thresholdsPerPlayer may be an object { thresholds: [...], seed: 123 }
+  // RNG setup (optionally seeded via options.seed); do not mutate inputs
   var rng = Math.random;
-  var seed = null;
-  if (thresholdsPerPlayer && typeof thresholdsPerPlayer === 'object' && !Array.isArray(thresholdsPerPlayer) && thresholdsPerPlayer.seed) {
-    seed = Number(thresholdsPerPlayer.seed) || 0;
-    // mulberry32
+  if (isFinite(seed) && seed !== null) {
     var tseed = seed >>> 0;
     rng = function() {
-      tseed += 0x6D2B79F5;
-      var t = Math.imul(tseed ^ tseed >>> 15, 1 | tseed);
-      t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      tseed = (tseed + 0x6D2B79F5) >>> 0;
+      var t = Math.imul(tseed ^ (tseed >>> 15), 1 | tseed);
+      t = (t ^ (t + Math.imul(t ^ (t >>> 7), 61 | t))) >>> 0;
+      return (t >>> 0) / 4294967296;
     };
-    // if thresholdsPerPlayer contains thresholds array, extract it
-    if (Array.isArray(thresholdsPerPlayer.thresholds)) thresholdsPerPlayer = thresholdsPerPlayer.thresholds;
   }
 
   // local normal sampler using selected rng
   function _randNormLocal(mu, sigma) {
-    // Box-Muller using rng()
+    // Box-Muller using rng(); protect against invalid RNG outputs
     var u1 = rng(), u2 = rng();
-    var z  = Math.sqrt(-2 * Math.log(Math.max(1e-12, u1))) * Math.cos(2 * Math.PI * u2);
+    if (!isFinite(u1) || u1 <= 0) u1 = 1e-6 + Math.random() * 0.999998;
+    if (!isFinite(u2) || u2 <= 0) u2 = Math.random();
+    var z;
+    try {
+      z = Math.sqrt(-2 * Math.log(Math.max(1e-12, u1))) * Math.cos(2 * Math.PI * u2);
+    } catch (e) {
+      if (debug) console.warn('mc: Box-Muller failed', e, {u1:u1, u2:u2});
+      z = 0;
+    }
+    if (!isFinite(z)) z = 0;
+    if (!isFinite(sigma) || sigma <= 0) sigma = 3.0;
     return mu + sigma * z;
   }
 
@@ -2388,20 +2409,28 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
         var arMean = mu + phi * (last - mu);
         // dynamic sigma: allow modest shrink toward mu when streaks are long (softly reduce sigma)
         var sigmaVal = sigmaArr[i];
+        if (!isFinite(sigmaVal) || sigmaVal <= 0) sigmaVal = Math.max(1.5, sigmas[i] || 3.0);
         // sample and soft-clip extremes (tame heavy tails)
         var raw = _randNormLocal(arMean, sigmaVal);
+        if (!isFinite(raw)) {
+          if (debug) console.warn('mc: raw sample NaN, falling back to arMean', {i:i, arMean:arMean, sigmaVal:sigmaVal});
+          raw = arMean;
+        }
         // soft clipping: compress values beyond 3*sigma from mu
         var upper = mu + 3 * sigmaVal, lower = mu - 3 * sigmaVal;
         if (raw > upper) raw = upper + Math.tanh((raw - upper) / sigmaVal) * sigmaVal;
         if (raw < lower) raw = lower + Math.tanh((raw - lower) / sigmaVal) * sigmaVal;
         var sc = Math.round(Math.min(50, Math.max(0, raw)));
+        if (!isFinite(sc)) {
+          sc = Math.round(Math.max(0, Math.min(50, arMean || 0)));
+        }
         scores[i] = sc;
         simSums[i] += sc;
         if (sc >= 30) hitBest30[i] = true;
         // threshold checks
-        if (thresholdsPerPlayer && thresholdsPerPlayer[i] && thresholdsPerPlayer[i].length) {
-          for (var tj = 0; tj < thresholdsPerPlayer[i].length; tj++) {
-            var thr = thresholdsPerPlayer[i][tj];
+        if (thresholdsLocal && thresholdsLocal[i] && thresholdsLocal[i].length) {
+          for (var tj = 0; tj < thresholdsLocal[i].length; tj++) {
+            var thr = thresholdsLocal[i][tj];
             if (typeof thr === 'number' && thr >= 0 && sc >= thr) cntThresholds[i][tj]++;
           }
         }
@@ -2411,14 +2440,24 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
       // Rank by score desc, tiebreak by cumulative score
       for (var i = 0; i < n; i++) order[i] = i;
       order.sort(function(a, b) {
-        return scores[b] !== scores[a] ? scores[b] - scores[a] : simSums[b] - simSums[a];
+        var sa = Number(scores[a]); if (!isFinite(sa)) sa = 0;
+        var sb = Number(scores[b]); if (!isFinite(sb)) sb = 0;
+        if (sb !== sa) return sb - sa;
+        var suma = Number(simSums[a]); if (!isFinite(suma)) suma = 0;
+        var sumb = Number(simSums[b]); if (!isFinite(sumb)) sumb = 0;
+        return sumb - suma;
       });
       for (var r = 0; r < n; r++) simPts[order[r]] += (PTS[r] || 0);
     }
     // Final championship standings
     for (var i = 0; i < n; i++) order[i] = i;
     order.sort(function(a, b) {
-      return simPts[b] !== simPts[a] ? simPts[b] - simPts[a] : simSums[b] - simSums[a];
+      var pa = Number(simPts[a]); if (!isFinite(pa)) pa = 0;
+      var pb = Number(simPts[b]); if (!isFinite(pb)) pb = 0;
+      if (pb !== pa) return pb - pa;
+      var suma = Number(simSums[a]); if (!isFinite(suma)) suma = 0;
+      var sumb = Number(simSums[b]); if (!isFinite(sumb)) sumb = 0;
+      return sumb - suma;
     });
     for (var r2 = 0; r2 < n; r2++) {
       var fi = order[r2];
@@ -2440,14 +2479,16 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
   var perPlayer = classifica.map(function(_, i) {
     var pThresh = [];
     if (cntThresholds && cntThresholds[i] && cntThresholds[i].length) {
-      pThresh = cntThresholds[i].map(function(c) { return Math.max(0.001, c / N_SIM); });
+      var denom = Math.max(1, N_SIM || 1);
+      pThresh = cntThresholds[i].map(function(c) { return Math.max(0.001, c / denom); });
     }
+    var denomAll = Math.max(1, N_SIM || 1);
     return {
-      pTitolo: Math.max(0.001, cntTitolo[i] / N_SIM),
-      pPodio:  Math.max(0.005, cntPodio[i]  / N_SIM),
-      pTop5:   Math.max(0.010, cntTop5[i]   / N_SIM),
-      pBest30: Math.max(0.005, cntBest30[i] / N_SIM),
-      pAvg18:  Math.max(0.005, cntAvg18[i]  / N_SIM),
+      pTitolo: Math.max(0.001, cntTitolo[i] / denomAll),
+      pPodio:  Math.max(0.005, cntPodio[i]  / denomAll),
+      pTop5:   Math.max(0.010, cntTop5[i]   / denomAll),
+      pBest30: Math.max(0.005, cntBest30[i] / denomAll),
+      pAvg18:  Math.max(0.005, cntAvg18[i]  / denomAll),
       pThresholds: pThresh
     };
   });
@@ -2456,7 +2497,8 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholds
   var orders = Object.keys(orderMap).map(function(k) { return { key: k, cnt: orderMap[k] }; });
   orders.sort(function(a, b) { return b.cnt - a.cnt; });
   var topOrders = orders.slice(0, 10).map(function(o) {
-    return { order: o.key.split('|').map(function(x) { return parseInt(x, 10); }), count: o.cnt, pct: Math.round(1000 * o.cnt / N_SIM) / 10 };
+    var denom = Math.max(1, N_SIM || 1);
+    return { order: o.key.split('|').map(function(x) { return parseInt(x, 10); }), count: o.cnt, pct: Math.round(1000 * o.cnt / denom) / 10 };
   });
 
   return { perPlayer: perPlayer, posMatrix: posCounts, topOrders: topOrders, sims: N_SIM };

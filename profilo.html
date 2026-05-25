@@ -1041,6 +1041,14 @@
           await new Promise(function(resolve) {
             CSLRanking.loadStagioniFromSupabase(function(data) { if (data) stagioni = data; resolve() })
           })
+          // If we got fresh stagioni, reflect them on the global CSL object
+          if (stagioni && Array.isArray(stagioni)) {
+            try { window.CSL = window.CSL || {}; CSL.stagioni = stagioni; } catch(e) {}
+            // Recompute SISAL derived boards so profile shows up-to-date giornate/quote
+            if (typeof initSisal === 'function') {
+              try { await initSisal(); } catch(e) { console.warn('initSisal failed in profile bootstrap', e); }
+            }
+          }
         } catch(e) {}
       }
 

@@ -3065,7 +3065,6 @@ function renderSisalBoard(seasonId) {
         '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_podio) + '">' + formatQuote(player.quote_podio) + '</span></td>' +
         '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_over_thr1) + '">' + formatQuote(player.quote_best_over_thr1) + (player.best_over_thr1_value ? ('\n(' + (player.best_over_thr1_value||'') + ')') : '') + '</span></td>' +
         '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_over_thr2) + '">' + formatQuote(player.quote_best_over_thr2) + (player.best_over_thr2_value ? ('\n(' + (player.best_over_thr2_value||'') + ')') : '') + '</span></td>' +
-        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_over_thr2) + '">' + formatQuote(player.quote_best_over_thr2) + (player.best_over_thr2_value ? ('\n(' + (player.best_over_thr2_value||'') + ')') : '') + '</span></td>' +
         '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_avg_18) + '">' + formatQuote(player.quote_avg_18) + '</span></td>' +
         '<td>' +
           '<div class="sisal-signal">' +
@@ -3102,6 +3101,18 @@ function renderSisalBoard(seasonId) {
       el.classList.add('sisal-quote--entered');
     });
   }, 80);
+  // If MC summary missing, run a small background MC once to populate explorer
+  try {
+    if (board && !board.mc_summary && !board._mc_auto_run) {
+      board._mc_auto_run = true;
+      var stagione = (window.CSL && CSL.stagioni) ? CSL.stagioni.find(function(s){ return s && s.id === board.season_id; }) : null;
+      if (stagione) {
+        runLightMonteCarloForBoard(stagione, board, 300).then(function(mc) {
+          try { renderSisalBoard(board.season_id); } catch (e) { console.error('re-render after auto MC failed', e); }
+        }).catch(function(err){ console.warn('auto MC failed', err); });
+      }
+    }
+  } catch (e) { console.error('auto MC scheduling failed', e); }
     // Initialize Position Explorer widget
     try {
       var explorer = el.querySelector('#sisal-pos-explorer');

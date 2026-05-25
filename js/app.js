@@ -2859,8 +2859,13 @@ async function initSisal() {
 }
 
 function renderSisalBoard(seasonId) {
-  var board = (CSL.sisal || []).find(function(item) { return item.season_id === seasonId; });
-  if (!board) return;
+  try {
+    var board = (CSL.sisal || []).find(function(item) { return item.season_id === seasonId; });
+    if (!board) return;
+  } catch (e) {
+    console.error('renderSisalBoard failed to resolve board for', seasonId, e);
+    return;
+  }
 
   var progressPct = board.giornate_totali
     ? Math.round((board.giornate_giocate / board.giornate_totali) * 100)
@@ -4015,7 +4020,10 @@ document.addEventListener('DOMContentLoaded', function() {
       case 'sisal.html':
         _initSisalRealtimeSync();
         _bindSisalVisibilityRefresh();
-        initSisal();
+        // initSisal is async; call and catch to avoid unhandled promise rejections
+        try {
+          initSisal().catch(function(e) { console.error('initSisal failed', e); });
+        } catch (e) { console.error('initSisal invocation failed', e); }
         break;
     }
   }
@@ -4112,4 +4120,13 @@ function _injectPostAdminBtn(postId) {
   editBtn.innerHTML = '✎ Modifica post';
   editBtn.style.cssText = 'margin-left:1rem';
   backLink.parentNode.insertBefore(editBtn, backLink.nextSibling);
+}
+
+// Global handler to surface unhandled promise rejections (helps Safari debugging)
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('unhandledrejection', function(ev) {
+    try {
+      console.warn('Unhandled promise rejection:', ev && ev.reason ? ev.reason : ev);
+    } catch (e) { console.warn('Unhandled rejection (failed to stringify)', e); }
+  });
 }

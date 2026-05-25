@@ -3427,12 +3427,19 @@ function renderSisalCharts(board) {
             for (var pos = 0; pos < maxPos; pos++) {
               var cnt = counts[pos] || 0;
               var pct = Math.round((cnt / sims) * 1000) / 10;
+              var prob = sims > 0 ? (cnt / sims) : 0;
+              var odds = prob > 0 ? (1 / prob) : null;
               var row = document.createElement('div'); row.className = 'sisal-pos-row';
-              var name = document.createElement('div'); name.className = 'sisal-pos-name'; name.textContent = (pos + 1) + '. Posizione';
+              var name = document.createElement('div'); name.className = 'sisal-pos-name'; name.textContent = (pos + 1) + '°';
               var track = document.createElement('div'); track.className = 'sisal-pos-track';
               var fill = document.createElement('div'); fill.className = 'sisal-pos-fill'; fill.style.width = '0%'; fill.setAttribute('data-pct', pct);
               track.appendChild(fill);
-              var val = document.createElement('div'); val.className = 'sisal-pos-val'; val.textContent = pct + '%';
+              var val = document.createElement('div'); val.className = 'sisal-pos-val';
+              if (odds) {
+                val.textContent = '@' + Number(odds.toFixed(2)) + ' — ' + pct + '%';
+              } else {
+                val.textContent = pct + '%';
+              }
               row.appendChild(name); row.appendChild(track); row.appendChild(val);
               barsWrap.appendChild(row);
               setTimeout((function(f, p2){ return function(){ f.style.width = p2 + '%'; }; })(fill, pct), 40 + pos * 30);

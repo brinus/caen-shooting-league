@@ -3433,13 +3433,29 @@ function renderSisalCharts(board) {
               var name = document.createElement('div'); name.className = 'sisal-pos-name'; name.textContent = (pos + 1) + '°';
               var track = document.createElement('div'); track.className = 'sisal-pos-track';
               var fill = document.createElement('div'); fill.className = 'sisal-pos-fill'; fill.style.width = '0%'; fill.setAttribute('data-pct', pct);
+              // style variants based on probability
+              if (pct <= 0) {
+                fill.classList.add('sisal-pos-fill--zero');
+              } else if (pct >= 20) {
+                fill.classList.add('sisal-pos-fill--fav');
+              } else if (pct >= 5) {
+                fill.classList.add('sisal-pos-fill--contender');
+              } else {
+                fill.classList.add('sisal-pos-fill--longshot');
+              }
               track.appendChild(fill);
               var val = document.createElement('div'); val.className = 'sisal-pos-val';
-              if (odds) {
-                val.textContent = '@' + Number(odds.toFixed(2)) + ' — ' + pct + '%';
+              // Format display for odds/probability
+              if (!pct || pct <= 0) {
+                val.innerHTML = '<span class="sisal-pos-val--muted">—</span>';
               } else {
-                val.textContent = pct + '%';
+                var oddsText = odds ? ('@' + (odds >= 1000 ? Math.round(odds) + '+' : Number(odds.toFixed(2)))) : '—';
+                val.innerHTML = '<span class="sisal-pos-val--odds">' + oddsText + '</span>' + '<small>' + pct + '%</small>';
               }
+              // Add tooltip showing exact prob and sims
+              var simsAttr = sims || (board && board.mc_summary && board.mc_summary.sims) || 0;
+              var probDisplay = pct ? (pct + '%') : '0%';
+              val.title = 'Probabilità: ' + probDisplay + ' — Sims: ' + simsAttr;
               row.appendChild(name); row.appendChild(track); row.appendChild(val);
               barsWrap.appendChild(row);
               setTimeout((function(f, p2){ return function(){ f.style.width = p2 + '%'; }; })(fill, pct), 40 + pos * 30);

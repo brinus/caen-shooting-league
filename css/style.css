@@ -5341,7 +5341,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 
 .sisal-pos-player-select { min-width: 160px; }
 .sisal-pos-bars { display:flex; flex-direction:column; gap:0; }
-.sisal-pos-row { display:flex; gap:0.5rem; align-items:center; flex-wrap:nowrap; box-sizing:border-box; padding:6px 8px; min-height:36px; height:36px; }
+.sisal-pos-row { display:flex; gap:0.5rem; align-items:center; flex-wrap:nowrap; box-sizing:border-box; padding:4px 8px; min-height:28px; height:28px; }
 .sisal-pos-row + .sisal-pos-row { border-top: 1px solid rgba(255,255,255,0.03); }
 .sisal-pos-name { width: 40px; min-width:40px; font-size:0.88rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; }
 .sisal-pos-track { flex:1; min-width:80px; height:12px; background:rgba(255,255,255,0.035); border-radius:999px; overflow:hidden; }

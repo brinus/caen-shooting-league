@@ -3450,7 +3450,7 @@ function renderSisalCharts(board) {
                 val.innerHTML = '<span class="sisal-pos-val--muted">—</span>';
               } else {
                 var oddsText = odds ? ('@' + (odds >= 1000 ? Math.round(odds) + '+' : Number(odds.toFixed(2)))) : '—';
-                val.innerHTML = '<span class="sisal-pos-val--odds">' + oddsText + '</span>' + '<small>' + pct + '%</small>';
+                val.innerHTML = '<span class="sisal-pos-val--odds">' + oddsText + '</span>';
               }
               // Add tooltip showing exact prob and sims
               var simsAttr = sims || (board && board.mc_summary && board.mc_summary.sims) || 0;

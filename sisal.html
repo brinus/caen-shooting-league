@@ -221,8 +221,7 @@
                 <th>Giocatore</th>
                 <th title="Vince il campionato">🏆<span class="bet-th-label">Titolo</span></th>
                 <th title="Podio (top 3)">🥉<span class="bet-th-label">Podio</span></th>
-                <th title="Top 5">⭐<span class="bet-th-label">Top 5</span></th>
-                <th title="Best ≥30 nella stagione">🎯<span class="bet-th-label">Best 30</span></th>
+                    <th title="Top 5">⭐<span class="bet-th-label">Top 5</span></th>
                 <th title="Best over stagionale">🎯<span class="bet-th-label">Best over</span></th>
                 <th title="Best over stagionale +5">🎯<span class="bet-th-label">Best over+5</span></th>
                 <th title="Media finale ≥18">📊<span class="bet-th-label">Avg 18</span></th>
@@ -243,13 +242,15 @@
                 <th>Giocatore</th>
                 <th title="Vince la giornata">🥇<span class="bet-th-label">Vince</span></th>
                 <th title="Podio giornata">🥉<span class="bet-th-label">Podio</span></th>
-                <th title="Score over 25">🎯<span class="bet-th-label">&gt;25</span></th>
-                <th title="Score over 20">📊<span class="bet-th-label">&gt;20</span></th>
+                  <th title="Score over 25">🎯<span class="bet-th-label">&gt;25</span></th>
+                  <th title="Score over 20">📊<span class="bet-th-label">&gt;20</span></th>
               </tr>
             </thead>
             <tbody id="bet-giornata-tbody"></tbody>
           </table>
         </div>
+        <!-- Exact ranking composer (stagione) -->
+        <div id="bet-exact-composer-stagione" class="bet-exact-composer" style="margin-top:0.8rem"></div>
       </div>
 
       <!-- ── Tab: Speciali ── -->
@@ -282,6 +283,8 @@
         Seleziona una scommessa
       </button>
     </div>
+        <!-- Exact ranking composer (giornata) -->
+        <div id="bet-exact-composer-giornata" class="bet-exact-composer" style="margin-top:0.8rem"></div>
   </div>
 
   <script>
@@ -346,6 +349,8 @@
             + '</tr>'
         }).join('')
         attachBoardClicks(tbody, 'stagione')
+        // init exact-rank composer for stagione
+        try { renderExactComposer(board, 'bet-exact-composer-stagione', 'stagione'); } catch(e) { console.error('composer stag fail', e); }
       }
 
       /* ── Tab: Prossima Giornata ── */
@@ -376,6 +381,8 @@
             + '</tr>'
         }).join('')
         attachBoardClicks(tbody, 'giornata')
+        // init exact-rank composer for giornata
+        try { renderExactComposer(board, 'bet-exact-composer-giornata', 'giornata'); } catch(e) { console.error('composer giornata fail', e); }
       }
 
       /* ── Tab: Speciali ── */
@@ -423,6 +430,79 @@
             toggleSelection(JSON.parse(card.getAttribute('data-bet').replace(/&#39;/g,"'")), 'speciali')
           })
         })
+      }
+
+      /* ── Exact ranking composer (shared) ── */
+      function renderExactComposer(board, containerId, scope) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        if (!board || !board.players || !board.players.length) {
+          container.innerHTML = '<div class="text-muted" style="padding:0.5rem">Nessuna lavagna disponibile per il compositore.</div>';
+          return;
+        }
+        var players = board.players.slice();
+        var sims = (board.mc_summary && board.mc_summary.sims) || 0;
+
+        var header = document.createElement('div'); header.className = 'row';
+        var lbl = document.createElement('div'); lbl.style.color = 'var(--text-muted)'; lbl.style.marginRight = '0.5rem'; lbl.textContent = 'Classifica esatta:';
+        var selectK = document.createElement('select'); [3,4,5,6].forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent='Top '+n; selectK.appendChild(o); }); selectK.value='5';
+        header.appendChild(lbl); header.appendChild(selectK); container.appendChild(header);
+
+        var rowsWrap = document.createElement('div'); rowsWrap.style.marginTop = '0.5rem'; container.appendChild(rowsWrap);
+        var actions = document.createElement('div'); actions.className = 'composer-actions';
+        var btnAdd = document.createElement('button'); btnAdd.className = 'bet-composer-add btn-primary'; btnAdd.textContent = 'Aggiungi alla schedina';
+        var probView = document.createElement('div'); probView.style.marginLeft = 'auto'; probView.style.color='var(--text-muted)'; probView.textContent = '';
+        actions.appendChild(btnAdd); actions.appendChild(probView); container.appendChild(actions);
+
+        function buildRows(k) {
+          rowsWrap.innerHTML = '';
+          for (var i=0;i<k;i++) {
+            (function(pos){
+              var row = document.createElement('div'); row.className='row';
+              var plbl = document.createElement('div'); plbl.className='pos-label'; plbl.textContent = (pos+1)+'.';
+              var sel = document.createElement('select'); sel.dataset.pos = pos; sel.style.minWidth='220px';
+              var emptyOpt = document.createElement('option'); emptyOpt.value=''; emptyOpt.textContent='— Seleziona giocatore —'; sel.appendChild(emptyOpt);
+              players.forEach(function(p, idx){ var o=document.createElement('option'); o.value=idx; o.textContent=p.nome; sel.appendChild(o); });
+              row.appendChild(plbl); row.appendChild(sel); rowsWrap.appendChild(row);
+            })(i)
+          }
+        }
+
+        function computeProb() {
+          var sels = Array.prototype.map.call(rowsWrap.querySelectorAll('select'), function(s){ return s.value!==''?Number(s.value):null });
+          if (sels.some(function(x){ return x===null })) { probView.textContent = 'Seleziona tutti i giocatori per vedere la quota.'; return null }
+          var prob = 1;
+          if (board.mc_summary && board.mc_summary.posMatrix && sims>0) {
+            for (var i=0;i<sels.length;i++) {
+              var pi = sels[i];
+              var cnt = (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][i]) || 0;
+              var p = cnt / sims;
+              prob *= Math.max(1e-8, p);
+            }
+          } else {
+            for (var j=0;j<sels.length;j++) {
+              var q = (board.players[sels[j]] && (board.players[sels[j]].quote_titolo || board.players[sels[j]].quote_vittoria || 10)) || 10;
+              prob *= Math.max(1e-6, 1 / Math.max(q,0.01));
+            }
+          }
+          var odds = prob > 0 ? (1/prob) : null;
+          probView.textContent = odds ? ('Prob. ≈ ' + (Math.round(prob*1000)/10) + '% — Quota appross. @' + Number(odds.toFixed(2))) : '—';
+          return {prob:prob, odds:odds, sels: sels};
+        }
+
+        selectK.addEventListener('change', function(){ buildRows(Number(selectK.value)); probView.textContent=''; });
+        rowsWrap.addEventListener('change', function(){ computeProb(); });
+        btnAdd.addEventListener('click', function(){
+          var res = computeProb(); if (!res || !res.sels) { errBox.textContent='Completa la composizione prima di aggiungere.'; errBox.hidden=false; setTimeout(function(){errBox.hidden=true},2500); return }
+          var orderNames = res.sels.map(function(si){ return board.players[si].nome });
+          var label = 'Classifica esatta — ' + orderNames.map(function(n,i){ return (i+1)+'. '+n }).join(' · ');
+          var quota = res.odds || 9999;
+          var bd = { bet_type: (scope==='stagione'?'stagione_exact':'giornata_exact'), player_name: orderNames.join('|'), quota: quota, market_label: label, season_id: board.season_id, giornata_date: (scope==='giornata' && board.next_matchday?board.next_matchday.data:null), giornata_num: (scope==='giornata' && board.next_matchday?board.next_matchday.numero:null) };
+          toggleSelection(bd, scope);
+        });
+
+        buildRows(Number(selectK.value));
       }
 
       /* ── Board click delegation ── */

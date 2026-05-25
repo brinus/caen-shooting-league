@@ -3596,7 +3596,7 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 .bet-modal-overlay[hidden] { display: none !important; }
 .bet-modal {
   width: 100%;
-  max-width: 440px;  /* sovrascritto dal blocco BET BOARD più in basso */
+  max-width: 1100px;  /* modal più grande per compositore scommesse */
   background: var(--bg-card);
   border: 1px solid var(--border-bright);
   border-radius: var(--radius);
@@ -3909,6 +3909,18 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
   flex-direction: column;
   gap: 0.6rem;
 }
+
+/* Exact composer styles */
+.bet-exact-composer {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+.bet-exact-composer .row { display:flex; gap:0.5rem; align-items:center; margin-bottom:0.45rem }
+.bet-exact-composer select { padding:0.35rem 0.5rem; border-radius:8px; background:var(--bg-card); border:1px solid var(--border); color:var(--text) }
+.bet-exact-composer .pos-label { width:36px; font-family:'Orbitron',monospace; color:var(--text-muted) }
+.bet-exact-composer .composer-actions { display:flex; gap:0.5rem; margin-top:0.45rem }
 
 /* Singola selezione */
 .bet-selected-display {

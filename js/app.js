@@ -173,9 +173,10 @@ function renderSisalTicker(prefix, seasonId) {
   if (sectionEl) sectionEl.style.display = '';
 
   var items = buildSisalTickerItems(board);
-  if (!items.length) {
-    trackEl.innerHTML = '';
-    return;
+  if (!items || !items.length) {
+    trackEl.innerHTML = '<div class="sisal-ticker-empty">Nessun risultato disponibile.</div>';
+  } else {
+    trackEl.innerHTML = items.join('');
   }
 
   if (titleEl) {
@@ -227,7 +228,7 @@ function initHome() {
   el('season-name').textContent = season.nome + ' ' + season.anno;
   el('season-dates').textContent = formatDate(season.inizio) + ' — ' + formatDate(season.fine);
 
-  if (season.status === 'next') {
+    if (season.status === 'next') { 
     var daysToStart = daysUntil(season.inizio);
     el('season-countdown').textContent = daysToStart > 0
       ? 'Inizia tra ' + daysToStart + ' giorni'
@@ -256,6 +257,14 @@ function initHome() {
       badge.style.animation = 'none';
     }
   }
+  
+    // add collapsible raw Monte Carlo summary for transparency / debugging
+    if (board && board.mc_summary) {
+      try {
+        var mcDebug = '<div style="margin-top:12px"><details><summary>Mostra Monte Carlo (raw)</summary><pre style="max-height:320px;overflow:auto;background:rgba(0,0,0,0.03);padding:10px;border-radius:6px">' + escapeHtml(JSON.stringify(board.mc_summary, null, 2)) + '</pre></details></div>';
+        el.innerHTML += mcDebug;
+      } catch (e) { /* ignore */ }
+    }
 
   // Clic sul banner → classifica
   var banner = document.querySelector('.season-banner');
@@ -1060,6 +1069,21 @@ function buildPlayerStats(seasons) {
     var media_tiro = p.partite ? (p.punti_tiro / p.partite) : 0;
     var attemptsSorted = p.attempts_all.slice().sort(function(a, b) { return b - a; });
     var sopra_media = p.scores_all.filter(function(s) { return s >= media_tiro; }).length;
+    // resolve generic threshold market states/quotes
+    function _resolveThresholdMarket(player, remainingGames, pVal, thrVal) {
+      if (!thrVal || thrVal <= 0) return { probability: pVal || 0, quote: null, state: 'na' };
+      if ((player && (player.record || 0)) >= thrVal) return { probability: 1, quote: null, state: 'won' };
+      if (remainingGames <= 0) return { probability: 0, quote: null, state: 'lost' };
+      var p = _clampProbability(pVal);
+      return { probability: p, quote: _probToOdds(Math.max(0.001, p), MARGIN), state: 'open' };
+    }
+
+    var thr1Val = (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][0]) ? thresholdsPerPlayer[i][0] : null;
+    var thr2Val = (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][1]) ? thresholdsPerPlayer[i][1] : null;
+
+    var thr1Market = _resolveThresholdMarket(p, rimaste, (mcPerPlayer[i] && mcPerPlayer[i].pThresholds && mcPerPlayer[i].pThresholds[0]) ? mcPerPlayer[i].pThresholds[0] : 0, thr1Val);
+    var thr2Market = _resolveThresholdMarket(p, rimaste, (mcPerPlayer[i] && mcPerPlayer[i].pThresholds && mcPerPlayer[i].pThresholds[1]) ? mcPerPlayer[i].pThresholds[1] : 0, thr2Val);
+
     return {
       nome: p.nome,
       iniziali: p.iniziali,
@@ -2177,7 +2201,7 @@ function _randNorm(mu, sigma) {
  * Championship points by giornata rank: [10,8,6,4,4,2,2,1,1,1,0,...].
  * Returns per-player { pTitolo, pPodio, pTop5, pBest30, pAvg18 }.
  */
-function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM) {
+function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM, thresholdsPerPlayer) {
   var n       = classifica.length;
   var rimaste = Math.max(0, totali - giocate);
   var PTS     = [10, 8, 6, 4, 4, 2, 2, 1, 1, 1];
@@ -2246,6 +2270,12 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM) {
   var cntTop5   = new Array(n).fill(0);
   var cntBest30 = new Array(n).fill(0);
   var cntAvg18  = new Array(n).fill(0);
+  // counts for arbitrary thresholds per player (e.g. next multiple of 5)
+  var cntThresholds = new Array(n);
+  for (var i = 0; i < n; i++) {
+    var ths = (thresholdsPerPlayer && thresholdsPerPlayer[i]) ? thresholdsPerPlayer[i] : [];
+    cntThresholds[i] = new Array(ths.length).fill(0);
+  }
   var posCounts = new Array(n);
   for (var i = 0; i < n; i++) posCounts[i] = new Array(n).fill(0);
   var orderMap = Object.create(null);
@@ -2311,6 +2341,15 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM) {
         scores[i] = sc;
         simSums[i] += sc;
         if (sc >= 30) hitBest30[i] = true;
+        // threshold checks
+        if (thresholdsPerPlayer && thresholdsPerPlayer[i] && thresholdsPerPlayer[i].length) {
+          for (var tj = 0; tj < thresholdsPerPlayer[i].length; tj++) {
+            var thr = thresholdsPerPlayer[i][tj];
+            if (typeof thr === 'number' && thr >= 0 && sc >= thr) {
+              cntThresholds[i][tj]++;
+            }
+          }
+        }
 
         // push simulated score so next future day uses it in fit
         simHist[i].push(sc);
@@ -2346,12 +2385,17 @@ function _runMonteCarlo(classifica, giornate, giocate, totali, N_SIM) {
   }
   // build per-player probabilities
   var perPlayer = classifica.map(function(_, i) {
+    var pThresh = [];
+    if (cntThresholds && cntThresholds[i] && cntThresholds[i].length) {
+      pThresh = cntThresholds[i].map(function(c) { return Math.max(0.001, c / N_SIM); });
+    }
     return {
       pTitolo: Math.max(0.001, cntTitolo[i] / N_SIM),
       pPodio:  Math.max(0.005, cntPodio[i]  / N_SIM),
       pTop5:   Math.max(0.010, cntTop5[i]   / N_SIM),
       pBest30: Math.max(0.005, cntBest30[i] / N_SIM),
-      pAvg18:  Math.max(0.005, cntAvg18[i]  / N_SIM)
+      pAvg18:  Math.max(0.005, cntAvg18[i]  / N_SIM),
+      pThresholds: pThresh
     };
   });
 
@@ -2384,7 +2428,24 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   var MARGIN  = 1.08;
 
   // ── Monte Carlo season simulation (5 000 runs) ────────────────────
-  var mc = _runMonteCarlo(classifica, giornate, giocate, totali, 5000);
+  // Build per-player thresholds: next multiple of 5 > record, and next multiple of 5 > (record+5)
+  var thresholdsPerPlayer = classifica.map(function(p) {
+    var r = Math.max(0, (p && p.record) || 0);
+    function nextMultipleGreaterThan(x) {
+      var base = Math.floor(x / 5) * 5;
+      var cand = base + 5;
+      if (cand <= x) cand += 5;
+      return Math.min(50, cand);
+    }
+    var t1 = nextMultipleGreaterThan(r);
+    var t2 = nextMultipleGreaterThan(r + 5);
+    // if threshold beyond possible range, leave empty (market closed)
+    var arr = [];
+    if (t1 <= 50) arr.push(t1);
+    if (t2 <= 50 && t2 !== t1) arr.push(t2);
+    return arr;
+  });
+  var mc = _runMonteCarlo(classifica, giornate, giocate, totali, 20000, thresholdsPerPlayer);
   var mcPerPlayer = (mc && mc.perPlayer) ? mc.perPlayer : [];
 
   // ── Per-player season odds (from Monte Carlo) ─────────────────────
@@ -2428,6 +2489,11 @@ function computeLiveSisalBoard(stagione, staticBoard) {
       prob_top5:           _clampProbability(pTop5),
       prob_best_30:        best30Market.probability,
       prob_avg_18:         avg18Market.probability,
+      // threshold markets (if available from MC)
+      prob_best_over_thr1:  thr1Market.probability,
+      prob_best_over_thr2:  thr2Market.probability,
+      best_over_thr1_value: (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][0]) ? thresholdsPerPlayer[i][0] : null,
+      best_over_thr2_value: (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][1]) ? thresholdsPerPlayer[i][1] : null,
       market_best_30_state: best30Market.state,
       market_avg_18_state:  avg18Market.state,
       quote_titolo:        _probToOdds(pT,     MARGIN),
@@ -2435,6 +2501,10 @@ function computeLiveSisalBoard(stagione, staticBoard) {
       quote_top5:          _probToOdds(pTop5,  MARGIN),
       quote_best_30:       best30Market.quote,
       quote_avg_18:        avg18Market.quote,
+      quote_best_over_thr1: thr1Market.quote,
+      quote_best_over_thr2: thr2Market.quote,
+      market_best_over_thr1_state: thr1Market.state,
+      market_best_over_thr2_state: thr2Market.state,
       note:                note
     };
   });
@@ -2489,6 +2559,26 @@ function computeLiveSisalBoard(stagione, staticBoard) {
         { label: 'Record personale battuto', quota: 3.50, note: 'Almeno un giocatore supera il proprio personal best.' }
       ]
     };
+    // Add per-player likely exact scores (top 3 probabilities) as giornata specials
+    try {
+      nmPlayers.forEach(function(pl) {
+        var mu = pl.expected_score || (pl.media_tiro || 0);
+        var sigma = Math.max(2.5, ((pl.record || 0) - (pl.media_tiro || 0)) * 0.5 + 2.5);
+        var probs = [];
+        for (var s = 0; s <= 50; s++) {
+          var lo = (s - 0.5 - mu) / sigma;
+          var hi = (s + 0.5 - mu) / sigma;
+          var p = Math.max(0, _normCDF(hi) - _normCDF(lo));
+          probs.push({ s: s, p: p });
+        }
+        probs.sort(function(a, b) { return b.p - a.p; });
+        for (var k = 0; k < Math.min(3, probs.length); k++) {
+          var it = probs[k];
+          if (it.p <= 0) continue;
+          nextMatchday.specials.push({ label: 'Esatto G' + nextInfo.numero + ' — ' + pl.nome + ' ' + it.s + ' punti', quota: _probToOdds(Math.max(0.001, it.p), MARGIN), note: 'Probabilità stimata ' + Math.round(1000 * it.p) / 10 + '%' });
+        }
+      });
+    } catch (e) { /* ignore */ }
   }
 
   // ── Highlights ─────────────────────────────────────────────────────
@@ -2516,13 +2606,13 @@ function computeLiveSisalBoard(stagione, staticBoard) {
   }
 
   var leaderP   = players.slice().sort(function(a, b) { return (b.prob_titolo || 0) - (a.prob_titolo || 0); })[0];
-  var best30P   = players.slice().sort(function(a, b) { return (b.prob_best_30 || 0) - (a.prob_best_30 || 0); })[0];
+  var bestOverP = players.slice().sort(function(a, b) { return (b.prob_best_over_thr1 || 0) - (a.prob_best_over_thr1 || 0); })[0];
   var bestAvg18 = players.slice().sort(function(a, b) { return (b.prob_avg_18  || 0) - (a.prob_avg_18  || 0); })[0];
   var outsiderP = players.filter(function(p, i) { return i >= 4; })
     .sort(function(a, b) { return (b.prob_podio || 0) - (a.prob_podio || 0); })[0] || players[Math.min(4, players.length - 1)];
   var highlights = [
     { label: 'Favorito titolo',     market: 'Campione stagionale',   player: leaderP.nome,   quota: leaderP.quote_titolo,   blurb: 'Probabilità titolo più alta del board: posizione ' + leaderP.posizione_attuale + ', record ' + leaderP.record + ' e ' + leaderP.partite + ' partite registrate.' },
-    { label: 'Cecchino 30+',        market: 'Best score 30+',        player: best30P.nome,   quota: best30P.quote_best_30,  blurb: _best30Blurb(best30P) },
+    { label: 'Cecchino best',        market: 'Best score (stagione)',  player: bestOverP.nome, quota: bestOverP.quote_best_over_thr1 || bestOverP.quote_best_over_thr2,  blurb: 'Probabilità di superare la soglia stagionale: ' + (bestOverP.best_over_thr1_value || bestOverP.best_over_thr2_value || '—') },
     { label: 'Value bet',           market: 'Media finale over 18',  player: bestAvg18.nome, quota: bestAvg18.quote_avg_18, blurb: _avg18Blurb(bestAvg18) },
     { label: 'Outsider con senso',  market: 'Podio finale',          player: outsiderP.nome, quota: outsiderP.quote_podio,  blurb: 'Record ' + (outsiderP.record || '—') + ' che fa sperare. Fuori dal podio ma non troppo lontano.' }
   ];
@@ -2533,6 +2623,18 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     { label: 'Outsider a podio',                quota: 4.59,  note: 'Uno degli attuali fuori top 5 rientra tra i primi tre alla sirena.' },
     { label: 'Campione con almeno 2 vittorie',  quota: 1.08,  note: 'Il vincitore finale mette insieme almeno due giornate vinte sul campo.' }
   ];
+
+  // Add most frequent final orders from Monte Carlo as seasonal specials (classifica esatta)
+  if (mc && mc.topOrders && mc.topOrders.length) {
+    mc.topOrders.slice(0,3).forEach(function(o, idx) {
+      var names = (o.order || []).map(function(pi){ return (classifica[pi] && classifica[pi].nome) || '—'; }).slice(0,6);
+      var lbl = 'Classifica esatta: ' + names.join(' > ');
+      var prob = (o.pct || 0) / 100;
+      if (prob > 0) {
+        specials.push({ label: lbl, quota: _probToOdds(Math.max(0.001, prob), MARGIN), note: 'Scenario ripetuto in ' + (o.pct || 0) + '% delle simulazioni' });
+      }
+    });
+  }
 
   return {
     season_id:       stagione.id,
@@ -2545,11 +2647,11 @@ function computeLiveSisalBoard(stagione, staticBoard) {
     mc_summary:      mc || null,
     specials:        specials,
     methodology: [
-      'Simulazione Monte Carlo: 5 000 stagioni complete simulate per ciascun aggiornamento del board.',
+      'Simulazione Monte Carlo: 20 000 stagioni complete simulate per ciascun aggiornamento del board.',
       'Per ogni simulazione, le giornate rimanenti vengono giocate estraendo i punteggi da N(μ_adj, σ²), con σ stimato da (record − media) / √(2·ln(k)). La media attesa è corretta con shrinkage bayesiano: μ_adj = (k·μ + 3·μ_league) / (k+3), che riduce il peso di singole partite eccezionali per i giocatori con poche gare disputate.',
       'I punteggi simulati vengono classificati secondo il sistema punti ufficiale (10-8-6-4-4-2-2-1-1-1); in caso di parità si usa il punteggio cumulativo come spareggio.',
       'Le probabilità di titolo, podio e top5 emergono direttamente dal conteggio dei risultati finali su 5 000 run — garantendo per costruzione che P(titolo) ≤ P(podio) ≤ P(top5).',
-      'Best 30+: frazione di simulazioni in cui il giocatore registra almeno una giornata con punteggio ≥ 30.',
+      'Best over / Best over +5: frazione di simulazioni in cui il giocatore registra almeno una giornata con punteggio ≥ soglia personale (calcolata live).',
       'Media ≥18: frazione di simulazioni in cui la media finale di stagione supera 18 punti.',
       'Giornata successiva: modello strength-based con CDF normale per le quote over/under.',
       'Quote decimali con margine ~8% (overround 1.08). Solo per uso satirico: nessuna scommessa reale consentita.'
@@ -2817,7 +2919,9 @@ function renderSisalBoard(seasonId) {
         '<td><span class="rank-badge ' + rankClass(player.posizione_attuale) + '">' + (player.posizione_attuale || '—') + '</span></td>' +
         '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_titolo) + '">' + formatQuote(player.quote_titolo) + '</span></td>' +
         '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_podio) + '">' + formatQuote(player.quote_podio) + '</span></td>' +
-        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_30) + '">' + formatQuote(player.quote_best_30) + '</span></td>' +
+        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_over_thr1) + '">' + formatQuote(player.quote_best_over_thr1) + (player.best_over_thr1_value ? ('\n(' + (player.best_over_thr1_value||'') + ')') : '') + '</span></td>' +
+        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_over_thr2) + '">' + formatQuote(player.quote_best_over_thr2) + (player.best_over_thr2_value ? ('\n(' + (player.best_over_thr2_value||'') + ')') : '') + '</span></td>' +
+        '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_best_over_thr2) + '">' + formatQuote(player.quote_best_over_thr2) + (player.best_over_thr2_value ? ('\n(' + (player.best_over_thr2_value||'') + ')') : '') + '</span></td>' +
         '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_avg_18) + '">' + formatQuote(player.quote_avg_18) + '</span></td>' +
         '<td>' +
           '<div class="sisal-signal">' +
@@ -3100,9 +3204,14 @@ function renderSisalCharts(board) {
             '<div class="sisal-sim-market-delta" id="sisal-sim-d-podio"></div>' +
           '</div>' +
           '<div class="sisal-sim-market-card">' +
-            '<div class="sisal-sim-market-label">🎯 Best 30+</div>' +
-            '<div class="sisal-sim-market-value" id="sisal-sim-q-best30">—</div>' +
-            '<div class="sisal-sim-market-delta" id="sisal-sim-d-best30"></div>' +
+            '<div class="sisal-sim-market-label">🎯 Best over</div>' +
+            '<div class="sisal-sim-market-value" id="sisal-sim-q-bestover1">—</div>' +
+            '<div class="sisal-sim-market-delta" id="sisal-sim-d-bestover1"></div>' +
+          '</div>' +
+          '<div class="sisal-sim-market-card">' +
+            '<div class="sisal-sim-market-label">🎯 Best over +5</div>' +
+            '<div class="sisal-sim-market-value" id="sisal-sim-q-bestover2">—</div>' +
+            '<div class="sisal-sim-market-delta" id="sisal-sim-d-bestover2"></div>' +
           '</div>' +
           '<div class="sisal-sim-market-card">' +
             '<div class="sisal-sim-market-label">📈 Media 18+</div>' +
@@ -3210,7 +3319,7 @@ function _drawSisalRadar(container, playerIdx) {
   var W = canvas.width, H = canvas.height;
   var cx = W / 2, cy = H / 2 + 4;
   var R  = Math.min(W, H) / 2 - 42;
-  var labels = ['Titolo', 'Podio', 'Best 30+', 'Med. 18+', 'Fiducia'];
+  var labels = ['Titolo', 'Podio', 'Best over', 'Best over+5', 'Med. 18+', 'Fiducia'];
   var n = 5;
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, W, H);
@@ -3432,8 +3541,21 @@ function _initSisalSimulatore(container, allP, board) {
       var sigma30 = Math.max(2.0, record * 0.25);
       pBest30 = Math.min(0.93, 1 - Math.pow(1 - Math.max(0.005, _normCDF(-dist30 / sigma30)), Math.max(1, remaining)));
     }
-    var best30Market = _resolveBest30Market({ record: record }, remaining, pBest30, MARGIN);
-    var qBest30 = best30Market.quote;
+    // compute threshold markets for simulator
+    var thr1 = (allP[idx] && allP[idx].best_over_thr1_value) ? allP[idx].best_over_thr1_value : null;
+    var thr2 = (allP[idx] && allP[idx].best_over_thr2_value) ? allP[idx].best_over_thr2_value : null;
+    function _pThr(thr) {
+      if (!thr) return 0;
+      var distThr = thr - media;
+      var sigmaThr = Math.max(2.0, record * 0.25);
+      return Math.min(0.93, 1 - Math.pow(1 - Math.max(0.005, _normCDF(-distThr / sigmaThr)), Math.max(1, remaining)));
+    }
+    var pBestOver1 = _pThr(thr1);
+    var pBestOver2 = _pThr(thr2);
+    var bestOverMarket1 = { probability: pBestOver1, quote: _probToOdds(Math.max(0.001, pBestOver1), MARGIN), state: (thr1 && media>=thr1)?'won':(remaining<=0?'lost':'open') };
+    var bestOverMarket2 = { probability: pBestOver2, quote: _probToOdds(Math.max(0.001, pBestOver2), MARGIN), state: (thr2 && media>=thr2)?'won':(remaining<=0?'lost':'open') };
+    var qBestOver1 = bestOverMarket1.quote;
+    var qBestOver2 = bestOverMarket2.quote;
 
     // Media 18+
     var gPlayed   = allP[idx].partite || Math.max(1, played);
@@ -3457,7 +3579,8 @@ function _initSisalSimulatore(container, allP, board) {
 
     _updateCard('sisal-sim-q-titolo', 'sisal-sim-d-titolo', qT,      allP[idx].quote_titolo);
     _updateCard('sisal-sim-q-podio',  'sisal-sim-d-podio',  qPodio,  allP[idx].quote_podio);
-    _updateCard('sisal-sim-q-best30', 'sisal-sim-d-best30', qBest30, allP[idx].quote_best_30);
+    _updateCard('sisal-sim-q-bestover1', 'sisal-sim-d-bestover1', qBestOver1, allP[idx].quote_best_over_thr1);
+    _updateCard('sisal-sim-q-bestover2', 'sisal-sim-d-bestover2', qBestOver2, allP[idx].quote_best_over_thr2);
     _updateCard('sisal-sim-q-avg18',  'sisal-sim-d-avg18',  qAvg18,  allP[idx].quote_avg_18);
 
     // Update simulator charts: market comparison bars and delta list
@@ -3468,7 +3591,8 @@ function _initSisalSimulatore(container, allP, board) {
         var markets = [
           { id: 'titolo', label: 'Titolo', simQ: qT,      origQ: allP[idx].quote_titolo,  simP: _clampProbability(pT),                    origP: _clampProbability(allP[idx].prob_titolo) },
           { id: 'podio',  label: 'Podio',  simQ: qPodio,  origQ: allP[idx].quote_podio,   simP: _clampProbability(pPodio),                origP: _clampProbability(allP[idx].prob_podio) },
-          { id: 'best30', label: 'Best30', simQ: qBest30, origQ: allP[idx].quote_best_30, simP: best30Market.probability,                 origP: _clampProbability(allP[idx].prob_best_30) },
+          { id: 'bestover1', label: 'BestOver', simQ: qBestOver1, origQ: allP[idx].quote_best_over_thr1, simP: bestOverMarket1.probability,                 origP: _clampProbability(allP[idx].prob_best_over_thr1) },
+          { id: 'bestover2', label: 'BestOver+5', simQ: qBestOver2, origQ: allP[idx].quote_best_over_thr2, simP: bestOverMarket2.probability,                 origP: _clampProbability(allP[idx].prob_best_over_thr2) },
           { id: 'avg18',  label: 'Media18',simQ: qAvg18,  origQ: allP[idx].quote_avg_18,  simP: avg18Market.probability,                  origP: _clampProbability(allP[idx].prob_avg_18) }
         ];
         var maxV = 0;
@@ -3487,7 +3611,8 @@ function _initSisalSimulatore(container, allP, board) {
         var deltas = [
           { k: 'Titolo',  origQ: allP[idx].quote_titolo,  simQ: qT },
           { k: 'Podio',   origQ: allP[idx].quote_podio,   simQ: qPodio },
-          { k: 'Best30',  origQ: allP[idx].quote_best_30, simQ: qBest30 },
+          { k: 'BestOver',  origQ: allP[idx].quote_best_over_thr1, simQ: qBestOver1 },
+          { k: 'BestOver+5',  origQ: allP[idx].quote_best_over_thr2, simQ: qBestOver2 },
           { k: 'Media18', origQ: allP[idx].quote_avg_18,  simQ: qAvg18 }
         ];
         var html2 = '<ul class="sisal-sim-delta-list">' + deltas.map(function(x){

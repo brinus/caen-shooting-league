@@ -69,7 +69,7 @@
       <div class="season-select-wrapper" style="margin-bottom:1.5rem;align-items:center">
         <label for="sisal-season-select">Stagione:</label>
         <select id="sisal-season-select"></select>
-        <span class="note" style="color:var(--text-muted);font-size:0.8rem">Mercati principali: titolo, podio, best 30+ e media finale over 18.</span>
+        <span class="note" style="color:var(--text-muted);font-size:0.8rem">Mercati principali: titolo, podio, best over e media finale over 18. (Quote calcolate live)</span>
       </div>
 
       <section>
@@ -125,7 +125,7 @@
           </div>
         </div>
         <div class="sisal-section-body">
-          <p class="sisal-section-desc">Titolo · Podio · Best 30+ · Media ≥18 — i mercati aperti per tutta la stagione. Quote più basse = il mercato è più convinto.</p>
+          <p class="sisal-section-desc">Titolo · Podio · Best over · Best over+5 · Media ≥18 — i mercati aperti per tutta la stagione. Quote più basse = il mercato è più convinto.</p>
           <div class="table-wrapper" style="margin-bottom:1.5rem">
             <table>
               <thead>
@@ -134,7 +134,8 @@
                   <th>Pos.</th>
                   <th>Titolo</th>
                   <th>Podio</th>
-                  <th>Best 30+</th>
+                  <th>Best over</th>
+                  <th>Best over +5</th>
                   <th>Media 18+</th>
                   <th>Segnale</th>
                 </tr>
@@ -216,12 +217,14 @@
         <div class="table-wrapper bet-board-wrap">
           <table class="bet-board-table">
             <thead>
-              <tr>
+                <tr>
                 <th>Giocatore</th>
                 <th title="Vince il campionato">🏆<span class="bet-th-label">Titolo</span></th>
                 <th title="Podio (top 3)">🥉<span class="bet-th-label">Podio</span></th>
                 <th title="Top 5">⭐<span class="bet-th-label">Top 5</span></th>
                 <th title="Best ≥30 nella stagione">🎯<span class="bet-th-label">Best 30</span></th>
+                <th title="Best over stagionale">🎯<span class="bet-th-label">Best over</span></th>
+                <th title="Best over stagionale +5">🎯<span class="bet-th-label">Best over+5</span></th>
                 <th title="Media finale ≥18">📊<span class="bet-th-label">Avg 18</span></th>
               </tr>
             </thead>
@@ -337,7 +340,8 @@
             + betCell(p.quote_titolo,  mkBd('titolo',  p.quote_titolo,  '🏆 Titolo campionato'))
             + betCell(p.quote_podio,   mkBd('podio',   p.quote_podio,   '🥉 Podio campionato'))
             + betCell(p.quote_top5,    mkBd('top5',    p.quote_top5,    '⭐ Top 5'))
-            + betCell(p.quote_best_30, mkBd('best_30', p.quote_best_30, '🎯 Best ≥30 (stagione)'))
+            + betCell(p.quote_best_over_thr1, mkBd('best_over_thr1', p.quote_best_over_thr1, '🎯 Best over ' + (p.best_over_thr1_value||'') + ' (stagione)'))
+            + betCell(p.quote_best_over_thr2, mkBd('best_over_thr2', p.quote_best_over_thr2, '🎯 Best over ' + (p.best_over_thr2_value||'') + ' (stagione)'))
             + betCell(p.quote_avg_18,  mkBd('avg_18',  p.quote_avg_18,  '📊 Media ≥18 (stagione)'))
             + '</tr>'
         }).join('')

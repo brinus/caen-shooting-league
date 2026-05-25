@@ -1075,20 +1075,7 @@ function buildPlayerStats(seasons) {
     var media_tiro = p.partite ? (p.punti_tiro / p.partite) : 0;
     var attemptsSorted = p.attempts_all.slice().sort(function(a, b) { return b - a; });
     var sopra_media = p.scores_all.filter(function(s) { return s >= media_tiro; }).length;
-    // resolve generic threshold market states/quotes
-    function _resolveThresholdMarket(player, remainingGames, pVal, thrVal) {
-      if (!thrVal || thrVal <= 0) return { probability: pVal || 0, quote: null, state: 'na' };
-      if ((player && (player.record || 0)) >= thrVal) return { probability: 1, quote: null, state: 'won' };
-      if (remainingGames <= 0) return { probability: 0, quote: null, state: 'lost' };
-      var p = _clampProbability(pVal);
-      return { probability: p, quote: _probToOdds(Math.max(0.001, p), MARGIN), state: 'open' };
-    }
-
-    var thr1Val = (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][0]) ? thresholdsPerPlayer[i][0] : null;
-    var thr2Val = (thresholdsPerPlayer[i] && thresholdsPerPlayer[i][1]) ? thresholdsPerPlayer[i][1] : null;
-
-    var thr1Market = _resolveThresholdMarket(p, rimaste, (mcPerPlayer[i] && mcPerPlayer[i].pThresholds && mcPerPlayer[i].pThresholds[0]) ? mcPerPlayer[i].pThresholds[0] : 0, thr1Val);
-    var thr2Market = _resolveThresholdMarket(p, rimaste, (mcPerPlayer[i] && mcPerPlayer[i].pThresholds && mcPerPlayer[i].pThresholds[1]) ? mcPerPlayer[i].pThresholds[1] : 0, thr2Val);
+    // (threshold markets and MC-derived fields are not part of buildPlayerStats)
 
     return {
       nome: p.nome,
@@ -3113,70 +3100,7 @@ function renderSisalBoard(seasonId) {
       }
     }
   } catch (e) { console.error('auto MC scheduling failed', e); }
-    // Initialize Position Explorer widget
-    try {
-      var explorer = el.querySelector('#sisal-pos-explorer');
-      if (explorer) {
-        // If MC data exists, render the full explorer, else show CTA
-        if (board && board.mc_summary && board.mc_summary.posMatrix) {
-          var sims = board.mc_summary.sims || 1;
-          var players = board.players.slice(0, board.players.length);
-          // controls
-          var controls = document.createElement('div'); controls.className = 'controls';
-          var lbl = document.createElement('label'); lbl.textContent = 'Seleziona giocatore: '; lbl.style.color = 'var(--text-muted)'; lbl.style.fontSize = '0.82rem';
-          var sel = document.createElement('select'); sel.style.minWidth = '220px';
-          players.forEach(function(p, idx) {
-            var opt = document.createElement('option'); opt.value = idx; opt.textContent = p.nome; sel.appendChild(opt);
-          });
-          controls.appendChild(lbl); controls.appendChild(sel);
-          explorer.appendChild(controls);
-
-          var barsWrap = document.createElement('div'); barsWrap.className = 'sisal-pos-bars'; explorer.appendChild(barsWrap);
-
-          function renderPlayerPos(idx) {
-            barsWrap.innerHTML = '';
-            var counts = (board.mc_summary.posMatrix && board.mc_summary.posMatrix[idx]) || [];
-            var maxPos = Math.min(players.length, counts.length || players.length);
-            for (var pos = 0; pos < maxPos; pos++) {
-              var cnt = counts[pos] || 0;
-              var pct = Math.round((cnt / sims) * 1000) / 10; // one decimal
-              var row = document.createElement('div'); row.className = 'sisal-pos-row';
-              var name = document.createElement('div'); name.className = 'sisal-pos-name'; name.textContent = (pos + 1) + '. Posizione';
-              var track = document.createElement('div'); track.className = 'sisal-pos-track';
-              var fill = document.createElement('div'); fill.className = 'sisal-pos-fill'; fill.style.width = '0%'; fill.setAttribute('data-pct', pct);
-              track.appendChild(fill);
-              var val = document.createElement('div'); val.className = 'sisal-pos-val'; val.textContent = pct + '%';
-              row.appendChild(name); row.appendChild(track); row.appendChild(val);
-              barsWrap.appendChild(row);
-              // animate
-              setTimeout((function(f, p2){ return function(){ f.style.width = p2 + '%'; }; })(fill, pct), 40 + pos * 30);
-            }
-          }
-
-          sel.addEventListener('change', function() { renderPlayerPos(Number(sel.value)); });
-          // render first
-          renderPlayerPos(Number(sel.value || 0));
-        } else {
-          // No MC data: show a message and a small-run button
-          explorer.innerHTML = '';
-          var msg = document.createElement('div'); msg.style.color = 'var(--text-muted)'; msg.style.marginBottom = '0.6rem';
-          msg.textContent = 'Dati Monte Carlo non disponibili. Esegui una simulazione veloce per esplorare le quote posizionali.';
-          var btn = document.createElement('button'); btn.className = 'btn btn--small'; btn.textContent = 'Calcola posizioni (500 simul)';
-          btn.style.marginTop = '0.2rem';
-          explorer.appendChild(msg); explorer.appendChild(btn);
-          btn.addEventListener('click', function() {
-            btn.disabled = true; btn.textContent = 'Calcolo in corso...';
-            var stagione = (window.CSL && CSL.stagioni) ? CSL.stagioni.find(function(s){ return s && s.id === (board && board.season_id); }) : null;
-            if (!stagione) { alert('Dati stagione mancanti. Ricarica la pagina.'); btn.disabled = false; btn.textContent = 'Calcola posizioni (500 simul)'; return; }
-            runLightMonteCarloForBoard(stagione, board, 500).then(function(mc) {
-              btn.disabled = false; btn.textContent = 'Calcolo completato — aggiorna';
-              // re-render the whole board so explorer initializes with real data
-              try { renderSisalBoard(board); } catch (e) { console.error('re-render after MC failed', e); }
-            }).catch(function(err){ console.error('light mc failed', err); alert('Errore nel calcolo: ' + err); btn.disabled = false; btn.textContent = 'Calcola posizioni (500 simul)'; });
-          });
-        }
-      }
-    } catch (e) { console.error('pos-explorer init failed', e); }
+    
 
   // Charts and scroll reveal
   renderSisalCharts(board);
@@ -3483,6 +3407,54 @@ function renderSisalCharts(board) {
       });
     });
     _initSisalSimulatore(el, allP, board);
+    // Initialize Position Explorer widget
+    try {
+      var explorer = el.querySelector('#sisal-pos-explorer');
+      if (explorer) {
+        if (board && board.mc_summary && board.mc_summary.posMatrix) {
+          var sims = board.mc_summary.sims || 1;
+          var players = board.players.slice(0);
+          var controls = document.createElement('div'); controls.className = 'controls';
+          var lbl = document.createElement('label'); lbl.textContent = 'Seleziona giocatore: '; lbl.style.color = 'var(--text-muted)'; lbl.style.fontSize = '0.82rem';
+          var sel = document.createElement('select'); sel.style.minWidth = '220px';
+          players.forEach(function(p, idx) { var opt = document.createElement('option'); opt.value = idx; opt.textContent = p.nome; sel.appendChild(opt); });
+          controls.appendChild(lbl); controls.appendChild(sel); explorer.appendChild(controls);
+          var barsWrap = document.createElement('div'); barsWrap.className = 'sisal-pos-bars'; explorer.appendChild(barsWrap);
+          function renderPlayerPos(idx) {
+            barsWrap.innerHTML = '';
+            var counts = (board.mc_summary.posMatrix && board.mc_summary.posMatrix[idx]) || [];
+            var maxPos = Math.min(players.length, counts.length || players.length);
+            for (var pos = 0; pos < maxPos; pos++) {
+              var cnt = counts[pos] || 0;
+              var pct = Math.round((cnt / sims) * 1000) / 10;
+              var row = document.createElement('div'); row.className = 'sisal-pos-row';
+              var name = document.createElement('div'); name.className = 'sisal-pos-name'; name.textContent = (pos + 1) + '. Posizione';
+              var track = document.createElement('div'); track.className = 'sisal-pos-track';
+              var fill = document.createElement('div'); fill.className = 'sisal-pos-fill'; fill.style.width = '0%'; fill.setAttribute('data-pct', pct);
+              track.appendChild(fill);
+              var val = document.createElement('div'); val.className = 'sisal-pos-val'; val.textContent = pct + '%';
+              row.appendChild(name); row.appendChild(track); row.appendChild(val);
+              barsWrap.appendChild(row);
+              setTimeout((function(f, p2){ return function(){ f.style.width = p2 + '%'; }; })(fill, pct), 40 + pos * 30);
+            }
+          }
+          sel.addEventListener('change', function() { renderPlayerPos(Number(sel.value)); });
+          renderPlayerPos(Number(sel.value || 0));
+        } else {
+          explorer.innerHTML = '';
+          var msg = document.createElement('div'); msg.style.color = 'var(--text-muted)'; msg.style.marginBottom = '0.6rem';
+          msg.textContent = 'Dati Monte Carlo non disponibili. Esegui una simulazione veloce per esplorare le quote posizionali.';
+          var btn = document.createElement('button'); btn.className = 'btn btn--small'; btn.textContent = 'Calcola posizioni (500 simul)'; btn.style.marginTop = '0.2rem';
+          explorer.appendChild(msg); explorer.appendChild(btn);
+          btn.addEventListener('click', function() {
+            btn.disabled = true; btn.textContent = 'Calcolo in corso...';
+            var stagione = (window.CSL && CSL.stagioni) ? CSL.stagioni.find(function(s){ return s && s.id === (board && board.season_id); }) : null;
+            if (!stagione) { alert('Dati stagione mancanti. Ricarica la pagina.'); btn.disabled = false; btn.textContent = 'Calcola posizioni (500 simul)'; return; }
+            runLightMonteCarloForBoard(stagione, board, 500).then(function(mc){ btn.disabled = false; btn.textContent = 'Calcolo completato — aggiorna'; try { renderSisalBoard(board.season_id); } catch(e){ console.error('re-render after MC failed', e); } }).catch(function(err){ console.error('light mc failed', err); alert('Errore nel calcolo: ' + err); btn.disabled = false; btn.textContent = 'Calcola posizioni (500 simul)'; });
+          });
+        }
+      }
+    } catch (e) { console.error('pos-explorer init failed', e); }
     // Init final-standings carousel (cycle top MC orders) with controls
     var carouselContainer = el.querySelector('.sisal-final-carousel');
     if (carouselContainer) {

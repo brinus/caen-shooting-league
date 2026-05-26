@@ -133,7 +133,12 @@ function assignRecuperi(season, results) {
   ).sort((a, b) => a.giocatore.localeCompare(b.giocatore) || a.data.localeCompare(b.data))
 
   const playerAssigned = {}
+  // Start with recuperi already present in the dataset (admin-saved rows
+  // may already have `recupero = true`). Count them so they aren't lost.
   const playerRecuperi = {}
+  for (const r of results) {
+    if (r.recupero) playerRecuperi[r.giocatore] = (playerRecuperi[r.giocatore] || 0) + 1
+  }
   const modified = []
 
   for (const r of rawRecuperi) {

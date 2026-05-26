@@ -172,12 +172,11 @@ function buildGiornate(season, results) {
   const gare = {}  // data → {giocatore → candidato}
 
   for (const r of results) {
-    // Use data_effettiva for grouping when this result is a recupero and
-    // a real-played date is provided. This ensures recovered games appear
-    // in the calendar on the actual played date rather than the assigned
-    // scheduled date.
-    const effectiveDate = (r.recupero && r.data_effettiva) ? r.data_effettiva : r.data
-    if (effectiveDate < season.inizio || effectiveDate > season.fine || !r.gara) continue
+    // Group results by the scheduled giornata date (`r.data`). If a result
+    // is a recupero, `data_effettiva` is kept as the real-played date but the
+    // calendario/classifica must show the player on the giornata it counts for.
+    const scheduledDate = r.data
+    if (scheduledDate < season.inizio || scheduledDate > season.fine || !r.gara) continue
 
     const metrics = getAttemptMetrics(r.t1, r.t2, r.t3)
     const candidate = {
@@ -191,10 +190,10 @@ function buildGiornate(season, results) {
       data_effettiva: r.data_effettiva || null,
     }
 
-    if (!gare[effectiveDate]) gare[effectiveDate] = {}
-    const current = gare[effectiveDate][r.giocatore]
+    if (!gare[scheduledDate]) gare[scheduledDate] = {}
+    const current = gare[scheduledDate][r.giocatore]
     if (!current || _giornataSortCmp(candidate, current) < 0) {
-      gare[effectiveDate][r.giocatore] = candidate
+      gare[scheduledDate][r.giocatore] = candidate
     }
   }
 

@@ -206,58 +206,7 @@ function renderSisalTicker(prefix, seasonId) {
     '<div class="sisal-ticker-set" aria-hidden="true">' + setHtml + '</div>';
 }
 
-// ── Simple carousel for home sisal quotes ─────────────────────────
-function initSisalCarousel(seasonId) {
-  const track = document.getElementById('carousel-track')
-  const prev = document.getElementById('carousel-prev')
-  const next = document.getElementById('carousel-next')
-  if (!track) return
-
-  const board = resolveSisalBoard(seasonId)
-  const items = buildSisalTickerItems(board)
-  if (!items || !items.length) {
-    track.innerHTML = '<div class="carousel-slide">Nessuna quota disponibile.</div>'
-    return
-  }
-
-  function slideHtml(item) {
-    return `<div class="carousel-slide">
-      <div style="flex:1">
-        <div style="display:flex;gap:0.6rem;align-items:center">
-          <span class="tag">${escapeHtml(item.tag)}</span>
-          <div style="flex:1"><div class="player">${escapeHtml(item.player)}</div><div class="market" style="font-size:0.82rem;color:var(--text-muted)">${escapeHtml(item.market)}</div></div>
-        </div>
-      </div>
-      <div style="min-width:72px;text-align:right"><div class="quote" style="font-family:Orbitron,monospace;font-weight:700;color:var(--sisal-green)">${formatQuote(item.quote)}</div><div class="extra" style="font-size:0.75rem;color:var(--text-muted)">${escapeHtml(item.extra)}</div></div>
-    </div>`
-  }
-
-  track.innerHTML = items.map(slideHtml).join('')
-
-  let index = 0
-  function show(i) {
-    const w = track.children[0] ? track.children[0].getBoundingClientRect().width + 0.85 * 16 : 360
-    track.style.transform = 'translateX(' + (-(w * i)) + 'px)'
-    index = i
-  }
-
-  prev.onclick = () => show(Math.max(0, index - 1))
-  next.onclick = () => show(Math.min(track.children.length - 1, index + 1))
-
-  let auto = setInterval(function () {
-    const nextIdx = (index + 1) % track.children.length
-    show(nextIdx)
-  }, 4200)
-
-  // pause on hover
-  track.addEventListener('mouseenter', () => clearInterval(auto))
-  track.addEventListener('mouseleave', () => { auto = setInterval(function () { show((index + 1) % track.children.length) }, 4200) })
-}
-
-// Initialize on DOMContentLoaded for home
-document.addEventListener('DOMContentLoaded', function () {
-  try { const season = getCurrentSeason(); initSisalCarousel(season && season.id); document.getElementById('spot-season-name') && (document.getElementById('spot-season-name').textContent = season ? (season.nome + ' ' + season.anno) : '') } catch (e) { /* ignore */ }
-})
+ 
 
 // ── Navigation ─────────────────────────────────────────────────
 

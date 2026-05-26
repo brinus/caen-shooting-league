@@ -4177,7 +4177,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Boot live data immediately; keep auth-ready as an extra signal in case session arrives later.
     _bootLiveAndRun();
     document.addEventListener('csl:auth-ready', _bootLiveAndRun);
-    setTimeout(_run, 3000);
+    // Fallback: se il bootstrap live non è terminato entro 8s, esegui comunque il render
+    // (aumentato da 3s a 8s per dare più tempo al caricamento Supabase in condizioni lente)
+    setTimeout(function() { if (!_rendered) _run(); }, 8000);
   } else {
     _run();
   }

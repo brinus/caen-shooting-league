@@ -172,7 +172,12 @@ function buildGiornate(season, results) {
   const gare = {}  // data → {giocatore → candidato}
 
   for (const r of results) {
-    if (r.data < season.inizio || r.data > season.fine || !r.gara) continue
+    // Use data_effettiva for grouping when this result is a recupero and
+    // a real-played date is provided. This ensures recovered games appear
+    // in the calendar on the actual played date rather than the assigned
+    // scheduled date.
+    const effectiveDate = (r.recupero && r.data_effettiva) ? r.data_effettiva : r.data
+    if (effectiveDate < season.inizio || effectiveDate > season.fine || !r.gara) continue
 
     const metrics = getAttemptMetrics(r.t1, r.t2, r.t3)
     const candidate = {
@@ -186,10 +191,10 @@ function buildGiornate(season, results) {
       data_effettiva: r.data_effettiva || null,
     }
 
-    if (!gare[r.data]) gare[r.data] = {}
-    const current = gare[r.data][r.giocatore]
+    if (!gare[effectiveDate]) gare[effectiveDate] = {}
+    const current = gare[effectiveDate][r.giocatore]
     if (!current || _giornataSortCmp(candidate, current) < 0) {
-      gare[r.data][r.giocatore] = candidate
+      gare[effectiveDate][r.giocatore] = candidate
     }
   }
 

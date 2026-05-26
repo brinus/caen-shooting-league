@@ -546,7 +546,7 @@ async function loadExistingGiornata() {
 
   const { data, error } = await CSLAuth.client
     .from('risultati')
-    .select('giocatore, iniziali, t1, t2, t3')
+    .select('giocatore, iniziali, t1, t2, t3, recupero, data_effettiva')
     .eq('stagione_id', stagioneId)
     .eq('data', dateVal)
     .order('giocatore')
@@ -561,14 +561,16 @@ async function loadExistingGiornata() {
       r.iniziali,
       r.t1 >= 0 ? r.t1 : undefined,
       r.t2 >= 0 ? r.t2 : undefined,
-      r.t3 >= 0 ? r.t3 : undefined
+      r.t3 >= 0 ? r.t3 : undefined,
+      !!r.recupero,
+      r.data_effettiva || ''
     )
   })
   showMsg('giornata-success',
     `✓ Caricati ${data.length} risultati esistenti per questa data — modifica e salva per aggiornare.`, false)
 }
 
-function addPlayerRow(nome, iniziali, t1, t2, t3) {
+function addPlayerRow(nome, iniziali, t1, t2, t3, recupero, dataEffettiva) {
   const container = document.getElementById('giornata-rows-container')
   const row = document.createElement('div')
   row.className = 'giornata-player-row'
@@ -578,6 +580,11 @@ function addPlayerRow(nome, iniziali, t1, t2, t3) {
     <input type="number" class="form-input player-t1" placeholder="T1" min="-1" max="50" value="${t1 !== undefined ? t1 : ''}" style="width:70px">
     <input type="number" class="form-input player-t2" placeholder="T2" min="-1" max="50" value="${t2 !== undefined ? t2 : ''}" style="width:70px">
     <input type="number" class="form-input player-t3" placeholder="T3" min="-1" max="50" value="${t3 !== undefined ? t3 : ''}" style="width:70px">
+    <label style="display:inline-flex;align-items:center;gap:0.35rem;margin-left:6px">
+      <input type="checkbox" class="player-recupero" ${recupero ? 'checked' : ''} title="Recupero">
+      <span style="font-size:0.82rem;color:var(--text-muted)">Rec.</span>
+    </label>
+    <input type="date" class="form-input player-data-effettiva" value="${escHtml(dataEffettiva || '')}" style="width:150px" title="Data effettiva (giornata recuperata)">
     <button type="button" class="btn-icon btn-remove-row" title="Rimuovi">✕</button>
   `
   row.querySelector('.btn-remove-row').addEventListener('click', function () { row.remove() })
@@ -631,6 +638,8 @@ async function saveGiornata(e) {
       t1:          t1Raw !== '' ? parseInt(t1Raw) : -1,
       t2:          t2Raw !== '' ? parseInt(t2Raw) : -1,
       t3:          t3Raw !== '' ? parseInt(t3Raw) : -1,
+      recupero:    !!row.querySelector('.player-recupero') && !!row.querySelector('.player-recupero').checked,
+      data_effettiva: (row.querySelector('.player-data-effettiva') && row.querySelector('.player-data-effettiva').value) || null,
       created_by:  CSLAuth.getProfile()?.id,
     })
   })

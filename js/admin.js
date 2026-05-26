@@ -638,6 +638,7 @@ async function saveGiornata(e) {
       t1:          t1Raw !== '' ? parseInt(t1Raw) : -1,
       t2:          t2Raw !== '' ? parseInt(t2Raw) : -1,
       t3:          t3Raw !== '' ? parseInt(t3Raw) : -1,
+      gara:        true,
       recupero:    !!row.querySelector('.player-recupero') && !!row.querySelector('.player-recupero').checked,
       data_effettiva: (row.querySelector('.player-data-effettiva') && row.querySelector('.player-data-effettiva').value) || null,
       created_by:  CSLAuth.getProfile()?.id,

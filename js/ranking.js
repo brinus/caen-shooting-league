@@ -375,11 +375,13 @@ function computeCecchini(season, results, maxRecuperi) {
  * @returns {Object} season con .classifica, .giornate, .cecchini, .giornate_totali
  */
 function buildSeasonData(season, rows) {
-  // Normalizza: assegna campo .gara in base al giorno della settimana
+  // Normalizza: rispetta i flag provenienti dal DB quando presenti;
+  // altrimenti determina `gara` dal giorno della settimana. Mantieni
+  // il flag `recupero` così com'è nel DB.
   const rawResults = rows.map(r => ({
     ...r,
-    gara: isGiornataGara(r.data),
-    recupero: false,
+    gara: (typeof r.gara === 'boolean') ? r.gara : isGiornataGara(r.data),
+    recupero: !!r.recupero,
   }))
 
   const { results, playerRecuperi } = assignRecuperi(season, rawResults)

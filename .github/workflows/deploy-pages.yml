@@ -3,6 +3,9 @@ name: Build and deploy Pages
 on:
   push:
     branches: [ main, master ]
+  schedule:
+    - cron: '0 * * * *' # hourly
+  workflow_dispatch: {}
 
 jobs:
   build-and-deploy:
@@ -21,6 +24,13 @@ jobs:
           python -m pip install --upgrade pip
           # add here any Python deps if needed
           python -m pip install supabase
+
+      - name: Run Monte Carlo runner
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python scripts/mc_runner.py --next-iters 5000 --season-iters 20000
 
       - name: Run aggiorna.py to generate data
         env:

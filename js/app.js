@@ -2792,6 +2792,11 @@ async function initSisal() {
   var select = document.getElementById('sisal-season-select');
   if (!select) return;
 
+  // If server-side Monte Carlo results are being loaded, wait for them
+  if (window.__mcLoaded && typeof window.__mcLoaded.then === 'function') {
+    try { await window.__mcLoaded; } catch (e) { /* ignore */ }
+  }
+
   // Compute live boards from CSL.stagioni and update CSL.sisal in-place
   if (CSL.stagioni && CSL.stagioni.length) {
     for (const stagione of CSL.stagioni) {

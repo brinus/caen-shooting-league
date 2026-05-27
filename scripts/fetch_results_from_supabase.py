@@ -17,6 +17,28 @@ REPO = Path(__file__).resolve().parent.parent
 OUT_DIR = REPO / 'risultati'
 SEASONS_FILE = REPO / 'data' / 'seasons.json'
 
+# If a .env file exists at the repository root, load simple KEY=VALUE pairs into
+# the environment for convenience (do not require python-dotenv dependency).
+env_path = REPO / '.env'
+if env_path.exists():
+    print(f'Loading environment from {env_path}')
+    try:
+        with open(env_path, encoding='utf-8') as ef:
+            for raw in ef:
+                line = raw.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' not in line:
+                    continue
+                k, v = line.split('=', 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                # Do not overwrite already-set environment variables
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception as e:
+        print('Warning: failed to read .env file:', e)
+
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -47,7 +69,9 @@ for s in seasons:
         continue
     print(f'Fetching risultati for season {sid}...')
     try:
-        resp = client.table('risultati').select('data,giocatore,iniziali,t1,t2,t3').eq('stagione_id', sid).order('data', count='exact').execute()
+        # Note: postgrest client's order() does not accept a 'count' kwarg.
+        # Requesting count (if needed) should be passed to execute(), not order().
+        resp = client.table('risultati').select('data,giocatore,iniziali,t1,t2,t3').eq('stagione_id', sid).order('data').execute()
     except Exception as e:
         print('Error querying Supabase:', e)
         continue

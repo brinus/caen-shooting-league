@@ -1,5 +1,5 @@
 // AUTO-GENERATO da scripts/aggiorna.py — non modificare manualmente
-// Ultimo aggiornamento: 2026-05-14 14:31
+// Ultimo aggiornamento: 2026-05-27 15:59
 
 CSL.sisal = [
   {
@@ -17,11 +17,11 @@ CSL.sisal = [
         record: 21,
         trend: "Stabile",
         confidence: 86,
-        quote_titolo: 3.03,
+        quote_titolo: 3.05,
         quote_podio: 1.71,
-        quote_top5: 1.48,
-        quote_best_30: 6.71,
-        quote_avg_18: 1.65,
+        quote_top5: 1.47,
+        quote_best_30: 6.7,
+        quote_avg_18: 1.67,
         note: "già nel traffico buono"
       },
       {
@@ -33,11 +33,11 @@ CSL.sisal = [
         record: 25,
         trend: "Caldo",
         confidence: 86,
-        quote_titolo: 5.12,
+        quote_titolo: 5.09,
         quote_podio: 1.88,
-        quote_top5: 1.5,
-        quote_best_30: 2.94,
-        quote_avg_18: 2.78,
+        quote_top5: 1.51,
+        quote_best_30: 3.02,
+        quote_avg_18: 2.84,
         note: "già nel traffico buono; ha già mostrato un colpo pesante"
       },
       {
@@ -49,11 +49,11 @@ CSL.sisal = [
         record: 18,
         trend: "Stabile",
         confidence: 86,
-        quote_titolo: 16.56,
-        quote_podio: 2.64,
+        quote_titolo: 16.39,
+        quote_podio: 2.62,
         quote_top5: 1.6,
         quote_best_30: 9.69,
-        quote_avg_18: 4.26,
+        quote_avg_18: 4.3,
         note: "già nel traffico buono"
       },
       {
@@ -65,11 +65,11 @@ CSL.sisal = [
         record: 21,
         trend: "Stabile",
         confidence: 86,
-        quote_titolo: 19.78,
-        quote_podio: 3.87,
-        quote_top5: 1.86,
+        quote_titolo: 20.39,
+        quote_podio: 3.78,
+        quote_top5: 1.82,
         quote_best_30: 6.64,
-        quote_avg_18: 4.44,
+        quote_avg_18: 4.47,
         note: "profilo ancora in definizione"
       },
       {
@@ -82,10 +82,10 @@ CSL.sisal = [
         trend: "Stabile",
         confidence: 86,
         quote_titolo: 23.15,
-        quote_podio: 5.45,
-        quote_top5: 2.19,
-        quote_best_30: 8.98,
-        quote_avg_18: 5.69,
+        quote_podio: 5.62,
+        quote_top5: 2.18,
+        quote_best_30: 9.01,
+        quote_avg_18: 5.68,
         note: "profilo ancora in definizione"
       },
       {
@@ -98,10 +98,10 @@ CSL.sisal = [
         trend: "Caldo",
         confidence: 78,
         quote_titolo: 23.15,
-        quote_podio: 6.14,
-        quote_top5: 2.9,
-        quote_best_30: 2.67,
-        quote_avg_18: 3.62,
+        quote_podio: 6.28,
+        quote_top5: 2.99,
+        quote_best_30: 2.77,
+        quote_avg_18: 3.83,
         note: "trend in crescita; campione ancora corto"
       },
       {
@@ -114,10 +114,10 @@ CSL.sisal = [
         trend: "Caldo",
         confidence: 78,
         quote_titolo: 23.15,
-        quote_podio: 7.88,
-        quote_top5: 3.69,
-        quote_best_30: 5.68,
-        quote_avg_18: 3.84,
+        quote_podio: 7.78,
+        quote_top5: 3.66,
+        quote_best_30: 5.86,
+        quote_avg_18: 3.91,
         note: "trend in crescita; campione ancora corto"
       },
       {
@@ -130,27 +130,11 @@ CSL.sisal = [
         trend: "Stabile",
         confidence: 74,
         quote_titolo: 23.15,
-        quote_podio: 7.95,
-        quote_top5: 3.93,
-        quote_best_30: 2.84,
-        quote_avg_18: 1.51,
+        quote_podio: 8.03,
+        quote_top5: 3.99,
+        quote_best_30: 2.87,
+        quote_avg_18: 1.55,
         note: "ha già mostrato un colpo pesante; campione ancora corto"
-      },
-      {
-        nome: "Francesco Pepe",
-        iniziali: "FP",
-        posizione_attuale: 6,
-        partite: 3,
-        media_tiro: 17.0,
-        record: 23,
-        trend: "Freddo",
-        confidence: 82,
-        quote_titolo: 23.15,
-        quote_podio: 8.58,
-        quote_top5: 4.27,
-        quote_best_30: 5.65,
-        quote_avg_18: 4.79,
-        note: "serve una ripartenza"
       },
       {
         nome: "Andrea Della Maggiora",
@@ -162,11 +146,27 @@ CSL.sisal = [
         trend: "Freddo",
         confidence: 82,
         quote_titolo: 23.15,
-        quote_podio: 8.73,
-        quote_top5: 4.47,
-        quote_best_30: 2.91,
-        quote_avg_18: 6.48,
+        quote_podio: 8.55,
+        quote_top5: 4.45,
+        quote_best_30: 2.95,
+        quote_avg_18: 6.49,
         note: "ha già mostrato un colpo pesante; serve una ripartenza"
+      },
+      {
+        nome: "Francesco Pepe",
+        iniziali: "FP",
+        posizione_attuale: 6,
+        partite: 3,
+        media_tiro: 17.0,
+        record: 23,
+        trend: "Freddo",
+        confidence: 82,
+        quote_titolo: 23.15,
+        quote_podio: 8.67,
+        quote_top5: 4.31,
+        quote_best_30: 5.72,
+        quote_avg_18: 4.79,
+        note: "serve una ripartenza"
       },
       {
         nome: "Antonio Nicolosi",
@@ -178,9 +178,9 @@ CSL.sisal = [
         trend: "Stabile",
         confidence: 86,
         quote_titolo: 23.15,
-        quote_podio: 9.09,
-        quote_top5: 5.09,
-        quote_best_30: 11.03,
+        quote_podio: 9.07,
+        quote_top5: 5.05,
+        quote_best_30: 11.14,
         quote_avg_18: 12.67,
         note: "profilo ancora in definizione"
       },
@@ -194,10 +194,10 @@ CSL.sisal = [
         trend: "Stabile",
         confidence: 78,
         quote_titolo: 23.15,
-        quote_podio: 9.11,
-        quote_top5: 5.36,
-        quote_best_30: 10.26,
-        quote_avg_18: 6.23,
+        quote_podio: 9.14,
+        quote_top5: 5.4,
+        quote_best_30: 10.29,
+        quote_avg_18: 6.24,
         note: "campione ancora corto"
       },
       {
@@ -212,7 +212,7 @@ CSL.sisal = [
         quote_titolo: 23.15,
         quote_podio: 9.16,
         quote_top5: 5.5,
-        quote_best_30: 14.28,
+        quote_best_30: 14.3,
         quote_avg_18: 21.44,
         note: "serve una ripartenza"
       },
@@ -227,8 +227,8 @@ CSL.sisal = [
         confidence: 78,
         quote_titolo: 23.15,
         quote_podio: 9.16,
-        quote_top5: 5.49,
-        quote_best_30: 11.66,
+        quote_top5: 5.5,
+        quote_best_30: 11.56,
         quote_avg_18: 21.44,
         note: "serve una ripartenza; campione ancora corto"
       },
@@ -236,16 +236,16 @@ CSL.sisal = [
         nome: "Paolo Masini",
         iniziali: "PM",
         posizione_attuale: 15,
-        partite: 1,
-        media_tiro: 7.0,
-        record: 7,
+        partite: 2,
+        media_tiro: 8.5,
+        record: 10,
         trend: "Stabile",
-        confidence: 74,
+        confidence: 78,
         quote_titolo: 23.15,
         quote_podio: 9.16,
         quote_top5: 5.5,
-        quote_best_30: 11.53,
-        quote_avg_18: 21.1,
+        quote_best_30: 13.47,
+        quote_avg_18: 21.44,
         note: "campione ancora corto"
       },
       {
@@ -260,7 +260,7 @@ CSL.sisal = [
         quote_titolo: 23.15,
         quote_podio: 9.16,
         quote_top5: 5.5,
-        quote_best_30: 15.14,
+        quote_best_30: 14.54,
         quote_avg_18: 21.44,
         note: "campione ancora corto"
       }
@@ -270,45 +270,45 @@ CSL.sisal = [
         label: "Favorito titolo",
         market: "Campione stagionale",
         player: "Alberto Niccolai",
-        quota: 3.03,
+        quota: 3.05,
         blurb: "Quota piu bassa del board: posizione 1, record 21 e profilo gia leggibile."
       },
       {
         label: "Cecchino 30+",
         market: "Best score over 30",
         player: "Daniele Ninci",
-        quota: 2.67,
+        quota: 2.77,
         blurb: "Record attuale 23/50 e spazio per un colpo da copertina."
       },
       {
         label: "Value bet",
         market: "Media finale over 18",
         player: "Andrea Romboli",
-        quota: 1.51,
+        quota: 1.55,
         blurb: "Media attuale 26.0: margine stretto ma giocabile, almeno sulla carta."
       },
       {
         label: "Outsider con senso",
         market: "Podio finale",
         player: "Matteo Brini",
-        quota: 3.87,
+        quota: 3.78,
         blurb: "Profilo ancora in definizione."
       }
     ],
     specials: [
       {
         label: "Record assoluto 30+",
-        quota: 1.12,
+        quota: 1.16,
         note: "Mercato secco: qualcuno rompe il muro dei trenta entro fine stagione."
       },
       {
         label: "Finale al fotofinish",
-        quota: 14.47,
+        quota: 14.82,
         note: "Primo e secondo chiudono separati da massimo un punto campionato."
       },
       {
         label: "Outsider a podio",
-        quota: 4.59,
+        quota: 4.69,
         note: "Uno degli attuali fuori top 5 rientra tra i primi tre alla sirena."
       },
       {
@@ -318,9 +318,9 @@ CSL.sisal = [
       }
     ],
     next_matchday: {
-      numero: 5,
-      data: "2026-05-18",
-      giorno: "Lunedì",
+      numero: 8,
+      data: "2026-05-27",
+      giorno: "Mercoledì",
       players: [
         {
           nome: "Gianluca Becuzzi",
@@ -330,10 +330,10 @@ CSL.sisal = [
           record: 25,
           trend: "Caldo",
           expected_score: 18.2,
-          quote_vittoria: 7.8,
-          quote_podio: 3.21,
-          quote_over_25: 4.09,
-          quote_over_20: 2.36
+          quote_vittoria: 7.93,
+          quote_podio: 3.24,
+          quote_over_25: 4.15,
+          quote_over_20: 2.38
         },
         {
           nome: "Daniele Ninci",
@@ -343,10 +343,10 @@ CSL.sisal = [
           record: 23,
           trend: "Caldo",
           expected_score: 17.0,
-          quote_vittoria: 8.91,
-          quote_podio: 3.9,
-          quote_over_25: 4.96,
-          quote_over_20: 3.17
+          quote_vittoria: 8.65,
+          quote_podio: 3.93,
+          quote_over_25: 4.94,
+          quote_over_20: 3.16
         },
         {
           nome: "Alberto Niccolai",
@@ -356,10 +356,10 @@ CSL.sisal = [
           record: 21,
           trend: "Stabile",
           expected_score: 19.8,
-          quote_vittoria: 10.57,
-          quote_podio: 3.18,
-          quote_over_25: 6.74,
-          quote_over_20: 2.21
+          quote_vittoria: 10.04,
+          quote_podio: 3.17,
+          quote_over_25: 6.8,
+          quote_over_20: 2.18
         },
         {
           nome: "Andrea Romboli",
@@ -369,10 +369,10 @@ CSL.sisal = [
           record: 26,
           trend: "Stabile",
           expected_score: 26.0,
-          quote_vittoria: 10.75,
-          quote_podio: 4.48,
-          quote_over_25: 3.72,
-          quote_over_20: 1.96
+          quote_vittoria: 10.87,
+          quote_podio: 4.49,
+          quote_over_25: 3.8,
+          quote_over_20: 1.97
         },
         {
           nome: "Emanuele Bertolucci",
@@ -382,9 +382,9 @@ CSL.sisal = [
           record: 20,
           trend: "Caldo",
           expected_score: 17.4,
-          quote_vittoria: 11.44,
-          quote_podio: 4.3,
-          quote_over_25: 7.39,
+          quote_vittoria: 11.56,
+          quote_podio: 4.18,
+          quote_over_25: 7.52,
           quote_over_20: 3.05
         },
         {
@@ -395,10 +395,10 @@ CSL.sisal = [
           record: 21,
           trend: "Stabile",
           expected_score: 16.8,
-          quote_vittoria: 12.77,
-          quote_podio: 3.94,
-          quote_over_25: 7.0,
-          quote_over_20: 2.8
+          quote_vittoria: 12.17,
+          quote_podio: 3.97,
+          quote_over_25: 6.99,
+          quote_over_20: 2.83
         },
         {
           nome: "Andrea Della Maggiora",
@@ -408,10 +408,10 @@ CSL.sisal = [
           record: 29,
           trend: "Freddo",
           expected_score: 12.8,
-          quote_vittoria: 13.1,
-          quote_podio: 4.99,
-          quote_over_25: 3.58,
-          quote_over_20: 3.47
+          quote_vittoria: 12.28,
+          quote_podio: 4.85,
+          quote_over_25: 3.55,
+          quote_over_20: 3.43
         },
         {
           nome: "Chiara Tomaiuolo",
@@ -421,9 +421,9 @@ CSL.sisal = [
           record: 18,
           trend: "Stabile",
           expected_score: 17.7,
-          quote_vittoria: 14.55,
-          quote_podio: 3.88,
-          quote_over_25: 8.5,
+          quote_vittoria: 14.71,
+          quote_podio: 3.79,
+          quote_over_25: 8.49,
           quote_over_20: 2.92
         },
         {
@@ -434,10 +434,10 @@ CSL.sisal = [
           record: 23,
           trend: "Freddo",
           expected_score: 15.0,
-          quote_vittoria: 16.13,
-          quote_podio: 5.12,
-          quote_over_25: 5.79,
-          quote_over_20: 3.2
+          quote_vittoria: 15.84,
+          quote_podio: 5.15,
+          quote_over_25: 5.84,
+          quote_over_20: 3.22
         },
         {
           nome: "Tommaso Banchini",
@@ -447,36 +447,10 @@ CSL.sisal = [
           record: 19,
           trend: "Stabile",
           expected_score: 15.8,
-          quote_vittoria: 16.42,
-          quote_podio: 4.6,
-          quote_over_25: 8.61,
-          quote_over_20: 3.46
-        },
-        {
-          nome: "Paolo Masini",
-          iniziali: "PM",
-          posizione_attuale: 15,
-          media_tiro: 7.0,
-          record: 7,
-          trend: "Stabile",
-          expected_score: 7.0,
-          quote_vittoria: 18.13,
-          quote_podio: 6.38,
-          quote_over_25: 10.55,
-          quote_over_20: 4.55
-        },
-        {
-          nome: "Antonio Nicolosi",
-          iniziali: "AN",
-          posizione_attuale: 10,
-          media_tiro: 13.0,
-          record: 18,
-          trend: "Stabile",
-          expected_score: 12.6,
-          quote_vittoria: 18.46,
-          quote_podio: 5.56,
-          quote_over_25: 9.32,
-          quote_over_20: 4.46
+          quote_vittoria: 16.39,
+          quote_podio: 4.53,
+          quote_over_25: 8.69,
+          quote_over_20: 3.45
         },
         {
           nome: "Andrea Strappato",
@@ -486,10 +460,23 @@ CSL.sisal = [
           record: 16,
           trend: "Stabile",
           expected_score: 15.3,
-          quote_vittoria: 19.03,
-          quote_podio: 5.41,
-          quote_over_25: 8.81,
-          quote_over_20: 3.82
+          quote_vittoria: 18.64,
+          quote_podio: 5.52,
+          quote_over_25: 8.79,
+          quote_over_20: 3.85
+        },
+        {
+          nome: "Antonio Nicolosi",
+          iniziali: "AN",
+          posizione_attuale: 10,
+          media_tiro: 13.0,
+          record: 18,
+          trend: "Stabile",
+          expected_score: 12.6,
+          quote_vittoria: 19.08,
+          quote_podio: 5.4,
+          quote_over_25: 9.37,
+          quote_over_20: 4.53
         },
         {
           nome: "Giovanni Cerretani",
@@ -499,10 +486,10 @@ CSL.sisal = [
           record: 3,
           trend: "Stabile",
           expected_score: 3.0,
-          quote_vittoria: 20.44,
-          quote_podio: 6.72,
-          quote_over_25: 12.11,
-          quote_over_20: 4.73
+          quote_vittoria: 19.22,
+          quote_podio: 6.56,
+          quote_over_25: 11.93,
+          quote_over_20: 4.63
         },
         {
           nome: "Francesco Rogo",
@@ -512,10 +499,23 @@ CSL.sisal = [
           record: 15,
           trend: "Freddo",
           expected_score: 10.2,
-          quote_vittoria: 21.48,
+          quote_vittoria: 21.25,
           quote_podio: 6.47,
-          quote_over_25: 9.73,
+          quote_over_25: 9.76,
           quote_over_20: 4.76
+        },
+        {
+          nome: "Paolo Masini",
+          iniziali: "PM",
+          posizione_attuale: 15,
+          media_tiro: 8.5,
+          record: 10,
+          trend: "Stabile",
+          expected_score: 8.0,
+          quote_vittoria: 23.15,
+          quote_podio: 7.39,
+          quote_over_25: 10.78,
+          quote_over_20: 5.09
         },
         {
           nome: "Andrea Picchi",
@@ -528,7 +528,7 @@ CSL.sisal = [
           quote_vittoria: 23.15,
           quote_podio: 7.78,
           quote_over_25: 11.2,
-          quote_over_20: 5.13
+          quote_over_20: 5.18
         }
       ],
       highlights: [
@@ -536,43 +536,43 @@ CSL.sisal = [
           label: "Favorito di giornata",
           market: "Vincente prossima giornata",
           player: "Gianluca Becuzzi",
-          quota: 7.8,
+          quota: 7.93,
           blurb: "Linea piu corta per la giornata secca: media attesa 18.2."
         },
         {
           label: "25+ in canna",
           market: "Punteggio giornata over 25",
           player: "Andrea Della Maggiora",
-          quota: 3.58,
+          quota: 3.55,
           blurb: "Record attuale 29: profilo da colpo pesante gia visto."
         },
         {
           label: "Underdog da ufficio",
           market: "Podio prossima giornata",
           player: "Daniele Ninci",
-          quota: 3.9,
+          quota: 3.93,
           blurb: "Quota media ma spazio per infilarsi tra i primi tre gia alla prossima."
         }
       ],
       specials: [
         {
           label: "Leader attuale vince ancora",
-          quota: 10.57,
+          quota: 10.04,
           note: "Il capolista conferma il comando anche nella prossima giornata secca."
         },
         {
           label: "Outsider vince la giornata",
-          quota: 2.1,
+          quota: 2.12,
           note: "Uno degli attuali fuori top 5 piazza il colpo grosso nella prossima uscita."
         },
         {
           label: "Vincitore con 25+",
-          quota: 2.61,
+          quota: 2.69,
           note: "Per vincere la giornata servira un venticinque o meglio."
         },
         {
           label: "Arrivo in due punti",
-          quota: 1.97,
+          quota: 1.94,
           note: "Il primo e il secondo chiudono separati da massimo due punti nel best di giornata."
         }
       ]

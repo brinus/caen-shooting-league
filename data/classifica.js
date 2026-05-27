@@ -1,5 +1,5 @@
 // AUTO-GENERATO da scripts/aggiorna.py — non modificare manualmente
-// Ultimo aggiornamento: 2026-05-14 14:31
+// Ultimo aggiornamento: 2026-05-27 15:59
 
 CSL.stagioni = [
   {
@@ -26,7 +26,7 @@ CSL.stagioni = [
       { posizione: 12, nome: "Andrea Strappato", iniziali: "AS", partite: 2, punti_campionato: 3, punti_tiro: 31, media_tiro: 15.5, media_tiro_spareggio: 15.5, record: 16, secondo_record: 15, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 13, nome: "Andrea Picchi", iniziali: "AP", partite: 4, punti_campionato: 3, punti_tiro: 29, media_tiro: 7.2, media_tiro_spareggio: 7.25, record: 11, secondo_record: 11, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 14, nome: "Francesco Rogo", iniziali: "FR", partite: 2, punti_campionato: 2, punti_tiro: 23, media_tiro: 11.5, media_tiro_spareggio: 11.5, record: 15, secondo_record: 14, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
-      { posizione: 15, nome: "Paolo Masini", iniziali: "PM", partite: 1, punti_campionato: 0, punti_tiro: 7, media_tiro: 7.0, media_tiro_spareggio: 7.0, record: 7, secondo_record: 0, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
+      { posizione: 15, nome: "Paolo Masini", iniziali: "PM", partite: 2, punti_campionato: 1, punti_tiro: 17, media_tiro: 8.5, media_tiro_spareggio: 8.5, record: 10, secondo_record: 7, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 16, nome: "Giovanni Cerretani", iniziali: "GC", partite: 1, punti_campionato: 0, punti_tiro: 3, media_tiro: 3.0, media_tiro_spareggio: 3.0, record: 3, secondo_record: 0, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 }
     ],
     giornate: [
@@ -60,7 +60,8 @@ CSL.stagioni = [
           { posizione: 4, nome: "Chiara Tomaiuolo", iniziali: "CT", t1: 17, t2: 9, t3: 5, punteggio: 17, media_tre_tentativi: 10.333, secondo_miglior_tentativo: 9, punti_campionato: 4, recupero: false, data_effettiva: null },
           { posizione: 5, nome: "Tommaso Banchini", iniziali: "TB", t1: 8, t2: 9, t3: 16, punteggio: 16, media_tre_tentativi: 11.0, secondo_miglior_tentativo: 9, punti_campionato: 4, recupero: false, data_effettiva: null },
           { posizione: 6, nome: "Antonio Nicolosi", iniziali: "AN", t1: 6, t2: 3, t3: 13, punteggio: 13, media_tre_tentativi: 7.333, secondo_miglior_tentativo: 6, punti_campionato: 2, recupero: false, data_effettiva: null },
-          { posizione: 7, nome: "Andrea Picchi", iniziali: "AP", t1: 11, t2: 8, t3: 2, punteggio: 11, media_tre_tentativi: 7.0, secondo_miglior_tentativo: 8, punti_campionato: 2, recupero: false, data_effettiva: null }
+          { posizione: 7, nome: "Andrea Picchi", iniziali: "AP", t1: 11, t2: 8, t3: 2, punteggio: 11, media_tre_tentativi: 7.0, secondo_miglior_tentativo: 8, punti_campionato: 2, recupero: false, data_effettiva: null },
+          { posizione: 8, nome: "Paolo Masini", iniziali: "PM", t1: 10, t2: -1, t3: -1, punteggio: 10, media_tre_tentativi: 3.333, secondo_miglior_tentativo: 0, punti_campionato: 1, recupero: false, data_effettiva: null }
         ]
       },
       {

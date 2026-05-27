@@ -318,6 +318,17 @@
       function fmtC(n) { return Number(n||0).toLocaleString('it-IT') }
       function esc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
 
+      function isBettingBlockedForBoard(board) {
+        try {
+          if (!board || !board.next_matchday || !board.next_matchday.data) return false;
+          var dStr = board.next_matchday.data;
+          var now = new Date();
+          var start = new Date(dStr + 'T12:00:00');
+          var end   = new Date(dStr + 'T20:00:00');
+          return now >= start && now < end;
+        } catch (e) { return false }
+      }
+
       /* ── Board cell factory ── */
       function betCell(quota, bd) {
         if (!quota) return '<td class="bet-cell bet-cell--na">—</td>'
@@ -791,10 +802,38 @@
       /* ── Modal open / close ── */
       btnOpen.addEventListener('click', function() {
         errBox.hidden = true; sucBox.hidden = true
+        // determine current board for the selected season
+        var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
+        var blocked = isBettingBlockedForBoard(board);
         overlay.hidden = false
         document.body.style.overflow = 'hidden'
+
+        var modal = overlay.querySelector('.bet-modal');
+        // remove any previous block banner
+        var existing = document.getElementById('bet-block-banner');
+        if (existing) existing.remove();
+        if (blocked) {
+          // darken modal and show persistent banner
+          if (modal) modal.style.filter = 'brightness(0.72)';
+          var banner = document.createElement('div');
+          banner.id = 'bet-block-banner';
+          banner.textContent = 'Giornata iniziata, non si accettano più scommesse';
+          banner.style.cssText = 'position:fixed;left:50%;top:12%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 14px;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.35);z-index:2000;opacity:0.95';
+          document.body.appendChild(banner);
+          // disable confirm and selection interactions
+          if (btnConfirm) btnConfirm.disabled = true;
+        } else {
+          if (modal) modal.style.filter = '';
+          if (btnConfirm) btnConfirm.disabled = false;
+        }
       })
-      function closeModal() { overlay.hidden = true; document.body.style.overflow = '' }
+      function closeModal() {
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+        var banner = document.getElementById('bet-block-banner'); if (banner) banner.remove();
+        var modal = overlay.querySelector('.bet-modal'); if (modal) modal.style.filter = '';
+        if (btnConfirm) btnConfirm.disabled = false;
+      }
       btnClose.addEventListener('click', closeModal)
       overlay.addEventListener('click', function(e){ if (e.target === overlay) closeModal() })
       document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal() })

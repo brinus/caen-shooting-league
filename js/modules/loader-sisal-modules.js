@@ -93,18 +93,40 @@ console.info('Sisal modules loaded: MC, CORR, PARLAY, DOM');
             if (n) {
               p.quote_vittoria = impliedQuote(n.win);
               p.quote_podio = impliedQuote(n.podio);
+              p.quote_over_30 = impliedQuote(n.over30);
               p.quote_over_25 = impliedQuote(n.over25);
               p.quote_over_20 = impliedQuote(n.over20);
             }
           });
         }
 
+        // merge specials/highlights from server JSON if present
+        if (next && board.next_matchday) {
+          if (Array.isArray(next.specials)) board.next_matchday.specials = next.specials;
+          if (Array.isArray(next.highlights)) board.next_matchday.highlights = next.highlights;
+        }
+
         if (board.players && season) {
           board.players.forEach(p => {
             const name = p.nome;
-            const prob = season[name];
-            if (prob != null) {
-              p.quote_titolo = impliedQuote(prob);
+            const s = season[name];
+            if (s != null) {
+              // season entry can be either a number (legacy) or an object with fields
+              if (typeof s === 'number') {
+                p.quote_titolo = impliedQuote(s);
+              } else if (typeof s === 'object') {
+                p.quote_titolo = impliedQuote(s.win);
+                if (s.best_over != null) p.quote_best_over = impliedQuote(s.best_over);
+                if (s.best_over_plus5 != null) p.quote_best_over_plus5 = impliedQuote(s.best_over_plus5);
+                if (s.media_over != null) p.quote_media_over = impliedQuote(s.media_over);
+                if (s.top5 != null) { p.quote_top5 = impliedQuote(s.top5); p.prob_top5 = s.top5; }
+                if (s.avg18 != null) { p.quote_avg_18 = impliedQuote(s.avg18); p.prob_avg_18 = s.avg18; }
+                if (s.best_over_thr1_value != null) p.best_over_thr1_value = s.best_over_thr1_value;
+                if (s.best_over_thr2_value != null) p.best_over_thr2_value = s.best_over_thr2_value;
+                if (s.media_over_thr_value != null) p.media_over_thr_value = s.media_over_thr_value;
+                if (s.best_over != null) { p.quote_best_over_thr1 = impliedQuote(s.best_over); p.prob_best_over_thr1 = s.best_over; }
+                if (s.best_over_plus5 != null) { p.quote_best_over_thr2 = impliedQuote(s.best_over_plus5); p.prob_best_over_thr2 = s.best_over_plus5; }
+              }
             }
           });
         }

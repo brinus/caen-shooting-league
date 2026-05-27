@@ -14,6 +14,7 @@ import os
 import json
 import random
 import numpy as np
+import hashlib
 from pathlib import Path
 from datetime import datetime, date
 import argparse
@@ -151,7 +152,18 @@ def simulate_matchday_once(sim_players: List[Dict[str, Any]], rng: random.Random
 
 def monte_carlo_next_matchday(sim_players: List[Dict[str, Any]], iterations: int, seed: str = '') -> Dict[str, float]:
     # Vectorized implementation using NumPy
-    rng = np.random.default_rng(seed or None)
+    # numpy SeedSequence expects ints; accept string seeds by hashing them to an int
+    if seed:
+        if isinstance(seed, (int, np.integer)):
+            ss = int(seed)
+        elif isinstance(seed, (list, tuple)):
+            ss = seed
+        else:
+            h = hashlib.sha256(str(seed).encode('utf-8')).digest()
+            ss = int.from_bytes(h[:8], 'big')
+        rng = np.random.default_rng(ss)
+    else:
+        rng = np.random.default_rng(None)
     names = [p['name'] for p in sim_players]
     P = len(sim_players)
     if P == 0:
@@ -183,12 +195,14 @@ def monte_carlo_next_matchday(sim_players: List[Dict[str, Any]], iterations: int
 
     over25 = np.sum((samples >= 25) & play_mask, axis=1)
     over20 = np.sum((samples >= 20) & play_mask, axis=1)
+    over30 = np.sum((samples >= 30) & play_mask, axis=1)
 
     probs = {}
     for idx, name in enumerate(names):
         probs[name] = {
             'win': (int(win_counts[idx]) + 1) / (iterations + 2),
             'podio': (int(pod_counts[idx]) + 1) / (iterations + 2),
+            'over30': (int(over30[idx]) + 1) / (iterations + 2),
             'over25': (int(over25[idx]) + 1) / (iterations + 2),
             'over20': (int(over20[idx]) + 1) / (iterations + 2),
         }
@@ -197,7 +211,18 @@ def monte_carlo_next_matchday(sim_players: List[Dict[str, Any]], iterations: int
 
 def monte_carlo_season(sim_players: List[Dict[str, Any]], remaining_days: int, iterations: int, seed: str = '') -> Dict[str, float]:
     # Batch Monte Carlo using NumPy to reduce Python loop overhead
-    rng = np.random.default_rng(seed or None)
+    # numpy SeedSequence expects ints; accept string seeds by hashing them to an int
+    if seed:
+        if isinstance(seed, (int, np.integer)):
+            ss = int(seed)
+        elif isinstance(seed, (list, tuple)):
+            ss = seed
+        else:
+            h = hashlib.sha256(str(seed).encode('utf-8')).digest()
+            ss = int.from_bytes(h[:8], 'big')
+        rng = np.random.default_rng(ss)
+    else:
+        rng = np.random.default_rng(None)
     names = [p['name'] for p in sim_players]
     P = len(sim_players)
     if P == 0 or remaining_days <= 0:
@@ -210,8 +235,21 @@ def monte_carlo_season(sim_players: List[Dict[str, Any]], remaining_days: int, i
     current_score_points = np.array([p.get('current_score_points', 0) for p in sim_players], dtype=int)
     current_record = np.array([p.get('current_record', 0) for p in sim_players], dtype=int)
     current_wins = np.array([p.get('current_wins', 0) for p in sim_players], dtype=int)
+    current_matches = np.array([p.get('current_matches', 0) for p in sim_players], dtype=int)
+    # precompute thresholds per player (based on current_record/current average)
+    best_thresh_arr = ((current_record // 5) + 1) * 5
+    best_plus5_arr = best_thresh_arr + 5
+    current_avg = np.array([ (p.get('current_score_points',0) / p.get('current_matches',1)) if p.get('current_matches',0) > 0 else 0.0 for p in sim_players ], dtype=float)
+    media_thresh_arr = ((current_avg.astype(int) // 5) + 1) * 5
 
     counters = np.zeros(P, dtype=int)
+    podio_counts = np.zeros(P, dtype=int)
+    top5_counts = np.zeros(P, dtype=int)
+    avg18_counts = np.zeros(P, dtype=int)
+    # Additional counters for BestOver/BestOver+5/MediaOver (multiples of 5)
+    best_over_counts = np.zeros(P, dtype=int)
+    best_over_plus5_counts = np.zeros(P, dtype=int)
+    media_over_counts = np.zeros(P, dtype=int)
 
     batch = 2000
     for start in range(0, iterations, batch):
@@ -229,6 +267,7 @@ def monte_carlo_season(sim_players: List[Dict[str, Any]], remaining_days: int, i
             state_score_points = current_score_points.copy()
             state_record = current_record.copy()
             state_wins = current_wins.copy()
+            state_matches = current_matches.copy()
 
             for d in range(remaining_days):
                 col = scores[:, d, sim_idx]
@@ -262,15 +301,69 @@ def monte_carlo_season(sim_players: List[Dict[str, Any]], remaining_days: int, i
                     state_points[i] += puntos_per_pos_builtin(pos[i])
                     state_score_points[i] += int(max(0, col[i]))
                     state_record[i] = max(state_record[i], int(max(0, col[i])))
+                    # increment match count if player played
+                    state_matches[i] += 1
                     if pos[i] == 1:
                         state_wins[i] += 1
 
-            # determine winner name
+            # determine final ordering (keep existing lexsort ordering to preserve behaviour)
             order_final = np.lexsort((-state_wins, -state_record, -state_score_points, -state_points, np.arange(P)))
             winner_idx = order_final[0]
             counters[winner_idx] += 1
 
-    probs = {names[i]: (int(counters[i]) + 1) / (iterations + 2) for i in range(P)}
+            # compute positions from order_final (1-based)
+            positions = np.empty(P, dtype=int)
+            for rank_idx in range(P):
+                positions[order_final[rank_idx]] = rank_idx + 1
+
+            # collect podio events
+            for i in range(P):
+                if positions[i] <= 3:
+                    podio_counts[i] += 1
+                if positions[i] <= 5:
+                    top5_counts[i] += 1
+
+            # compute BestOver/BestOver+5/MediaOver thresholds from starting values
+            # threshold is the next multiple of 5 strictly greater than current value
+            # e.g., current 18 -> threshold 20; current 20 -> threshold 25
+            for i in range(P):
+                cur_best = int(current_record[i])
+                best_thresh = ((cur_best // 5) + 1) * 5
+                best_plus5_thresh = best_thresh + 5
+
+                # final best and average
+                final_best = int(state_record[i])
+                final_matches = int(state_matches[i]) if int(state_matches[i]) > 0 else 0
+                final_avg = (state_score_points[i] / final_matches) if final_matches > 0 else 0.0
+
+                if final_best >= best_thresh:
+                    best_over_counts[i] += 1
+                if final_best >= best_plus5_thresh:
+                    best_over_plus5_counts[i] += 1
+
+                # mediaOver: next multiple of 5 strictly greater than current average
+                cur_avg = (current_score_points[i] / current_matches[i]) if current_matches[i] > 0 else 0.0
+                media_thresh = ((int(cur_avg) // 5) + 1) * 5
+                if final_avg > 0 and final_avg >= media_thresh:
+                    media_over_counts[i] += 1
+                # avg18 specific
+                if final_avg >= 18.0:
+                    avg18_counts[i] += 1
+
+    probs = {}
+    for i in range(P):
+        probs[names[i]] = {
+            'win': (int(counters[i]) + 1) / (iterations + 2),
+            'podio': (int(podio_counts[i]) + 1) / (iterations + 2),
+            'top5': (int(top5_counts[i]) + 1) / (iterations + 2),
+            'best_over': (int(best_over_counts[i]) + 1) / (iterations + 2),
+            'best_over_plus5': (int(best_over_plus5_counts[i]) + 1) / (iterations + 2),
+            'media_over': (int(media_over_counts[i]) + 1) / (iterations + 2),
+            'avg18': (int(avg18_counts[i]) + 1) / (iterations + 2),
+            'best_over_thr1_value': int(best_thresh_arr[i]),
+            'best_over_thr2_value': int(best_plus5_arr[i]),
+            'media_over_thr_value': int(media_thresh_arr[i]),
+        }
     return probs
 
 

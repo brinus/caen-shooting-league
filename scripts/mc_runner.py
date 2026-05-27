@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import json
 import random
+import numpy as np
 from pathlib import Path
 from datetime import datetime, date
 import argparse
@@ -149,60 +150,127 @@ def simulate_matchday_once(sim_players: List[Dict[str, Any]], rng: random.Random
 
 
 def monte_carlo_next_matchday(sim_players: List[Dict[str, Any]], iterations: int, seed: str = '') -> Dict[str, float]:
-    rng = random.Random(seed or 'mc-next')
-    counters = {p['name']: {'win':0,'podio':0,'over25':0,'over20':0} for p in sim_players}
-    for _ in range(iterations):
-        entries = simulate_matchday_once(sim_players, rng)
-        if not entries:
-            continue
-        for e in entries:
-            if e['position'] == 1:
-                counters[e['name']]['win'] += 1
-            if e['position'] <= 3:
-                counters[e['name']]['podio'] += 1
-            if e['score'] >= 25:
-                counters[e['name']]['over25'] += 1
-            if e['score'] >= 20:
-                counters[e['name']]['over20'] += 1
+    # Vectorized implementation using NumPy
+    rng = np.random.default_rng(seed or None)
+    names = [p['name'] for p in sim_players]
+    P = len(sim_players)
+    if P == 0:
+        return {}
+
+    means = np.array([p['score_mean'] + p.get('trend', 0.0) for p in sim_players], dtype=float)
+    devs = np.array([max(0.0001, p['score_dev']) for p in sim_players], dtype=float)
+    play_probs = np.array([p.get('play_prob', 1.0) for p in sim_players], dtype=float)
+
+    # samples shape: (P, iterations)
+    samples = rng.normal(loc=means[:, None], scale=devs[:, None], size=(P, iterations))
+    # apply play mask
+    play_mask = rng.random(size=(P, iterations)) < play_probs[:, None]
+    # clip and set non-playing to -inf so they lose
+    samples = np.round(samples).astype(int)
+    samples = np.clip(samples, 0, 50)
+    samples = samples.astype(float)
+    samples[~play_mask] = -1e6
+
+    # determine top positions per simulation
+    order = np.argsort(-samples, axis=0)  # indices of players sorted desc
+    winners = order[0, :]
+    pods = order[:3, :]
+
+    win_counts = np.bincount(winners, minlength=P)
+    pod_counts = np.zeros(P, dtype=int)
+    for i in range(P):
+        pod_counts[i] = np.count_nonzero(np.any(pods == i, axis=0))
+
+    over25 = np.sum((samples >= 25) & play_mask, axis=1)
+    over20 = np.sum((samples >= 20) & play_mask, axis=1)
 
     probs = {}
-    for name, c in counters.items():
+    for idx, name in enumerate(names):
         probs[name] = {
-            'win': (c['win'] + 1) / (iterations + 2),
-            'podio': (c['podio'] + 1) / (iterations + 2),
-            'over25': (c['over25'] + 1) / (iterations + 2),
-            'over20': (c['over20'] + 1) / (iterations + 2),
+            'win': (int(win_counts[idx]) + 1) / (iterations + 2),
+            'podio': (int(pod_counts[idx]) + 1) / (iterations + 2),
+            'over25': (int(over25[idx]) + 1) / (iterations + 2),
+            'over20': (int(over20[idx]) + 1) / (iterations + 2),
         }
     return probs
 
 
 def monte_carlo_season(sim_players: List[Dict[str, Any]], remaining_days: int, iterations: int, seed: str = '') -> Dict[str, float]:
-    rng = random.Random(seed or 'mc-season')
-    counters = {p['name']:0 for p in sim_players}
-    for _ in range(iterations):
-        state = {p['name']:{'points':p['current_points'],'score_points':p['current_score_points'],'record':p['current_record'],'matches':p['current_matches'],'wins':p['current_wins']} for p in sim_players}
-        for _d in range(remaining_days):
-            entries = simulate_matchday_once(sim_players, rng)
-            if not entries:
-                continue
-            for e in entries:
-                nm = state[e['name']]
-                nm['points'] += puntos_per_pos(e['position']) if 'puntos_per_pos' in globals() else puntos_per_pos_builtin(e['position'])
-                nm['score_points'] += e['score']
-                nm['matches'] += 1
-                nm['record'] = max(nm['record'], e['score'])
-                if e['position'] == 1:
-                    nm['wins'] += 1
+    # Batch Monte Carlo using NumPy to reduce Python loop overhead
+    rng = np.random.default_rng(seed or None)
+    names = [p['name'] for p in sim_players]
+    P = len(sim_players)
+    if P == 0 or remaining_days <= 0:
+        return {p['name']: 0.0 for p in sim_players}
 
-        final_board = sorted(state.values(), key=lambda p:(-p['points'],-p['score_points'],-p['record'],-p['wins']))
-        winner = final_board[0]
-        # we don't have name easily here; instead recompute by matching points/backtracking
-        # Simplify: count by player name via recomputing final ordering with names
-        named_board = sorted(state.items(), key=lambda kv:(-kv[1]['points'],-kv[1]['score_points'],-kv[1]['record'],-kv[1]['wins']))
-        winner_name = named_board[0][0]
-        counters[winner_name] += 1
+    means = np.array([p['score_mean'] + p.get('trend', 0.0) for p in sim_players], dtype=float)
+    devs = np.array([max(0.0001, p['score_dev']) for p in sim_players], dtype=float)
+    play_probs = np.array([p.get('play_prob', 1.0) for p in sim_players], dtype=float)
+    current_points = np.array([p.get('current_points', 0) for p in sim_players], dtype=int)
+    current_score_points = np.array([p.get('current_score_points', 0) for p in sim_players], dtype=int)
+    current_record = np.array([p.get('current_record', 0) for p in sim_players], dtype=int)
+    current_wins = np.array([p.get('current_wins', 0) for p in sim_players], dtype=int)
 
-    probs = {name: (count + 1) / (iterations + 2) for name, count in counters.items()}
+    counters = np.zeros(P, dtype=int)
+
+    batch = 2000
+    for start in range(0, iterations, batch):
+        b = min(batch, iterations - start)
+        # simulate scores: shape (P, remaining_days, b)
+        scores = rng.normal(loc=means[:, None, None], scale=devs[:, None, None], size=(P, remaining_days, b))
+        play = rng.random(size=(P, remaining_days, b)) < play_probs[:, None, None]
+        scores = np.round(scores).astype(int)
+        scores = np.clip(scores, 0, 50).astype(float)
+        scores[~play] = -1e6
+
+        # for each simulation in batch, compute points accumulated
+        for sim_idx in range(b):
+            state_points = current_points.copy()
+            state_score_points = current_score_points.copy()
+            state_record = current_record.copy()
+            state_wins = current_wins.copy()
+
+            for d in range(remaining_days):
+                col = scores[:, d, sim_idx]
+                # if no one played, skip
+                if np.all(col < 0):
+                    continue
+                order = np.argsort(-col)
+                # assign positions with ties: players with same score get same pos - approximate
+                # compute positions
+                pos = np.empty(P, dtype=int)
+                pos.fill(np.iinfo(int).max)
+                rank = 1
+                prev = None
+                for idx in range(P):
+                    player_idx = order[idx]
+                    val = col[player_idx]
+                    if val < 0:
+                        break
+                    if prev is None:
+                        pos[player_idx] = rank
+                        prev = val
+                    else:
+                        if val < prev:
+                            rank = idx + 1
+                            prev = val
+                        pos[player_idx] = rank
+
+                for i in range(P):
+                    if pos[i] == np.iinfo(int).max:
+                        continue
+                    state_points[i] += puntos_per_pos_builtin(pos[i])
+                    state_score_points[i] += int(max(0, col[i]))
+                    state_record[i] = max(state_record[i], int(max(0, col[i])))
+                    if pos[i] == 1:
+                        state_wins[i] += 1
+
+            # determine winner name
+            order_final = np.lexsort((-state_wins, -state_record, -state_score_points, -state_points, np.arange(P)))
+            winner_idx = order_final[0]
+            counters[winner_idx] += 1
+
+    probs = {names[i]: (int(counters[i]) + 1) / (iterations + 2) for i in range(P)}
     return probs
 
 

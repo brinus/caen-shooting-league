@@ -23,7 +23,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # add here any Python deps if needed
-          python -m pip install supabase
+          python -m pip install supabase numpy
 
       - name: Run Monte Carlo runner
         env:

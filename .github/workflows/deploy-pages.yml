@@ -24,7 +24,7 @@ jobs:
       - name: Run aggiorna.py to generate data
         run: |
           # If Supabase secrets are provided, fetch latest risultati into risultati/*.csv
-          python scripts/fetch_results_from_supabase.py || true
+          python scripts/fetch_results_from_supabase.py
           python scripts/aggiorna.py
 
       - name: Prepare public folder

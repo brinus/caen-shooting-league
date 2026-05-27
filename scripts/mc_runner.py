@@ -373,11 +373,45 @@ def puntos_per_pos_builtin(pos: int) -> int:
 
 
 def write_output(season_id: str, next_probs: Dict[str, Dict[str,float]], season_probs: Dict[str,float], out_dir: Path):
+    # Build compatibility `perPlayer` array and thresholds summary
+    player_names = sorted(set(list(next_probs.keys()) + list(season_probs.keys())))
+    per_player = []
+    for name in player_names:
+        n = next_probs.get(name, {})
+        s = season_probs.get(name, {})
+        item = {
+            'nome': name,
+            # next-day probabilities
+            'pNextWin': n.get('win'),
+            'pNextPodio': n.get('podio'),
+            'pOver25': n.get('over25'),
+            'pOver20': n.get('over20'),
+            'pOver30': n.get('over30'),
+            # season-level probabilities (fallbacks)
+            'pTitolo': s.get('win'),
+            'pPodio': s.get('podio'),
+            'pTop5': s.get('top5'),
+            'pBest30': s.get('best_over'),
+            'pAvg18': s.get('avg18'),
+            # thresholds array for backward compat: [pOver25, pOver30]
+            'pThresholds': [n.get('over25'), n.get('over30')]
+        }
+        per_player.append(item)
+
+    # thresholds summary (example: [pOver25_global, pOver30_global] computed as averages)
+    thresholds = None
+    if per_player:
+        vals25 = [x['pThresholds'][0] for x in per_player if x['pThresholds'][0] is not None]
+        vals30 = [x['pThresholds'][1] for x in per_player if x['pThresholds'][1] is not None]
+        thresholds = [sum(vals25)/len(vals25) if vals25 else None, sum(vals30)/len(vals30) if vals30 else None]
+
     out = {
         'season_id': season_id,
         'generated_at': datetime.utcnow().isoformat() + 'Z',
         'next_matchday': next_probs,
         'season': season_probs,
+        'perPlayer': per_player,
+        'thresholds': thresholds,
     }
     out_file = out_dir / f'mc_results_{season_id}.json'
     out_dir.mkdir(parents=True, exist_ok=True)

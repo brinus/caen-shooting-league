@@ -521,6 +521,87 @@
         buildRows(Number(selectK.value));
       }
 
+      /* Monte Carlo estimator for giornata parlay joint probability
+         Uses board.next_matchday.expected_score + media_tiro heuristics to sample scores
+         Returns Promise resolving to joint probability P(all selections win) */
+      function estimateNextDayParlayProb(board, selections, N) {
+        return new Promise(function(resolve) {
+          N = N || 2000;
+          if (!board || !board.next_matchday || !board.next_matchday.players || !selections || !selections.length) return resolve(0);
+          var players = board.next_matchday.players;
+
+          // Prepare predicates (independent of sampling)
+          var preds = selections.map(function(s){
+            var pidx = players.findIndex(function(pp){ return pp.nome === s.player_name });
+            if (pidx === -1) return null;
+            if (s.bet_type === 'giornata_over_20') return { idx:pidx, fn:function(v){ return v > 20 } };
+            if (s.bet_type === 'giornata_over_25') return { idx:pidx, fn:function(v){ return v > 25 } };
+            if (s.bet_type === 'giornata_win') return { idx:pidx, fn:'win' };
+            if (s.bet_type === 'giornata_podio') return { idx:pidx, fn:'podio' };
+            return { idx:pidx, fn:function(){ return false } };
+          });
+
+          // Use cached samples if available and matching date
+          board._parlayCache = board._parlayCache || { date: board.next_matchday.data, samples: [] };
+          if (board._parlayCache.date !== board.next_matchday.data) board._parlayCache.samples = [], board._parlayCache.date = board.next_matchday.data;
+
+          var samples = board._parlayCache.samples;
+
+          // local rng Box-Muller
+          function randNorm(mu, sigma) {
+            var u1 = Math.random(), u2 = Math.random();
+            u1 = Math.max(1e-12, u1);
+            var z = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+            return mu + (isFinite(sigma) ? sigma * z : 3 * z);
+          }
+
+          // Build mus/sigs heuristics only when generating samples
+          function buildMusSigs() {
+            var mus = players.map(function(p){ return Number(p.expected_score) || Number(p.media_tiro) || 15; });
+            var sigs = players.map(function(p){
+              var base = Number(p.media_tiro) || Number(p.expected_score) || 15;
+              var s = 0.2 * base + 2.0;
+              return Math.max(1.5, Math.min(9, s));
+            });
+            return { mus: mus, sigs: sigs };
+          }
+
+          var need = Math.max(0, N - samples.length);
+          if (need > 0) {
+            var ms = buildMusSigs();
+            for (var g=0; g<need; g++) {
+              var sim = new Array(players.length);
+              for (var i=0;i<players.length;i++) sim[i] = randNorm(ms.mus[i], ms.sigs[i]);
+              samples.push(sim);
+            }
+            // trim if samples longer than reasonable (keep up to 5000)
+            if (samples.length > 5000) samples = samples.slice(samples.length - 5000), board._parlayCache.samples = samples;
+            else board._parlayCache.samples = samples;
+          }
+
+          // Evaluate preds over first N samples
+          var hits = 0;
+          for (var t=0;t<N;t++) {
+            var sim = samples[t];
+            var ok = true;
+            var sorted = sim.map(function(v,i){ return {v:v,i:i} }).sort(function(a,b){ return b.v - a.v });
+            for (var j=0;j<preds.length;j++) {
+              var pr = preds[j]; if (!pr) { ok = false; break; }
+              if (pr.fn === 'win') {
+                if (sorted[0].i !== pr.idx) { ok = false; break; }
+              } else if (pr.fn === 'podio') {
+                var ranks = sorted.slice(0,3).map(function(x){ return x.i });
+                if (ranks.indexOf(pr.idx) === -1) { ok = false; break; }
+              } else if (typeof pr.fn === 'function') {
+                if (!pr.fn(sim[pr.idx])) { ok = false; break; }
+              } else { ok = false; break; }
+            }
+            if (ok) hits++;
+          }
+          resolve(Math.max(1e-12, hits / N));
+        });
+      }
+
       /* ── Board click delegation ── */
       function attachBoardClicks(tbody, panelName) {
         tbody.querySelectorAll('.bet-cell[data-bet]').forEach(function(cell) {
@@ -776,6 +857,8 @@
 
       /* ── Re-init when live boards are ready (from app.js initSisal) ── */
       document.addEventListener('sisal:boards-ready', function() {
+        // clear any cached parlay samples when boards update
+        try { (CSL.sisal || []).forEach(function(b){ if (b && b._parlayCache) delete b._parlayCache }); } catch(e){}
         _initBetModalTabs()
         clearSlip()
       })
@@ -850,6 +933,26 @@
         var bonus  = getBonus(_selections.length)
         var finalQ = _selections.length > 1 ? baseQ * bonus : baseQ
         var nSel   = _selections.length
+
+        // If this is a giornata multipla, estimate joint probability via Monte Carlo
+        if (nSel > 1 && _selPanel === 'giornata') {
+          try {
+            btnConfirm.disabled = true; btnConfirm.textContent = 'Calcolo quota multipla…'
+            var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
+            var parlayProb = await estimateNextDayParlayProb(board, _selections, 2000);
+            if (parlayProb && parlayProb > 0) {
+              var mcBaseQ = 1 / parlayProb;
+              var mcFinalQ = mcBaseQ * bonus;
+              // override baseQ/finalQ to the MC-derived values
+              baseQ = Math.round(mcBaseQ * 10000) / 10000;
+              finalQ = Math.round(mcFinalQ * 10000) / 10000;
+            }
+          } catch (e) {
+            console.error('MC parlay estimate failed', e);
+          } finally {
+            // restore button text/state later after RPC
+          }
+        }
 
         btnConfirm.disabled = true; btnConfirm.textContent = 'Elaborazione…'
 

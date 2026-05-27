@@ -275,6 +275,8 @@
         </div>
         <!-- Breakdown quota (singola o multipla) -->
         <div id="bet-breakdown" class="bet-breakdown"></div>
+        <!-- Correlation grid (pairwise) -->
+        <div id="bet-corr-grid" class="bet-corr-grid" style="margin-top:0.6rem;display:none"></div>
       </div>
 
       <div class="form-error"  id="bet-error"   hidden></div>
@@ -602,6 +604,113 @@
         });
       }
 
+      // Compute pairwise correlations (and marginals) for given selections using cached samples
+      function computePairwiseCorrelations(board, selections, N) {
+        N = N || 2000;
+        if (!board || !board.next_matchday || !board.next_matchday.players || !selections || !selections.length) return null;
+        var players = board.next_matchday.players;
+
+        // ensure cache exists and has samples
+        board._parlayCache = board._parlayCache || { date: board.next_matchday.data, samples: [] };
+        if (board._parlayCache.date !== board.next_matchday.data) board._parlayCache.samples = [], board._parlayCache.date = board.next_matchday.data;
+        var samples = board._parlayCache.samples;
+
+        // simple mus/sigs heuristics
+        function randNorm(mu, sigma) {
+          var u1 = Math.random(), u2 = Math.random(); u1 = Math.max(1e-12, u1);
+          var z = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+          return mu + (isFinite(sigma) ? sigma * z : 3 * z);
+        }
+        function buildMusSigs() {
+          var mus = players.map(function(p){ return Number(p.expected_score) || Number(p.media_tiro) || 15; });
+          var sigs = players.map(function(p){ var base = Number(p.media_tiro) || Number(p.expected_score) || 15; var s = 0.2 * base + 2.0; return Math.max(1.5, Math.min(9, s)); });
+          return { mus: mus, sigs: sigs };
+        }
+
+        var need = Math.max(0, N - samples.length);
+        if (need > 0) {
+          var ms = buildMusSigs();
+          for (var g=0; g<need; g++) {
+            var sim = new Array(players.length);
+            for (var i=0;i<players.length;i++) sim[i] = randNorm(ms.mus[i], ms.sigs[i]);
+            samples.push(sim);
+          }
+          if (samples.length > 5000) samples = samples.slice(samples.length - 5000), board._parlayCache.samples = samples; else board._parlayCache.samples = samples;
+        }
+
+        var L = selections.length;
+        var marg = new Array(L).fill(0);
+        var joint = new Array(L);
+        for (var i=0;i<L;i++) { joint[i] = new Array(L).fill(0); }
+
+        for (var t=0;t<N;t++) {
+          var sim = samples[t];
+          var sorted = sim.map(function(v,i){ return {v:v,i:i} }).sort(function(a,b){ return b.v - a.v });
+          for (var i=0;i<L;i++) {
+            var s = selections[i];
+            var pidx = players.findIndex(function(pp){ return pp.nome === s.player_name });
+            var oki = false;
+            if (s.bet_type === 'giornata_win') oki = (sorted[0].i === pidx);
+            else if (s.bet_type === 'giornata_podio') oki = (sorted.slice(0,3).map(function(x){return x.i}).indexOf(pidx) !== -1);
+            else if (s.bet_type === 'giornata_over_20') oki = (sim[pidx] > 20);
+            else if (s.bet_type === 'giornata_over_25') oki = (sim[pidx] > 25);
+            marg[i] += oki ? 1 : 0;
+            for (var j=i;j<L;j++) {
+              var s2 = selections[j];
+              var pidx2 = players.findIndex(function(pp){ return pp.nome === s2.player_name });
+              var okj = false;
+              if (s2.bet_type === 'giornata_win') okj = (sorted[0].i === pidx2);
+              else if (s2.bet_type === 'giornata_podio') okj = (sorted.slice(0,3).map(function(x){return x.i}).indexOf(pidx2) !== -1);
+              else if (s2.bet_type === 'giornata_over_20') okj = (sim[pidx2] > 20);
+              else if (s2.bet_type === 'giornata_over_25') okj = (sim[pidx2] > 25);
+              if (oki && okj) joint[i][j] += 1;
+              if (i !== j && oki && okj) joint[j][i] += 1;
+            }
+          }
+        }
+
+        // convert counts to probabilities and ratios
+        var margP = marg.map(function(c){ return Math.max(1e-12, c / N); });
+        var jointP = joint.map(function(row){ return row.map(function(c){ return Math.max(0, c / N); }); });
+        var ratio = jointP.map(function(row, i){ return row.map(function(jp, j){ var denom = margP[i] * margP[j]; return denom > 0 ? jp / denom : 0; }); });
+        return { marginals: margP, joint: jointP, ratio: ratio };
+      }
+
+      // Render the pairwise correlation grid into container element
+      function renderCorrelationGrid(selections, corrObj, container) {
+        if (!corrObj || !container) return;
+        var L = selections.length;
+        var html = '<div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:6px">Matrice correlazione (ratio P(A∧B)/(P(A)P(B)))</div>';
+        html += '<table class="corr-grid" style="border-collapse:collapse;width:100%">';
+        // header
+        html += '<tr><th></th>' + selections.map(function(s){ return '<th style="text-align:left;padding:4px 6px">' + esc(s.player_name) + '<div style="font-size:0.75rem;color:var(--text-muted)">' + esc(s.market_label) + '</div></th>'; }).join('') + '</tr>';
+        for (var i=0;i<L;i++) {
+          html += '<tr>' + '<td style="padding:6px 6px;font-weight:600">' + esc(selections[i].player_name) + '</td>';
+          for (var j=0;j<L;j++) {
+            var r = corrObj.ratio[i][j];
+            var p = corrObj.joint[i][j];
+            var color = '#ddd';
+            if (i === j) { color = '#f6f6f6'; }
+            else if (r > 1.2) color = '#ffb3b3';
+            else if (r > 1.05) color = '#ffe0b3';
+            else if (r > 0.95) color = '#e8f7e8';
+            else color = '#d0e7ff';
+            html += '<td style="padding:6px;text-align:center;background:' + color + ';border:1px solid rgba(0,0,0,0.04)">' + (i===j? ('P=' + (corrObj.marginals[i]*100).toFixed(1) + '%') : (r? r.toFixed(2) : '—')) + '<div style="font-size:0.7rem;color:var(--text-muted)">' + (i===j? '' : ('J=' + (p*100).toFixed(2) + '%')) + '</div></td>';
+          }
+          html += '</tr>';
+        }
+        html += '</table>';
+        container.innerHTML = html;
+      }
+
+      // Helper to compute and render in one go (async-safe)
+      function computeAndRenderCorrelationGrid(board, selections, N, container) {
+        try {
+          var corr = computePairwiseCorrelations(board, selections, N || 2000);
+          renderCorrelationGrid(selections, corr, container);
+        } catch (e) { console.error('computeAndRenderCorrelationGrid', e); container.innerHTML = ''; }
+      }
+
       /* ── Board click delegation ── */
       function attachBoardClicks(tbody, panelName) {
         tbody.querySelectorAll('.bet-cell[data-bet]').forEach(function(cell) {
@@ -797,6 +906,19 @@
         btnConfirm.textContent = _selections.length === 1
           ? 'Conferma scommessa'
           : 'Conferma multipla (' + _selections.length + ' selezioni)'
+
+        // Render correlation grid for giornata parlays
+        var corrEl = document.getElementById('bet-corr-grid');
+        if (_selPanel === 'giornata' && _selections.length > 1) {
+          try {
+            corrEl.style.display = '';
+            var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
+            computeAndRenderCorrelationGrid(board, _selections, 2000, corrEl);
+          } catch (e) { console.error('corr grid failed', e); corrEl.style.display='none' }
+        } else {
+          corrEl.style.display = 'none';
+          corrEl.innerHTML = '';
+        }
       }
 
       /* ── Chip quick-amounts ── */

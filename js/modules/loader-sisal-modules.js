@@ -3,6 +3,7 @@ import * as MC from './montecarlo.js';
 import * as CORR from './correlation.js';
 import * as PARLAY from './parlay.js';
 import * as DOM from './domUtils.js';
+import * as SLIP from './slipStore.js';
 
 // Expose functions expected by legacy inline scripts
 window.estimateNextDayParlayProb = function(board, selections, N){ return MC.estimateParlayProb(board, selections, N); };
@@ -21,6 +22,18 @@ window.applyBonusMod = PARLAY.applyBonus;
 window.esc = DOM.esc;
 window.fmtQ = DOM.fmtQ;
 window.safeParseData = DOM.safeParseData;
+window.SlipStore = {
+  getSelections: SLIP.getSelections,
+  setSelections: SLIP.setSelections,
+  addSelection: SLIP.addSelection,
+  removeAt: SLIP.removeAt,
+  clear: SLIP.clear,
+  onChange: SLIP.onChange,
+  offChange: SLIP.offChange,
+  toggle: SLIP.toggle,
+  getPanel: SLIP.getPanel,
+  setPanel: SLIP.setPanel
+};
 
 // Backwards-compat: if old code calls renderCorrelationGrid(selections, corrObj, container)
 window.renderCorrelationGrid = function(selections, corrObj, parlayProb, container){

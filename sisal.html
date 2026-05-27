@@ -788,6 +788,25 @@
 
       /* ── Toggle selezione nella schedina ── */
       function toggleSelection(bd, panelName) {
+        if (window.SlipStore && typeof window.SlipStore.toggle === 'function'){
+          var res = window.SlipStore.toggle(bd, panelName, getConflictMessage);
+          if (res && res.error){
+            if (res.error === 'panel_locked'){
+              errBox.textContent = '🔒 Stai costruendo una schedina su ' + getPanelLabel(_selPanel) + '. Svuota per cambiare pannello.'
+              errBox.hidden = false; setTimeout(function(){ errBox.hidden = true }, 3000); return
+            }
+            if (res.error === 'limit'){
+              errBox.textContent = 'Massimo 10 selezioni per multipla.'; errBox.hidden = false; setTimeout(function(){ errBox.hidden = true }, 2000); return
+            }
+            if (res.error === 'conflict'){
+              errBox.textContent = res.message || 'Scommessa incompatibile'; errBox.hidden = false; setTimeout(function(){ errBox.hidden = true }, 3500); return
+            }
+          }
+          // sync local snapshot
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          syncCellHighlights(); renderSelectionArea(); errBox.hidden = true; return
+        }
+        // fallback legacy behavior
         if (_selPanel && _selPanel !== panelName) {
           errBox.textContent = '🔒 Stai costruendo una schedina su ' + getPanelLabel(_selPanel) + '. Svuota per cambiare pannello.'
           errBox.hidden = false
@@ -825,6 +844,11 @@
 
       /* ── Rimuove una leg per indice ── */
       function removeFromSlip(idx) {
+        if (window.SlipStore && typeof window.SlipStore.removeAt === 'function'){
+          window.SlipStore.removeAt(idx);
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          syncCellHighlights(); renderSelectionArea(); return
+        }
         _selections.splice(idx, 1)
         if (_selections.length === 0) _selPanel = null
         syncCellHighlights()
@@ -833,6 +857,11 @@
 
       /* ── Svuota tutta la schedina ── */
       function clearSlip() {
+        if (window.SlipStore && typeof window.SlipStore.clear === 'function'){
+          window.SlipStore.clear();
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          syncCellHighlights(); renderSelectionArea(); return
+        }
         _selections = []; _selPanel = null
         syncCellHighlights()
         renderSelectionArea()
@@ -955,6 +984,14 @@
           corrEl.style.display = 'none';
           corrEl.innerHTML = '';
         }
+      }
+
+      // subscribe to SlipStore updates if available (keeps local _selections in sync)
+      if (window.SlipStore && typeof window.SlipStore.onChange === 'function'){
+        try {
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          window.SlipStore.onChange(function(newSelections){ _selections = newSelections; syncCellHighlights(); renderSelectionArea(); });
+        } catch(e){ console.error('SlipStore subscribe failed', e); }
       }
 
       /* ── Chip quick-amounts ── */

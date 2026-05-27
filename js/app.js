@@ -3012,6 +3012,7 @@ function renderSisalBoard(seasonId) {
           '<td><span class="rank-badge ' + rankClass(player.posizione_attuale) + '">' + (player.posizione_attuale || '—') + '</span></td>' +
           '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_vittoria) + '">' + formatQuote(player.quote_vittoria) + '</span></td>' +
           '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_podio) + '">' + formatQuote(player.quote_podio) + '</span></td>' +
+          '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_over_30) + '">' + formatQuote(player.quote_over_30) + '</span></td>' +
           '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_over_25) + '">' + formatQuote(player.quote_over_25) + '</span></td>' +
           '<td><span class="sisal-quote sisal-quote--anim ' + getSisalQuoteClass(player.quote_over_20) + '">' + formatQuote(player.quote_over_20) + '</span></td>' +
           '<td>' +

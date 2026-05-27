@@ -22,8 +22,10 @@ jobs:
           # add here any Python deps if needed
 
       - name: Run aggiorna.py to generate data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          # If Supabase secrets are provided, fetch latest risultati into risultati/*.csv
           python scripts/fetch_results_from_supabase.py
           python scripts/aggiorna.py
 

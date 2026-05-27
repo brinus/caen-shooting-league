@@ -677,29 +677,64 @@
       }
 
       // Render the pairwise correlation grid into container element
-      function renderCorrelationGrid(selections, corrObj, container) {
+      // Also shows original product quota vs MC quota and explanatory text
+      function renderCorrelationGrid(selections, corrObj, parlayProb, container) {
         if (!corrObj || !container) return;
         var L = selections.length;
-        var html = '<div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:6px">Matrice correlazione (ratio P(A∧B)/(P(A)P(B)))</div>';
-        html += '<table class="corr-grid" style="border-collapse:collapse;width:100%">';
+        // compute product base quota from selections
+        var prodBase = selections.reduce(function(acc,s){ return acc * (Number(s.quota) || 1); }, 1);
+        var bonus = getBonus(selections.length);
+        var prodFinal = prodBase * bonus;
+        var mcBase = parlayProb && parlayProb > 0 ? (1 / parlayProb) : null;
+        var mcFinal = mcBase ? (mcBase * bonus) : null;
+
+        var html = '<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:8px">'
+                 + '<div style="flex:1;padding:12px;border-radius:8px;background:var(--card);box-shadow:0 6px 14px rgba(0,0,0,0.04)">'
+                 + '<div style="font-weight:700;margin-bottom:6px">Quota prodotto (client)</div>'
+                 + '<div style="font-size:1.1rem">@' + fmtQ(prodBase) + '</div>'
+                 + '<div style="font-size:0.9rem;color:var(--text-muted)">Finale con bonus: <strong>@' + fmtQ(prodFinal) + '</strong></div>'
+                 + '</div>'
+                 + '<div style="flex:1;padding:12px;border-radius:8px;background:var(--card);box-shadow:0 6px 14px rgba(0,0,0,0.04)">'
+                 + '<div style="font-weight:700;margin-bottom:6px">Quota MC (1 / P(congiunta))</div>'
+                 + (mcBase ? ('<div style="font-size:1.1rem">@' + fmtQ(mcBase) + '</div><div style="font-size:0.9rem;color:var(--text-muted)">Finale con bonus: <strong>@' + fmtQ(mcFinal) + '</strong></div>') : '<div style="color:var(--text-muted)">Calcolo in corso…</div>')
+                 + '</div>'
+                 + '<div style="flex:1;padding:12px;border-radius:8px;background:var(--card);box-shadow:0 6px 14px rgba(0,0,0,0.04)">'
+                 + '<div style="font-weight:700;margin-bottom:6px">Interpretazione</div>'
+                 + '<div style="font-size:0.95rem;color:var(--text-muted)">Se la quota MC è inferiore alla quota prodotto, le selezioni sono positivamente correlate (più scenari favorevoli del previsto) e la multipla reale vale meno del prodotto. La matrice sottostante mostra la correlazione per coppia; clicca sui nomi per evidenziare righe/colonne.</div>'
+                 + '</div>'
+                 + '</div>';
+
+        // Legend
+        html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'
+             + '<div style="width:14px;height:14px;background:#ff9b9b;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Forte correlazione +</div>'
+             + '<div style="width:14px;height:14px;background:#ffd7a6;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Lievi +</div>'
+             + '<div style="width:14px;height:14px;background:#e9f8ea;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Neutrale</div>'
+             + '<div style="width:14px;height:14px;background:#cfe7ff;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Negativa</div>'
+             + '</div>';
+
+        html += '<div style="overflow:auto;border-radius:8px;padding:8px;background:var(--surface);">';
+        html += '<table class="corr-grid" style="border-collapse:collapse;width:100%;font-size:0.98rem">';
         // header
-        html += '<tr><th></th>' + selections.map(function(s){ return '<th style="text-align:left;padding:4px 6px">' + esc(s.player_name) + '<div style="font-size:0.75rem;color:var(--text-muted)">' + esc(s.market_label) + '</div></th>'; }).join('') + '</tr>';
+        html += '<tr><th style="padding:10px 10px 10px 12px"></th>' + selections.map(function(s){ return '<th style="text-align:left;padding:10px 14px;min-width:140px">' + esc(s.player_name) + '<div style="font-size:0.75rem;color:var(--text-muted)">' + esc(s.market_label) + '</div></th>'; }).join('') + '</tr>';
         for (var i=0;i<L;i++) {
-          html += '<tr>' + '<td style="padding:6px 6px;font-weight:600">' + esc(selections[i].player_name) + '</td>';
+          html += '<tr>' + '<td style="padding:12px 10px;font-weight:700;border-right:1px solid rgba(0,0,0,0.06)">' + esc(selections[i].player_name) + '</td>';
           for (var j=0;j<L;j++) {
             var r = corrObj.ratio[i][j];
             var p = corrObj.joint[i][j];
-            var color = '#ddd';
-            if (i === j) { color = '#f6f6f6'; }
-            else if (r > 1.2) color = '#ffb3b3';
-            else if (r > 1.05) color = '#ffe0b3';
-            else if (r > 0.95) color = '#e8f7e8';
-            else color = '#d0e7ff';
-            html += '<td style="padding:6px;text-align:center;background:' + color + ';border:1px solid rgba(0,0,0,0.04)">' + (i===j? ('P=' + (corrObj.marginals[i]*100).toFixed(1) + '%') : (r? r.toFixed(2) : '—')) + '<div style="font-size:0.7rem;color:var(--text-muted)">' + (i===j? '' : ('J=' + (p*100).toFixed(2) + '%')) + '</div></td>';
+            var color = '#fff';
+            if (i === j) { color = '#f7f7f7'; }
+            else if (r > 1.3) color = '#ff9b9b';
+            else if (r > 1.15) color = '#ffd7a6';
+            else if (r > 0.95) color = '#e9f8ea';
+            else color = '#cfe7ff';
+            var display = (i===j) ? ('P=' + (corrObj.marginals[i]*100).toFixed(1) + '%') : (r ? r.toFixed(2) : '—');
+            var sub = (i===j) ? '' : ('<div style="font-size:0.78rem;color:var(--text-muted)">J=' + (p*100).toFixed(2) + '%</div>');
+            html += '<td style="padding:12px;text-align:center;background:' + color + ';border:1px solid rgba(0,0,0,0.04)">' + display + sub + '</td>';
           }
           html += '</tr>';
         }
         html += '</table>';
+        html += '</div>';
         container.innerHTML = html;
       }
 

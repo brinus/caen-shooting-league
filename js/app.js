@@ -4017,7 +4017,14 @@ async function _refreshSisalPageFromSupabase() {
     if (targetSeasonId) {
       renderSisalBoard(targetSeasonId);
       var refreshedBoard = (CSL.sisal || []).find(function(item) { return item.season_id === targetSeasonId; });
-      if (refreshedBoard) _renderSisalTicker(refreshedBoard);
+      if (refreshedBoard) {
+        _renderSisalTicker(refreshedBoard);
+        try {
+          // Ensure other pages showing the SISAL ticker (home, stats) are refreshed too
+          renderSisalTicker('home', targetSeasonId);
+          renderSisalTicker('stats', targetSeasonId);
+        } catch (e) { /* ignore if elements not present on page */ }
+      }
       if (sel) sel.value = targetSeasonId;
     }
   } catch (e) {

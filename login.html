@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accedi — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body class="login-page">
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      <div class="login-wrapper">
+
+        <div class="login-card card">
+          <div class="login-logo">
+            <img src="csl_logo.png" alt="CSL" width="56" height="56">
+          </div>
+          <h1 class="login-title">CAEN Shooting League</h1>
+          <p class="login-subtitle">Accedi al tuo account</p>
+
+          <form class="login-form" id="login-form" novalidate>
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" class="form-input"
+                     placeholder="il tuo username" autocomplete="username"
+                     autocapitalize="none" spellcheck="false" required>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password</label>
+              <div class="input-password-wrapper">
+                <input type="password" id="password" name="password" class="form-input"
+                       placeholder="••••••••" autocomplete="current-password" required>
+                <button type="button" class="btn-toggle-pw" id="toggle-pw" aria-label="Mostra/nascondi password">
+                  <span class="pw-eye">👁</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-error" id="login-error" role="alert" hidden></div>
+
+            <button type="submit" class="btn-primary btn-full" id="login-btn">
+              <span class="btn-text">Accedi</span>
+              <span class="btn-spinner" hidden>⏳</span>
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+    // Reindirizza se già loggato
+    document.addEventListener('csl:auth-ready', function (e) {
+      if (e.detail.profile) {
+        const redirect = new URLSearchParams(window.location.search).get('next') || 'index.html'
+        window.location.href = redirect
+      }
+    })
+
+    const form    = document.getElementById('login-form')
+    const errBox  = document.getElementById('login-error')
+    const btn     = document.getElementById('login-btn')
+    const btnText = btn.querySelector('.btn-text')
+    const spinner = btn.querySelector('.btn-spinner')
+    const togglePw = document.getElementById('toggle-pw')
+    const pwInput  = document.getElementById('password')
+
+    togglePw.addEventListener('click', function () {
+      const isHidden = pwInput.type === 'password'
+      pwInput.type = isHidden ? 'text' : 'password'
+      togglePw.querySelector('.pw-eye').textContent = isHidden ? '🙈' : '👁'
+    })
+
+    function setLoading(loading) {
+      btn.disabled = loading
+      btnText.hidden = loading
+      spinner.hidden = !loading
+    }
+
+    function showError(msg) {
+      errBox.textContent = msg
+      errBox.hidden = false
+    }
+
+    function hideError() {
+      errBox.hidden = true
+      errBox.textContent = ''
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault()
+      hideError()
+
+      const username = document.getElementById('username').value.trim()
+      const password = document.getElementById('password').value
+
+      if (!username || !password) {
+        showError('Inserisci username e password.')
+        return
+      }
+
+      setLoading(true)
+      const { error } = await CSLAuth.signIn(username, password)
+      setLoading(false)
+
+      if (error) {
+        showError('Credenziali non valide. Riprova.')
+        return
+      }
+
+      const redirect = new URLSearchParams(window.location.search).get('next') || 'index.html'
+      window.location.href = redirect
+    })
+  </script>
+</body>
+</html>

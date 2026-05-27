@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="post-content-wrapper">
+
+      <a href="posts.html" class="post-back-link">← Tutti i post</a>
+
+      <div>
+        <h1 class="post-content-title" id="post-title">Caricamento...</h1>
+        <div class="post-content-meta" id="post-meta"></div>
+      </div>
+
+      <div class="post-content" id="post-content"></div>
+
+      <!-- Sondaggio (se presente nel post) -->
+      <div id="poll-section" class="poll-section" hidden></div>
+
+      <!-- Reactions + Comments (visibili dopo il caricamento del post) -->
+      <div id="post-interactions" class="post-interactions" hidden>
+
+        <!-- Reactions -->
+        <div class="reactions-section">
+          <div id="reactions-bar" class="reactions-bar"></div>
+          <p id="reactions-login-hint" class="interactions-hint" hidden>
+            <a href="login.html">Accedi</a> per reagire al post.
+          </p>
+        </div>
+
+        <!-- Comments -->
+        <div class="comments-section">
+          <h3 class="comments-title">Commenti</h3>
+          <div id="comments-list" class="comments-list">
+            <p class="text-muted">Caricamento commenti…</p>
+          </div>
+          <form id="comment-form" class="comment-form" hidden>
+            <textarea id="comment-input" class="form-input comment-textarea"
+                      placeholder="Scrivi un commento…" maxlength="1000" rows="3"></textarea>
+            <div class="comment-form-footer">
+              <span id="comment-char-count" class="comment-char">0 / 1000</span>
+              <button type="submit" class="btn-primary btn-sm" id="btn-submit-comment">Invia</button>
+            </div>
+            <div class="form-error" id="comment-error" hidden></div>
+          </form>
+          <p id="comment-login-hint" class="interactions-hint" hidden>
+            <a href="login.html">Accedi</a> per lasciare un commento.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <!-- marked.js for Markdown rendering (CDN, loaded only on this page) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="data/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+  // ── Reactions & Comments ───────────────────────────────────────
+  const EMOJIS = ['👍','❤️','😂','😮','👏','🔥']
+  let _postId = null
+
+  function _esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  }
+  function _fmtDate(ts) {
+    return new Date(ts).toLocaleString('it-IT', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+  }
+
+  // ── Reactions ──────────────────────────────────────────────────
+  async function loadReactions() {
+    const { data } = await CSLAuth.client.from('reactions').select('emoji, user_id').eq('post_id', _postId)
+    const counts = {}
+    const mine   = new Set()
+    ;(data || []).forEach(r => {
+      counts[r.emoji] = (counts[r.emoji] || 0) + 1
+      if (r.user_id === CSLAuth.getSession()?.user?.id) mine.add(r.emoji)
+    })
+    renderReactions(counts, mine)
+  }
+
+  function renderReactions(counts, mine) {
+    const bar = document.getElementById('reactions-bar')
+    bar.innerHTML = EMOJIS.map(e => {
+      const n     = counts[e] || 0
+      const active = mine.has(e) ? ' active' : ''
+      return `<button class="reaction-btn${active}" data-emoji="${_esc(e)}" title="${_esc(e)}">
+        <span class="reaction-emoji">${e}</span>
+        <span class="reaction-count">${n}</span>
+      </button>`
+    }).join('')
+
+    bar.querySelectorAll('.reaction-btn').forEach(btn => {
+      btn.addEventListener('click', () => toggleReaction(btn.dataset.emoji))
+    })
+
+    const loggedIn = CSLAuth.isLoggedIn()
+    bar.querySelectorAll('.reaction-btn').forEach(b => b.disabled = !loggedIn)
+    document.getElementById('reactions-login-hint').hidden = loggedIn
+  }
+
+  async function toggleReaction(emoji) {
+    if (!CSLAuth.isLoggedIn()) return
+    const uid = CSLAuth.getSession().user.id
+    const { data: existing } = await CSLAuth.client.from('reactions')
+      .select('id').eq('post_id', _postId).eq('user_id', uid).eq('emoji', emoji).maybeSingle()
+
+    if (existing) {
+      await CSLAuth.client.from('reactions').delete().eq('id', existing.id)
+    } else {
+      await CSLAuth.client.from('reactions').insert({ post_id: _postId, user_id: uid, emoji })
+    }
+    await loadReactions()
+  }
+
+  // ── Comments ───────────────────────────────────────────────────
+  async function loadComments() {
+    const { data, error } = await CSLAuth.client.from('comments')
+      .select('id, content, created_at, user_id, profiles(display_name, username)')
+      .eq('post_id', _postId).order('created_at', { ascending: true })
+
+    const listEl = document.getElementById('comments-list')
+    if (error) { listEl.innerHTML = '<p class="text-muted">Errore nel caricamento commenti.</p>'; return }
+    if (!data?.length) { listEl.innerHTML = '<p class="text-muted">Nessun commento ancora.</p>'; return }
+
+    const uid    = CSLAuth.getSession()?.user?.id
+    const isAdm  = CSLAuth.isAdmin()
+    listEl.innerHTML = data.map(c => {
+      const name    = c.profiles?.display_name || c.profiles?.username || 'Utente'
+      const canDel  = isAdm || c.user_id === uid
+      const delBtn  = canDel
+        ? `<button class="comment-delete" data-id="${_esc(c.id)}" title="Elimina">✕</button>`
+        : ''
+      return `<div class="comment-item" data-id="${_esc(c.id)}">
+        <div class="comment-header">
+          <span class="comment-author">${_esc(name)}</span>
+          <span class="comment-date">${_fmtDate(c.created_at)}</span>
+          ${delBtn}
+        </div>
+        <div class="comment-body">${_esc(c.content)}</div>
+      </div>`
+    }).join('')
+
+    listEl.querySelectorAll('.comment-delete').forEach(btn => {
+      btn.addEventListener('click', () => deleteComment(btn.dataset.id))
+    })
+  }
+
+  async function deleteComment(id) {
+    if (!confirm('Eliminare questo commento?')) return
+    await CSLAuth.client.from('comments').delete().eq('id', id)
+    await loadComments()
+  }
+
+  function initCommentForm() {
+    const loggedIn = CSLAuth.isLoggedIn()
+    document.getElementById('comment-form').hidden          = !loggedIn
+    document.getElementById('comment-login-hint').hidden    = loggedIn
+
+    const input  = document.getElementById('comment-input')
+    const count  = document.getElementById('comment-char-count')
+    const errBox = document.getElementById('comment-error')
+
+    input.addEventListener('input', () => { count.textContent = input.value.length + ' / 1000' })
+
+    document.getElementById('comment-form').addEventListener('submit', async e => {
+      e.preventDefault()
+      errBox.hidden = true
+      const content = input.value.trim()
+      if (!content) return
+      if (_hasProfanity(content)) {
+        errBox.textContent = 'Il commento contiene linguaggio non consentito. Modifica il testo e riprova.'
+        errBox.hidden = false; return
+      }
+      const uid = CSLAuth.getSession().user.id
+      const { error } = await CSLAuth.client.from('comments').insert({ post_id: _postId, user_id: uid, content })
+      if (error) { errBox.textContent = error.message; errBox.hidden = false; return }
+      input.value = ''
+      count.textContent = '0 / 1000'
+      await loadComments()
+    })
+  }
+
+  // ── Sondaggio ──────────────────────────────────────────────────
+  async function loadPoll() {
+    if (!_postId) return
+    const { data: poll } = await CSLAuth.client
+      .from('polls')
+      .select('id, question, closes_at, poll_choices(id, text, sort_order)')
+      .eq('post_id', _postId)
+      .maybeSingle()
+    if (!poll) return
+
+    const { data: votes } = await CSLAuth.client
+      .from('poll_votes').select('choice_id, user_id').eq('poll_id', poll.id)
+    const uid = CSLAuth.getSession()?.user?.id
+    const myChoiceId = uid ? ((votes || []).find(v => v.user_id === uid)?.choice_id || null) : null
+    renderPoll(poll, votes || [], myChoiceId)
+  }
+
+  function renderPoll(poll, allVotes, myChoiceId) {
+    const el = document.getElementById('poll-section')
+    if (!el) return
+    const isClosed  = poll.closes_at && new Date(poll.closes_at) < new Date()
+    const loggedIn  = CSLAuth.isLoggedIn()
+    const hasVoted  = !!myChoiceId
+    const showBars  = hasVoted || isClosed || !loggedIn
+    const choices   = [...(poll.poll_choices || [])].sort((a, b) => a.sort_order - b.sort_order)
+    const total     = allVotes.length
+    const counts    = {}
+    allVotes.forEach(v => { counts[v.choice_id] = (counts[v.choice_id] || 0) + 1 })
+
+    function choicesHtml() {
+      if (showBars) {
+        return choices.map(c => {
+          const cnt  = counts[c.id] || 0
+          const pct  = total ? Math.round(cnt / total * 100) : 0
+          const mine = c.id === myChoiceId
+          return '<div class="poll-result' + (mine ? ' poll-result--mine' : '') + '">'
+            + '<div class="poll-result-bar" style="--pct:' + pct + '%">'
+            + '<div class="poll-result-fill"></div>'
+            + '<span class="poll-result-text">' + _esc(c.text) + (mine ? ' ✓' : '') + '</span>'
+            + '<span class="poll-result-pct">' + pct + '%</span>'
+            + '</div>'
+            + '<span class="poll-result-cnt">' + cnt + '</span>'
+            + '</div>'
+        }).join('')
+      }
+      return choices.map(c =>
+        '<button class="poll-choice-btn" data-choice-id="' + _esc(c.id) + '">' + _esc(c.text) + '</button>'
+      ).join('')
+    }
+
+    const badgeHtml = isClosed
+      ? '<span class="poll-badge poll-badge--closed">Chiuso</span>'
+      : (!loggedIn || hasVoted ? '' : '<span class="poll-badge poll-badge--live">Votazione aperta</span>')
+
+    let footerHtml = '<span class="poll-total">' + total + ' ' + (total === 1 ? 'voto' : 'voti') + '</span>'
+    if (!loggedIn && !isClosed)
+      footerHtml += '<a href="login.html" class="poll-login-hint">Accedi per votare</a>'
+    else if (hasVoted && !isClosed)
+      footerHtml += '<button class="poll-change-vote" id="btn-change-vote">Cambia voto</button>'
+
+    el.innerHTML = '<div class="poll-widget card">'
+      + '<div class="poll-hdr"><span class="poll-label">📊 Sondaggio</span>' + badgeHtml + '</div>'
+      + '<div class="poll-question">' + _esc(poll.question) + '</div>'
+      + '<div class="poll-choices-wrap" id="poll-choices-wrap">' + choicesHtml() + '</div>'
+      + '<div class="poll-footer">' + footerHtml + '</div>'
+      + '</div>'
+    el.hidden = false
+
+    function attachVoteBtns() {
+      el.querySelectorAll('.poll-choice-btn').forEach(btn => {
+        btn.addEventListener('click', async function () {
+          el.querySelectorAll('.poll-choice-btn').forEach(b => b.disabled = true)
+          const res = await CSLAuth.castVote(poll.id, btn.dataset.choiceId)
+          if (res && res.error) {
+            el.querySelectorAll('.poll-choice-btn').forEach(b => b.disabled = false)
+          } else {
+            await loadPoll()
+          }
+        })
+      })
+    }
+    attachVoteBtns()
+
+    const changeBtn = document.getElementById('btn-change-vote')
+    if (changeBtn) {
+      changeBtn.addEventListener('click', function () {
+        const wrap = document.getElementById('poll-choices-wrap')
+        wrap.innerHTML = choices.map(c =>
+          '<button class="poll-choice-btn" data-choice-id="' + _esc(c.id) + '">' + _esc(c.text) + '</button>'
+        ).join('')
+        changeBtn.remove()
+        attachVoteBtns()
+      })
+    }
+  }
+
+  // ── Filtro anti-violenza ───────────────────────────────────────
+  const _BAD_WORDS = [
+    // italiano
+    'cazzo','vaffanculo','stronzo','stronza','bastardo','bastarda','puttana','minchia',
+    'coglione','cogliona','fanculo','affanculo','cornuto','cornuta','troia','imbecille',
+    'deficiente','negro','negra','frocio','ricchione','porco dio','pezzo di merda',
+    // inglese
+    'fuck','shit','asshole','bitch','bastard','cunt','dick','motherfucker',
+    'nigger','faggot','whore','slut','retard'
+  ]
+  function _hasProfanity(text) {
+    const t = text.toLowerCase()
+    return _BAD_WORDS.some(w => {
+      const re = new RegExp('(?:^|[\\s,.!?;:\'"]|\\b)' + w.replace(/\s+/g,'\\s+') + '(?:$|[\\s,.!?;:\'"]|\\b)', 'i')
+      return re.test(t)
+    })
+  }
+
+  // ── Init (indipendente da app.js) ─────────────────────────────
+  // Legge lo slug dall'URL e recupera l'id del post da Supabase,
+  // senza dipendere dall'evento csl:post-loaded di app.js.
+  async function _initInteractions() {
+    const slug = new URLSearchParams(window.location.search).get('slug')
+    if (!slug) return
+    try {
+      const { data: post } = await CSLAuth.client
+        .from('posts').select('id').eq('slug', slug).maybeSingle()
+      if (!post?.id) return
+      _postId = post.id
+      document.getElementById('post-interactions').hidden = false
+      await Promise.all([loadPoll(), loadReactions(), loadComments()])
+      initCommentForm()
+    } catch (e) { /* silenzioso se Supabase non disponibile */ }
+  }
+
+  document.addEventListener('csl:auth-ready', _initInteractions, { once: true })
+  </script>
+</body>
+</html>

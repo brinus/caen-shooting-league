@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container container--wide">
+
+      <div id="admin-guard" class="page-error" hidden>
+        Accesso negato. Solo gli admin possono visualizzare questa pagina.
+        <br><a href="index.html">← Torna alla home</a>
+      </div>
+
+      <div id="admin-content" hidden>
+
+        <div class="page-header">
+          <h1>⚙ Pannello Admin</h1>
+          <p>Gestione completa della lega: giornate, scommesse, post, utenti e molto altro.</p>
+        </div>
+
+        <!-- Tab nav -->
+        <div class="admin-tabs">
+          <span class="admin-tab-group-label">Gara</span>
+          <button class="admin-tab active" data-tab="giornate">📅 Giornate</button>
+          <button class="admin-tab" data-tab="calendario">🗓 Calendario</button>
+          <button class="admin-tab" data-tab="stagioni">🏅 Stagioni</button>
+          <span class="admin-tab-sep"></span>
+          <span class="admin-tab-group-label">SISAL</span>
+          <button class="admin-tab" data-tab="scommesse">🎲 Scommesse</button>
+          <span class="admin-tab-sep"></span>
+          <span class="admin-tab-group-label">Contenuto</span>
+          <button class="admin-tab" data-tab="posts">📰 Post</button>
+          <button class="admin-tab" data-tab="regolamento">📋 Regolamento</button>
+          <button class="admin-tab" data-tab="commenti">💬 Commenti</button>
+          <span class="admin-tab-sep"></span>
+          <span class="admin-tab-group-label">Accesso</span>
+          <button class="admin-tab" data-tab="utenti">👥 Utenti</button>
+        </div>
+
+        <!-- ── TAB: Giornate ──────────────────────────────────── -->
+        <div class="admin-panel active" id="tab-giornate">
+          <div class="admin-section card">
+            <h2>Aggiungi Giornata</h2>
+            <form id="form-giornata" novalidate>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stagione</label>
+                  <select class="form-input" id="giornata-stagione"></select>
+                </div>
+                <div class="form-group">
+                  <label>Data</label>
+                  <input type="date" class="form-input" id="giornata-data" required>
+                </div>
+              </div>
+
+              <div id="giornata-tipo-info" class="admin-info-banner" hidden></div>
+
+              <h3 style="margin-top:1.5rem">Risultati giocatori</h3>
+              <p class="text-muted" style="margin-bottom:1rem">
+                Inserisci i tentativi per ogni giocatore. Lascia -1 se il tentativo non è stato effettuato.
+              </p>
+
+              <div id="giornata-rows-container"></div>
+
+              <button type="button" class="btn-secondary" id="btn-add-player-row" style="margin-top:0.75rem">
+                + Aggiungi giocatore
+              </button>
+
+              <div class="form-error" id="giornata-error" hidden></div>
+              <div class="form-success" id="giornata-success" hidden></div>
+
+              <div style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap">
+                <button type="submit" class="btn-primary" id="btn-save-giornata">Salva giornata</button>
+                <button type="button" class="btn-secondary" id="btn-clear-giornata">Azzera</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Lista giornate recenti -->
+          <div class="admin-section card" style="margin-top:1.5rem">
+            <h2>Giornate registrate</h2>
+            <div id="giornate-list" class="admin-list"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Calendario (gestione giornate pianificate) ──────────────────────────────────── -->
+        <div class="admin-panel" id="tab-calendario">
+          <div class="admin-section card">
+            <h2>Calendario Stagione</h2>
+            <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem">
+              <label style="margin:0">Stagione</label>
+              <select id="calendario-stagione" class="form-input" style="width:240px"></select>
+              <button id="btn-refresh-calendario" class="btn-secondary">↺ Aggiorna</button>
+              <button id="btn-add-calendario-entry" class="btn-primary">+ Aggiungi giornata</button>
+            </div>
+            <div id="calendario-msg" class="form-success" hidden></div>
+            <div id="calendario-list" style="margin-top:1rem">
+              <div id="calendario-controls" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+                <button id="cal-prev" class="btn-secondary" style="padding:0.25rem 0.6rem">◀</button>
+                <div id="cal-month-label" style="font-weight:700;min-width:180px;text-align:center"></div>
+                <button id="cal-next" class="btn-secondary" style="padding:0.25rem 0.6rem">▶</button>
+                <div style="flex:1"></div>
+                <button id="btn-cal-show-list" class="btn-secondary">Mostra lista</button>
+              </div>
+              <div id="calendario-summary" class="admin-calendar-summary"></div>
+              <div id="calendario-legend" class="admin-calendar-legend">
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--today"></span> Oggi</span>
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--played"></span> Giocata</span>
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--planned"></span> Programmata</span>
+                <span class="admin-calendar-legend-item"><span class="admin-calendar-legend-dot admin-calendar-legend-dot--default"></span> Default lun/mer</span>
+              </div>
+              <div id="calendario-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:var(--card-bg);padding:8px;border-radius:6px"></div>
+              <div id="calendario-editor" hidden style="margin-top:0.75rem;padding:0.75rem;border:1px solid var(--border);border-radius:6px;background:var(--panel-bg)"></div>
+            </div>
+            <div class="form-error" id="calendario-error" hidden style="margin-top:0.5rem"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Post ──────────────────────────────────────── -->
+        <div class="admin-panel" id="tab-posts">
+          <div class="admin-section card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem">
+              <h2>Post pubblicati</h2>
+              <a href="admin-post.html" class="btn-primary">+ Nuovo post</a>
+            </div>
+            <div id="posts-admin-list" class="admin-list" style="margin-top:1rem"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Regolamento ───────────────────────────────── -->
+        <div class="admin-panel" id="tab-regolamento">
+          <div class="admin-section card">
+            <h2>Modifica Regolamento</h2>
+            <p class="text-muted" style="margin-bottom:1rem">
+              Il testo viene salvato come HTML diretto nel campo <code>content</code> della tabella <code>regolamento</code>.
+              Puoi incollare HTML formattato o modificare il testo esistente.
+            </p>
+            <div class="form-group">
+              <label>Contenuto HTML</label>
+              <textarea class="form-input form-textarea-large" id="regolamento-content"
+                        placeholder="Incolla qui il contenuto HTML del regolamento…"></textarea>
+            </div>
+            <div class="form-error"   id="regolamento-error"   hidden></div>
+            <div class="form-success" id="regolamento-success" hidden></div>
+            <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap">
+              <button class="btn-primary"   id="btn-save-regolamento">Salva regolamento</button>
+              <button class="btn-secondary" id="btn-preview-regolamento">Anteprima</button>
+            </div>
+            <div id="regolamento-preview" class="rules-content" style="margin-top:1.5rem;display:none"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Utenti ────────────────────────────────────── -->
+        <div class="admin-panel" id="tab-utenti">
+          <div class="admin-section card">
+            <h2>Crea Nuovo Utente</h2>
+            <form id="form-create-user" novalidate>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Username</label>
+                  <input type="text" class="form-input" id="new-username"
+                         placeholder="es. mario.rossi" autocapitalize="none" required>
+                  <small class="form-hint">Solo lettere minuscole, cifre, underscore, punti, trattini.</small>
+                </div>
+                <div class="form-group">
+                  <label>Nome visualizzato</label>
+                  <input type="text" class="form-input" id="new-display-name"
+                         placeholder="es. Mario Rossi" required>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Password</label>
+                  <input type="password" class="form-input" id="new-password"
+                         placeholder="min. 8 caratteri" required>
+                </div>
+                <div class="form-group">
+                  <label>Ruolo</label>
+                  <select class="form-input" id="new-role">
+                    <option value="participant">Partecipante</option>
+                    <option value="guest">Ospite (Guest)</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Nome in classifica <small class="text-muted">(come appare nei risultati)</small></label>
+                <input type="text" class="form-input" id="new-player-name"
+                       placeholder="es. Mario Rossi">
+              </div>
+              <div class="form-error"   id="create-user-error"   hidden></div>
+              <div class="form-success" id="create-user-success" hidden></div>
+              <button type="submit" class="btn-primary" style="margin-top:1rem" id="btn-create-user">
+                Crea account
+              </button>
+            </form>
+          </div>
+
+          <div class="admin-section card" style="margin-top:1.5rem">
+            <h2>Utenti registrati</h2>
+            <div id="users-list" class="admin-list"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Scommesse ─────────────────────────────────── -->
+        <div class="admin-panel" id="tab-scommesse">
+          <div class="admin-section card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem">
+              <h2 style="margin:0">Gestione Scommesse</h2>
+              <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+                <label style="font-size:0.85rem;color:var(--text-muted)">Stato:</label>
+                <select class="form-input" id="scommesse-filtro-status" style="width:auto">
+                  <option value="attiva">Attive</option>
+                  <option value="tutte">Tutte</option>
+                  <option value="vinta">Vinte</option>
+                  <option value="persa">Perse</option>
+                  <option value="annullata">Annullate</option>
+                </select>
+                <button class="btn-secondary" id="btn-reload-scommesse" style="padding:0.4rem 0.9rem">↺ Aggiorna</button>
+              </div>
+            </div>
+
+            <!-- Sub-tabs singole / multiple -->
+            <div style="display:flex;gap:0.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem">
+              <button class="admin-subtab active" data-subtab="singole" style="padding:0.35rem 1rem;border-radius:6px;border:1px solid var(--border);background:rgba(255,102,0,0.12);color:var(--primary);cursor:pointer;font-size:0.85rem;font-weight:600">🎯 Singole</button>
+              <button class="admin-subtab" data-subtab="multiple" style="padding:0.35rem 1rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-size:0.85rem;font-weight:600">📋 Multiple (Parlay)</button>
+            </div>
+
+            <div id="subpanel-singole">
+              <div id="scommesse-singole-list" class="admin-list"></div>
+            </div>
+            <div id="subpanel-multiple" hidden>
+              <div id="scommesse-multiple-list" class="admin-list"></div>
+            </div>
+
+            <div class="form-error"   id="scommesse-error"   hidden style="margin-top:1rem"></div>
+            <div class="form-success" id="scommesse-success" hidden style="margin-top:1rem"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Commenti ─────────────────────────────────── -->
+        <div class="admin-panel" id="tab-commenti">
+          <div class="admin-section card">
+            <h2>Moderazione Commenti</h2>
+            <p class="text-muted" style="margin-bottom:1rem">Tutti i commenti su tutti i post. Clicca ✕ per eliminare.</p>
+            <div id="admin-comments-list" class="admin-list"></div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Stagioni ──────────────────────────────────── -->
+        <div class="admin-panel" id="tab-stagioni">
+          <div class="admin-section card">
+            <h2>Crea Nuova Stagione</h2>
+            <form id="form-stagione" novalidate>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>ID stagione <small class="text-muted">(es. s2-2026)</small></label>
+                  <input type="text" class="form-input" id="stagione-id" placeholder="s2-2026" required>
+                </div>
+                <div class="form-group">
+                  <label>Nome</label>
+                  <input type="text" class="form-input" id="stagione-nome" placeholder="Stagione 2" required>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Numero</label>
+                  <input type="number" class="form-input" id="stagione-numero" min="1" required>
+                </div>
+                <div class="form-group">
+                  <label>Anno</label>
+                  <input type="number" class="form-input" id="stagione-anno" min="2024" required>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Data inizio</label>
+                  <input type="date" class="form-input" id="stagione-inizio" required>
+                </div>
+                <div class="form-group">
+                  <label>Data fine</label>
+                  <input type="date" class="form-input" id="stagione-fine" required>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Max recuperi per giocatore</label>
+                  <input type="number" class="form-input" id="stagione-recuperi" value="4" min="0" required>
+                </div>
+                <div class="form-group">
+                  <label>Stato</label>
+                  <select class="form-input" id="stagione-status">
+                    <option value="prossima">Prossima</option>
+                    <option value="attiva">Attiva</option>
+                    <option value="conclusa">Conclusa</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-error"   id="stagione-error"   hidden></div>
+              <div class="form-success" id="stagione-success" hidden></div>
+              <button type="submit" class="btn-primary" style="margin-top:1rem">Crea stagione</button>
+            </form>
+          </div>
+
+          <div class="admin-section card" style="margin-top:1.5rem">
+            <h2>Stagioni esistenti</h2>
+            <div id="stagioni-list" class="admin-list"></div>
+          </div>
+        </div>
+
+      </div><!-- /admin-content -->
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/ranking.js"></script>
+  <script src="data/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

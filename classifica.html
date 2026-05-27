@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classifica — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="page-header">
+        <h1>Classifica</h1>
+        <p>Ranking dei giocatori per stagione</p>
+      </div>
+
+      <div class="season-select-wrapper">
+        <label for="season-select">Stagione:</label>
+        <select id="season-select"></select>
+        <span id="season-info-text"></span>
+      </div>
+
+      <!-- Classifica stagionale — tab -->
+      <div class="lb-tabs-header">
+        <h2 class="section-title" style="margin-bottom:0">🏆 Classifica Stagionale</h2>
+        <div class="lb-tabs">
+          <button class="lb-tab active" data-tab="camp">Punti Campionato</button>
+            <button class="lb-tab" data-tab="best">🎯 Classifica Cecchino</button>
+        </div>
+      </div>
+
+      <!-- Panel: Punti Campionato -->
+      <div id="lb-panel-camp" class="lb-panel">
+        <div class="table-wrapper">
+          <table class="classifica-window-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Giocatore</th>
+                <th>Partite</th>
+                <th>Punti Camp.</th>
+                <th>Punti Tiro</th>
+                <th>Media</th>
+                <th>Record</th>
+                <th>Vittorie</th>
+                <th title="Recuperi usati / disponibili">Rec.</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-tbody"></tbody>
+          </table>
+        </div>
+        <div id="leaderboard-pager-camp" class="classifica-pager"></div>
+        <p class="note" style="margin-top:0.5rem;margin-bottom:2rem">
+          Punti Camp. = 10 al 1°, 8 al 2°, 6 al 3°, 4 dal 4° al 5°, 2 dal 6° al 7°, 1 dall'8° al 10°, 0 dall'11° in poi &nbsp;·&nbsp;
+          Ordine campionato = Pt Camp. → Media esatta → Pt Tiro → Record &nbsp;·&nbsp;
+          Punti Tiro = somma dei best giornalieri &nbsp;·&nbsp;
+          Record = miglior singolo tentativo ufficiale (max 50) &nbsp;·&nbsp;
+          Rec. = recuperi usati / disponibili a stagione
+        </p>
+      </div>
+
+      <!-- Panel: Best Score -->
+      <div id="lb-panel-best" class="lb-panel" style="display:none">
+        <div class="table-wrapper">
+          <table class="classifica-window-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Giocatore</th>
+                <th>Record</th>
+                <th>Media Tiro</th>
+                <th>2° Colpo</th>
+                <th>Punti Tiro</th>
+                <th>Partite</th>
+                <th>Punti Camp.</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-best-tbody"></tbody>
+          </table>
+        </div>
+        <div id="leaderboard-pager-best" class="classifica-pager"></div>
+        <p class="note" style="margin-top:0.5rem;margin-bottom:2rem">
+          Classifica cecchini per miglior singolo tentativo ufficiale &nbsp;·&nbsp;
+          Spareggio: media tiro esatta → 2° miglior tentativo ufficiale → punti tiro &nbsp;·&nbsp;
+          Max = 50 pt (5 bullseye)
+        </p>
+      </div>
+
+      <section class="classifica-calendar-shell">
+        <div class="classifica-calendar-header">
+          <div>
+            <h2 class="section-title" style="margin-bottom:0.4rem">📅 Calendario stagione</h2>
+            <p class="note" style="margin-bottom:0">
+              Calendario completo della stagione. Clicca una giornata giocata per vedere la classifica di serata in blocchi da 10.
+            </p>
+          </div>
+          <div class="classifica-calendar-nav">
+            <button type="button" class="classifica-calendar-btn" id="classifica-cal-prev" aria-label="Mese precedente">◀</button>
+            <div id="classifica-cal-month" class="classifica-calendar-month">—</div>
+            <button type="button" class="classifica-calendar-btn" id="classifica-cal-next" aria-label="Mese successivo">▶</button>
+          </div>
+        </div>
+
+        <div id="classifica-calendar-summary" class="classifica-calendar-summary"></div>
+        <div id="classifica-calendar-grid" class="classifica-calendar-grid"></div>
+
+        <div id="classifica-giornata-detail" class="classifica-giornata-detail"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/ranking.js"></script>
+  <script src="data/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

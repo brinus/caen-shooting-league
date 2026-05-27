@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISAL — CAEN Shooting League</title>
+  <meta name="description" content="Quote fittizie e mercati satirici calcolati sui risultati della CAEN Shooting League.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container container--wide">
+
+      <div class="page-header page-header--sisal">
+        <span class="sisal-kicker">Simulatore non autorizzato</span>
+        <h1>SISAL</h1>
+        <p>Quote completamente fittizie costruite sui risultati reali della lega. Nessuna scommessa vera: solo statistiche che si prendono troppo sul serio.</p>
+        <div class="sisal-live-pill" id="sisal-live-badge" hidden>
+          <span class="sisal-live-dot"></span> quote calcolate live
+        </div>
+      </div>
+
+      <!-- Scrolling odds ticker -->
+      <div class="sisal-ticker-wrap">
+        <div class="sisal-ticker-label">LAVAGNA</div>
+        <div class="sisal-ticker-scroll">
+          <div class="sisal-ticker-track" id="sisal-ticker-content">
+            <span class="sisal-ticker-item">Caricamento quote…</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="sisal-marquee card">
+        <div>
+          <div class="sisal-marquee-label">Lavagna aperta</div>
+          <div class="sisal-marquee-title" id="sisal-season-title">—</div>
+          <div class="sisal-marquee-meta" id="sisal-season-summary">
+            <span>Quote in caricamento</span>
+          </div>
+        </div>
+        <div class="sisal-progress-wrap">
+          <div class="sisal-progress-label-row">
+            <span class="badge-active" style="background:rgba(73,210,155,0.12);border-color:rgba(73,210,155,0.28);color:var(--sisal-green);animation:none">For fun only</span>
+            <span class="sisal-progress-label" id="sisal-progress-label">—</span>
+          </div>
+          <div class="sisal-progress">
+            <div class="sisal-progress-fill" id="sisal-progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="season-select-wrapper" style="margin-bottom:1.5rem;align-items:center">
+        <label for="sisal-season-select">Stagione:</label>
+        <select id="sisal-season-select"></select>
+        <span class="note" style="color:var(--text-muted);font-size:0.8rem">Mercati principali: titolo, podio, best over e media finale over 18. (Quote calcolate live)</span>
+      </div>
+
+      <section>
+        <h2 class="section-title">Lavagna Principale</h2>
+        <div class="sisal-highlight-grid" id="sisal-highlights"></div>
+      </section>
+
+      <section class="sisal-section sisal-section--giornata sisal-reveal">
+        <div class="sisal-section-header-band">
+          <div class="sisal-section-header-left">
+            <span class="sisal-section-icon">⚡</span>
+            <div>
+              <div class="sisal-section-kicker">Mercati Giornata</div>
+              <div class="sisal-section-name" id="sisal-next-section-name">Prossima Giornata</div>
+            </div>
+          </div>
+          <div class="sisal-next-tag" id="sisal-next-tag">caricamento…</div>
+        </div>
+        <div class="sisal-section-body">
+          <p class="sisal-section-desc" id="sisal-next-copy">—</p>
+          <div class="sisal-next-headline" style="margin-bottom:0.5rem">
+            <div class="sisal-next-title" id="sisal-next-title">—</div>
+          </div>
+          <div class="sisal-highlight-grid" id="sisal-next-highlights" style="margin-top:1rem"></div>
+          <div class="table-wrapper" style="margin:1rem 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Giocatore</th>
+                  <th>Pos.</th>
+                  <th>Vincente</th>
+                  <th>Podio</th>
+                  <th>Over 25</th>
+                  <th>Over 20</th>
+                  <th>Segnale</th>
+                </tr>
+              </thead>
+              <tbody id="sisal-next-player-tbody"></tbody>
+            </table>
+          </div>
+          <div class="sisal-specials-grid" id="sisal-next-specials"></div>
+        </div>
+      </section>
+
+      <section class="sisal-section sisal-section--campionato sisal-reveal">
+        <div class="sisal-section-header-band">
+          <div class="sisal-section-header-left">
+            <span class="sisal-section-icon">🏆</span>
+            <div>
+              <div class="sisal-section-kicker">Scommesse di Stagione</div>
+              <div class="sisal-section-name">Campionato</div>
+            </div>
+          </div>
+        </div>
+        <div class="sisal-section-body">
+          <p class="sisal-section-desc">Titolo · Podio · Best over · Best over+5 · Media ≥18 — i mercati aperti per tutta la stagione. Quote più basse = il mercato è più convinto.</p>
+          <div class="table-wrapper" style="margin-bottom:1.5rem">
+            <table>
+              <thead>
+                <tr>
+                  <th>Giocatore</th>
+                  <th>Pos.</th>
+                  <th>Titolo</th>
+                  <th>Podio</th>
+                  <th>Best over</th>
+                  <th>Best over +5</th>
+                  <th>Media 18+</th>
+                  <th>Segnale</th>
+                </tr>
+              </thead>
+              <tbody id="sisal-player-tbody"></tbody>
+            </table>
+          </div>
+          <div class="sisal-section-subsection-label">Mercati Speciali di Stagione</div>
+          <div class="sisal-specials-grid" id="sisal-specials"></div>
+        </div>
+      </section>
+
+      <section class="sisal-section sisal-reveal" id="sisal-charts-section">
+        <div class="sisal-section-header-band">
+          <div class="sisal-section-header-left">
+            <span class="sisal-section-icon">📊</span>
+            <div>
+              <div class="sisal-section-kicker">Analisi &amp; Previsioni</div>
+              <div class="sisal-section-name">Il motore delle quote</div>
+            </div>
+          </div>
+        </div>
+        <div class="sisal-section-body">
+          <div id="sisal-charts-container"></div>
+          <div class="sisal-methodology-card" style="margin-top:1.5rem">
+            <div class="sisal-marquee-label">Metodo</div>
+            <h2 style="font-size:1.1rem;color:var(--text);margin-bottom:0.25rem">Come vengono fuori queste assurdità</h2>
+            <ul class="sisal-methodology" id="sisal-methodology"></ul>
+          </div>
+        </div>
+      </section>
+
+
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/ranking.js"></script>
+  <script src="data/data.js"></script>
+  <script src="data/sisal.js"></script>
+  <script type="module" src="js/modules/loader-sisal-modules.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- ── Bet widget + modal ── -->
+  <div id="bet-widget" class="bet-widget" hidden>
+    <span class="bet-widget-balance">🪙 <strong id="bet-widget-amount">—</strong> Bossoli</span>
+    <button class="btn-bet-open" id="btn-open-bet-modal">🎰 Scommetti</button>
+  </div>
+
+  <div id="bet-modal-overlay" class="bet-modal-overlay" hidden>
+    <div class="bet-modal card">
+
+      <div class="bet-modal-header">
+        <h2 class="bet-modal-title">🎰 Piazza scommessa</h2>
+        <button class="bet-modal-close" id="btn-close-bet-modal" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div class="bet-modal-wallet">
+        🪙 Saldo: <strong id="bet-modal-balance">—</strong> Bossoli
+      </div>
+
+      <!-- Tab navigation -->
+      <div class="bet-tabs" role="tablist">
+        <button class="bet-tab-btn active" data-tab="stagione" role="tab">📅 Fine Stagione</button>
+        <button class="bet-tab-btn" data-tab="giornata" role="tab">⚡ Prossima G.</button>
+        <button class="bet-tab-btn" data-tab="speciali" role="tab">✨ Speciali</button>
+      </div>
+
+      <!-- ── Tab: Fine Stagione ── -->
+      <div class="bet-tab-pane" id="bet-tab-stagione">
+        <div class="bet-season-row">
+          <label style="font-size:0.75rem;color:var(--text-muted)">Stagione</label>
+          <select id="bet-select-season" class="form-input" style="max-width:200px;padding:0.3rem 0.6rem;font-size:0.85rem"></select>
+        </div>
+        <div class="table-wrapper bet-board-wrap">
+          <table class="bet-board-table">
+            <thead>
+                <tr>
+                <th>Giocatore</th>
+                <th title="Vince il campionato">🏆<span class="bet-th-label">Titolo</span></th>
+                <th title="Podio (top 3)">🥉<span class="bet-th-label">Podio</span></th>
+                    <th title="Top 5">⭐<span class="bet-th-label">Top 5</span></th>
+                <th title="Best over stagionale">🎯<span class="bet-th-label">Best over</span></th>
+                <th title="Best over stagionale +5">🎯<span class="bet-th-label">Best over+5</span></th>
+                <th title="Media finale ≥18">📊<span class="bet-th-label">Avg 18</span></th>
+              </tr>
+            </thead>
+            <tbody id="bet-stagione-tbody"></tbody>
+          </table>
+        </div>
+          <!-- Exact ranking composer (stagione) -->
+          <div id="bet-exact-composer-stagione" class="bet-exact-composer" style="margin-top:0.8rem"></div>
+        </div>
+
+      <!-- ── Tab: Prossima Giornata ── -->
+      <div class="bet-tab-pane" id="bet-tab-giornata" hidden>
+        <div class="bet-giornata-info" id="bet-giornata-info"></div>
+        <div class="table-wrapper bet-board-wrap">
+          <table class="bet-board-table">
+            <thead>
+              <tr>
+                <th>Giocatore</th>
+                <th title="Vince la giornata">🥇<span class="bet-th-label">Vince</span></th>
+                <th title="Podio giornata">🥉<span class="bet-th-label">Podio</span></th>
+                  <th title="Score over 25">🎯<span class="bet-th-label">&gt;25</span></th>
+                  <th title="Score over 20">📊<span class="bet-th-label">&gt;20</span></th>
+              </tr>
+            </thead>
+            <tbody id="bet-giornata-tbody"></tbody>
+          </table>
+        </div>
+          <!-- Exact ranking composer (giornata) -->
+          <div id="bet-exact-composer-giornata" class="bet-exact-composer" style="margin-top:0.8rem"></div>
+      </div>
+
+      <!-- ── Tab: Speciali ── -->
+      <div class="bet-tab-pane" id="bet-tab-speciali" hidden>
+        <div id="bet-speciali-list" class="bet-speciali-list"></div>
+      </div>
+
+      <!-- ── Schedina + importo (comune a tutti i tab) ── -->
+      <div class="bet-selection-area" id="bet-selection-area" hidden>
+        <!-- Elenco selezioni + pulsante svuota -->
+        <div id="bet-slip" class="bet-slip"></div>
+        <!-- Chips importo -->
+        <div class="bet-chips-row">
+          <button class="bet-chip" data-amt="50">50</button>
+          <button class="bet-chip" data-amt="100">100</button>
+          <button class="bet-chip" data-amt="200">200</button>
+          <button class="bet-chip" data-amt="500">500</button>
+          <input type="number" id="bet-input-amount" class="form-input bet-amount-input"
+                 min="10" step="10" placeholder="Importo…">
+        </div>
+        <!-- Breakdown quota (singola o multipla) -->
+        <div id="bet-breakdown" class="bet-breakdown"></div>
+        <!-- Correlation grid (pairwise) -->
+        <div id="bet-corr-grid" class="bet-corr-grid" style="margin-top:0.6rem;display:none"></div>
+      </div>
+
+      <div class="form-error"  id="bet-error"   hidden></div>
+      <div class="form-success" id="bet-success" hidden></div>
+
+      <button class="btn-primary" id="btn-confirm-bet"
+              style="width:100%;margin-top:0.75rem" disabled>
+        Seleziona una scommessa
+      </button>
+    </div>
+  </div>
+
+  <script>
+    ;(function () {
+      /* ── State ── */
+      var _wallet     = 0
+      var _selections = []   // array di { bet_type, player_name, quota, market_label, season_id, giornata_date, giornata_num }
+      var _selPanel   = null // 'stagione' | 'giornata' | 'speciali'
+      var _seasonId   = null
+
+      /* ── Bonus multipla (per numero di selezioni) ── */
+      var PARLAY_BONUS = [1, 1, 1.05, 1.10, 1.18, 1.28, 1.40, 1.55]
+      function getBonus(n) { return PARLAY_BONUS[Math.min(n, 7)] || 1.55 }
+      function getPanelLabel(p) {
+        return { stagione:'📅 Fine Stagione', giornata:'⚡ Prossima Giornata', speciali:'✨ Speciali' }[p] || p
+      }
+
+      /* ── DOM refs ── */
+      var widget     = document.getElementById('bet-widget')
+      var overlay    = document.getElementById('bet-modal-overlay')
+      var btnOpen    = document.getElementById('btn-open-bet-modal')
+      var btnClose   = document.getElementById('btn-close-bet-modal')
+      var btnConfirm = document.getElementById('btn-confirm-bet')
+      var selSeason  = document.getElementById('bet-select-season')
+      var inputAmt   = document.getElementById('bet-input-amount')
+      var selArea    = document.getElementById('bet-selection-area')
+      var errBox     = document.getElementById('bet-error')
+      var sucBox     = document.getElementById('bet-success')
+
+      function fmtQ(n) { return Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) }
+      function fmtC(n) { return Number(n||0).toLocaleString('it-IT') }
+      function esc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+      function isBettingBlockedForBoard(board) {
+        try {
+          if (!board || !board.next_matchday || !board.next_matchday.data) return false;
+          var dStr = board.next_matchday.data;
+          var now = new Date();
+          var start = new Date(dStr + 'T12:00:00');
+          var end   = new Date(dStr + 'T20:00:00');
+          return now >= start && now < end;
+        } catch (e) { return false }
+      }
+
+      /* ── Board cell factory ── */
+      function betCell(quota, bd) {
+        if (!quota) return '<td class="bet-cell bet-cell--na">—</td>'
+        return '<td class="bet-cell" data-bet=\'' + JSON.stringify(bd).replace(/'/g,'&#39;') + '\'>'
+          + '<span class="bet-q">' + fmtQ(quota) + '</span></td>'
+      }
+
+      /* ── Tab: Fine Stagione ── */
+      function populateStagioneTab(seasonId) {
+        var boards = CSL.sisal || []
+        var board  = boards.find(function(b){ return b.season_id === seasonId })
+        var tbody  = document.getElementById('bet-stagione-tbody')
+        if (!board || !tbody) return
+        tbody.innerHTML = board.players.map(function(p) {
+          var mkBd = function(bt, q, lbl) {
+            return { bet_type:bt, player_name:p.nome, quota:q, market_label:lbl,
+                     season_id:seasonId, giornata_date:null, giornata_num:null }
+          }
+          return '<tr>'
+            + '<td class="bet-player-cell">'
+            + '<span class="bet-player-ini">' + esc(p.iniziali || p.nome.slice(0,2)) + '</span>'
+            + esc(p.nome) + '</td>'
+            + betCell(p.quote_titolo,  mkBd('titolo',  p.quote_titolo,  '🏆 Titolo campionato'))
+            + betCell(p.quote_podio,   mkBd('podio',   p.quote_podio,   '🥉 Podio campionato'))
+            + betCell(p.quote_top5,    mkBd('top5',    p.quote_top5,    '⭐ Top 5'))
+            + betCell(p.quote_best_over_thr1, mkBd('best_over_thr1', p.quote_best_over_thr1, '🎯 Best over ' + (p.best_over_thr1_value||'') + ' (stagione)'))
+            + betCell(p.quote_best_over_thr2, mkBd('best_over_thr2', p.quote_best_over_thr2, '🎯 Best over ' + (p.best_over_thr2_value||'') + ' (stagione)'))
+            + betCell(p.quote_avg_18,  mkBd('avg_18',  p.quote_avg_18,  '📊 Media ≥18 (stagione)'))
+            + '</tr>'
+        }).join('')
+        attachBoardClicks(tbody, 'stagione')
+        // init exact-rank composer for stagione
+        try { renderExactComposer(board, 'bet-exact-composer-stagione', 'stagione'); } catch(e) { console.error('composer stag fail', e); }
+      }
+
+      /* ── Tab: Prossima Giornata ── */
+      function populateGiornataTab(board) {
+        var infoEl = document.getElementById('bet-giornata-info')
+        var tbody  = document.getElementById('bet-giornata-tbody')
+        if (!board || !board.next_matchday || !board.next_matchday.players) {
+          if (infoEl) infoEl.innerHTML = '<p class="text-muted" style="padding:0.5rem 0">Nessuna prossima giornata disponibile.</p>'
+          if (tbody)  tbody.innerHTML  = ''
+          return
+        }
+        var nm  = board.next_matchday
+        var dtl = new Date(nm.data+'T00:00:00').toLocaleDateString('it-IT',{day:'numeric',month:'long'})
+        infoEl.innerHTML = '<div class="bet-giornata-badge">⚡ G' + nm.numero + ' · ' + esc(nm.giorno) + ' ' + dtl + '</div>'
+        tbody.innerHTML = nm.players.map(function(p) {
+          var mkBd = function(bt, q, lbl) {
+            return { bet_type:bt, player_name:p.nome, quota:q, market_label:lbl,
+                     season_id:_seasonId, giornata_date:nm.data, giornata_num:nm.numero }
+          }
+          return '<tr>'
+            + '<td class="bet-player-cell">'
+            + '<span class="bet-player-ini">' + esc(p.iniziali || (p.nome||'').slice(0,2)) + '</span>'
+            + esc(p.nome) + '</td>'
+            + betCell(p.quote_vittoria, mkBd('giornata_win',     p.quote_vittoria, '🥇 Vince G' + nm.numero))
+            + betCell(p.quote_podio,    mkBd('giornata_podio',   p.quote_podio,    '🥉 Podio G' + nm.numero))
+            + betCell(p.quote_over_25,  mkBd('giornata_over_25', p.quote_over_25,  '🎯 Over 25 G' + nm.numero))
+            + betCell(p.quote_over_20,  mkBd('giornata_over_20', p.quote_over_20,  '📊 Over 20 G' + nm.numero))
+            + '</tr>'
+        }).join('')
+        attachBoardClicks(tbody, 'giornata')
+        // init exact-rank composer for giornata
+        try { renderExactComposer(board, 'bet-exact-composer-giornata', 'giornata'); } catch(e) { console.error('composer giornata fail', e); }
+      }
+
+      /* ── Tab: Speciali ── */
+      function populateSpecialiTab(board) {
+        var listEl = document.getElementById('bet-speciali-list')
+        if (!listEl) return
+        var items = []
+        if (board && board.next_matchday) {
+          ;(board.next_matchday.highlights || []).forEach(function(h) {
+            items.push({ label:h.label, sub:h.market, player:h.player, quota:h.quota,
+                         giornata_date:board.next_matchday.data, giornata_num:board.next_matchday.numero })
+          })
+          ;(board.next_matchday.specials || []).forEach(function(s) {
+            items.push({ label:s.label, sub:s.note||'', player:'—', quota:s.quota,
+                         giornata_date:board.next_matchday.data, giornata_num:board.next_matchday.numero })
+          })
+        }
+        if (board) {
+          ;(board.highlights || []).forEach(function(h) {
+            items.push({ label:h.label, sub:h.market, player:h.player, quota:h.quota,
+                         giornata_date:null, giornata_num:null })
+          })
+        }
+        // Remove any exact-score items (server or static) — these markets are deprecated
+        items = items.filter(function(item) {
+          var lbl = (item.label || '') + ' ' + (item.sub || '') + ' ' + (item.market || '');
+          return !/\bEsatto\b/i.test(lbl);
+        });
+        if (!items.length) {
+          listEl.innerHTML = '<p class="text-muted">Nessun mercato speciale disponibile.</p>'
+          return
+        }
+        listEl.innerHTML = items.map(function(item, idx) {
+          var lbl = item.sub ? item.label + ' — ' + item.sub : item.label
+          var bd  = { bet_type:'speciale', player_name:item.player||'—', quota:item.quota,
+                      market_label:lbl, season_id:_seasonId,
+                      giornata_date:item.giornata_date||null, giornata_num:item.giornata_num||null }
+          var tag = item.giornata_num
+            ? '<span class="bet-speciale-tag">⚡ G' + item.giornata_num + '</span>'
+            : '<span class="bet-speciale-tag bet-speciale-tag--season">📅 Stagione</span>'
+          return '<div class="bet-speciale-card" data-bet=\'' + JSON.stringify(bd).replace(/'/g,'&#39;') + '\'>'
+            + '<div class="bet-speciale-top">' + tag
+            + '<span class="bet-q bet-q--lg">' + fmtQ(item.quota) + '</span></div>'
+            + '<div class="bet-speciale-label">' + esc(item.label) + '</div>'
+            + (item.sub ? '<div class="bet-speciale-sub">' + esc(item.sub) + '</div>' : '')
+            + '</div>'
+        }).join('')
+        listEl.querySelectorAll('.bet-speciale-card').forEach(function(card) {
+          card.addEventListener('click', function() {
+            toggleSelection(JSON.parse(card.getAttribute('data-bet').replace(/&#39;/g,"'")), 'speciali')
+          })
+        })
+      }
+
+      /* ── Exact ranking composer (shared) ── */
+      function renderExactComposer(board, containerId, scope) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        if (!board || !board.players || !board.players.length) {
+          container.innerHTML = '<div class="text-muted" style="padding:0.5rem">Nessuna lavagna disponibile per il compositore.</div>';
+          return;
+        }
+        var players = board.players.slice();
+        var sims = (board.mc_summary && board.mc_summary.sims) || 0;
+
+        var header = document.createElement('div'); header.className = 'row';
+        var lbl = document.createElement('div'); lbl.style.color = 'var(--text-muted)'; lbl.style.marginRight = '0.5rem'; lbl.textContent = 'Classifica esatta:';
+        var selectK = document.createElement('select'); [3,4,5,6].forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent='Top '+n; selectK.appendChild(o); }); selectK.value='5';
+        header.appendChild(lbl); header.appendChild(selectK); container.appendChild(header);
+
+        var rowsWrap = document.createElement('div'); rowsWrap.style.marginTop = '0.5rem'; container.appendChild(rowsWrap);
+        var actions = document.createElement('div'); actions.className = 'composer-actions';
+        var btnAdd = document.createElement('button'); btnAdd.className = 'bet-composer-add btn-primary'; btnAdd.textContent = 'Aggiungi alla schedina';
+        var probView = document.createElement('div'); probView.style.marginLeft = 'auto'; probView.style.color='var(--text-muted)'; probView.textContent = '';
+        actions.appendChild(btnAdd); actions.appendChild(probView); container.appendChild(actions);
+
+        function buildRows(k) {
+          rowsWrap.innerHTML = '';
+          for (var i=0;i<k;i++) {
+            (function(pos){
+              var row = document.createElement('div'); row.className='row';
+              var plbl = document.createElement('div'); plbl.className='pos-label'; plbl.textContent = (pos+1)+'.';
+              var sel = document.createElement('select'); sel.dataset.pos = pos; sel.style.minWidth='220px';
+              var emptyOpt = document.createElement('option'); emptyOpt.value=''; emptyOpt.textContent='— Seleziona giocatore —'; sel.appendChild(emptyOpt);
+              players.forEach(function(p, idx){ var o=document.createElement('option'); o.value=idx; o.textContent=p.nome; sel.appendChild(o); });
+              row.appendChild(plbl); row.appendChild(sel); rowsWrap.appendChild(row);
+            })(i)
+          }
+        }
+
+        function computeProb() {
+          var sels = Array.prototype.map.call(rowsWrap.querySelectorAll('select'), function(s){ return s.value!==''?Number(s.value):null });
+          if (sels.some(function(x){ return x===null })) { probView.textContent = 'Seleziona tutti i giocatori per vedere la quota.'; return null }
+          var prob = 1;
+          if (board.mc_summary && board.mc_summary.posMatrix && sims>0) {
+            for (var i=0;i<sels.length;i++) {
+              var pi = sels[i];
+              var cnt = (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][i]) || 0;
+              var p = cnt / sims;
+              prob *= Math.max(1e-8, p);
+            }
+          } else {
+            for (var j=0;j<sels.length;j++) {
+              var q = (board.players[sels[j]] && (board.players[sels[j]].quote_titolo || board.players[sels[j]].quote_vittoria || 10)) || 10;
+              prob *= Math.max(1e-6, 1 / Math.max(q,0.01));
+            }
+          }
+          var odds = prob > 0 ? (1/prob) : null;
+          probView.textContent = odds ? ('Prob. ≈ ' + (Math.round(prob*1000)/10) + '% — Quota appross. @' + Number(odds.toFixed(2))) : '—';
+          return {prob:prob, odds:odds, sels: sels};
+        }
+
+        selectK.addEventListener('change', function(){ buildRows(Number(selectK.value)); probView.textContent=''; });
+        rowsWrap.addEventListener('change', function(){ computeProb(); });
+        btnAdd.addEventListener('click', function(){
+          var res = computeProb(); if (!res || !res.sels) { errBox.textContent='Completa la composizione prima di aggiungere.'; errBox.hidden=false; setTimeout(function(){errBox.hidden=true},2500); return }
+          var orderNames = res.sels.map(function(si){ return board.players[si].nome });
+          var label = 'Classifica esatta — ' + orderNames.map(function(n,i){ return (i+1)+'. '+n }).join(' · ');
+          var quota = res.odds || 9999;
+          var bd = { bet_type: (scope==='stagione'?'stagione_exact':'giornata_exact'), player_name: orderNames.join('|'), quota: quota, market_label: label, season_id: board.season_id, giornata_date: (scope==='giornata' && board.next_matchday?board.next_matchday.data:null), giornata_num: (scope==='giornata' && board.next_matchday?board.next_matchday.numero:null) };
+          toggleSelection(bd, scope);
+        });
+
+        buildRows(Number(selectK.value));
+      }
+
+      /* Monte Carlo estimator for giornata parlay joint probability
+         Uses board.next_matchday.expected_score + media_tiro heuristics to sample scores
+         Returns Promise resolving to joint probability P(all selections win) */
+      function estimateNextDayParlayProb(board, selections, N) {
+        return new Promise(function(resolve) {
+          N = N || 2000;
+          if (!board || !board.next_matchday || !board.next_matchday.players || !selections || !selections.length) return resolve(0);
+          var players = board.next_matchday.players;
+
+          // Prepare predicates (independent of sampling)
+          var preds = selections.map(function(s){
+            var pidx = players.findIndex(function(pp){ return pp.nome === s.player_name });
+            if (pidx === -1) return null;
+            if (s.bet_type === 'giornata_over_20') return { idx:pidx, fn:function(v){ return v > 20 } };
+            if (s.bet_type === 'giornata_over_25') return { idx:pidx, fn:function(v){ return v > 25 } };
+            if (s.bet_type === 'giornata_win') return { idx:pidx, fn:'win' };
+            if (s.bet_type === 'giornata_podio') return { idx:pidx, fn:'podio' };
+            return { idx:pidx, fn:function(){ return false } };
+          });
+
+          // Use cached samples if available and matching date
+          board._parlayCache = board._parlayCache || { date: board.next_matchday.data, samples: [] };
+          if (board._parlayCache.date !== board.next_matchday.data) board._parlayCache.samples = [], board._parlayCache.date = board.next_matchday.data;
+
+          var samples = board._parlayCache.samples;
+
+          // local rng Box-Muller
+          function randNorm(mu, sigma) {
+            var u1 = Math.random(), u2 = Math.random();
+            u1 = Math.max(1e-12, u1);
+            var z = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+            return mu + (isFinite(sigma) ? sigma * z : 3 * z);
+          }
+
+          // Build mus/sigs heuristics only when generating samples
+          function buildMusSigs() {
+            var mus = players.map(function(p){ return Number(p.expected_score) || Number(p.media_tiro) || 15; });
+            var sigs = players.map(function(p){
+              var base = Number(p.media_tiro) || Number(p.expected_score) || 15;
+              var s = 0.2 * base + 2.0;
+              return Math.max(1.5, Math.min(9, s));
+            });
+            return { mus: mus, sigs: sigs };
+          }
+
+          var need = Math.max(0, N - samples.length);
+          if (need > 0) {
+            var ms = buildMusSigs();
+            for (var g=0; g<need; g++) {
+              var sim = new Array(players.length);
+              for (var i=0;i<players.length;i++) sim[i] = randNorm(ms.mus[i], ms.sigs[i]);
+              samples.push(sim);
+            }
+            // trim if samples longer than reasonable (keep up to 5000)
+            if (samples.length > 5000) samples = samples.slice(samples.length - 5000), board._parlayCache.samples = samples;
+            else board._parlayCache.samples = samples;
+          }
+
+          // Evaluate preds over first N samples
+          var hits = 0;
+          for (var t=0;t<N;t++) {
+            var sim = samples[t];
+            var ok = true;
+            var sorted = sim.map(function(v,i){ return {v:v,i:i} }).sort(function(a,b){ return b.v - a.v });
+            for (var j=0;j<preds.length;j++) {
+              var pr = preds[j]; if (!pr) { ok = false; break; }
+              if (pr.fn === 'win') {
+                if (sorted[0].i !== pr.idx) { ok = false; break; }
+              } else if (pr.fn === 'podio') {
+                var ranks = sorted.slice(0,3).map(function(x){ return x.i });
+                if (ranks.indexOf(pr.idx) === -1) { ok = false; break; }
+              } else if (typeof pr.fn === 'function') {
+                if (!pr.fn(sim[pr.idx])) { ok = false; break; }
+              } else { ok = false; break; }
+            }
+            if (ok) hits++;
+          }
+          resolve(Math.max(1e-12, hits / N));
+        });
+      }
+
+      // Compute pairwise correlations (and marginals) for given selections using cached samples
+      function computePairwiseCorrelations(board, selections, N) {
+        N = N || 2000;
+        if (!board || !board.next_matchday || !board.next_matchday.players || !selections || !selections.length) return null;
+        var players = board.next_matchday.players;
+
+        // ensure cache exists and has samples
+        board._parlayCache = board._parlayCache || { date: board.next_matchday.data, samples: [] };
+        if (board._parlayCache.date !== board.next_matchday.data) board._parlayCache.samples = [], board._parlayCache.date = board.next_matchday.data;
+        var samples = board._parlayCache.samples;
+
+        // simple mus/sigs heuristics
+        function randNorm(mu, sigma) {
+          var u1 = Math.random(), u2 = Math.random(); u1 = Math.max(1e-12, u1);
+          var z = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+          return mu + (isFinite(sigma) ? sigma * z : 3 * z);
+        }
+        function buildMusSigs() {
+          var mus = players.map(function(p){ return Number(p.expected_score) || Number(p.media_tiro) || 15; });
+          var sigs = players.map(function(p){ var base = Number(p.media_tiro) || Number(p.expected_score) || 15; var s = 0.2 * base + 2.0; return Math.max(1.5, Math.min(9, s)); });
+          return { mus: mus, sigs: sigs };
+        }
+
+        var need = Math.max(0, N - samples.length);
+        if (need > 0) {
+          var ms = buildMusSigs();
+          for (var g=0; g<need; g++) {
+            var sim = new Array(players.length);
+            for (var i=0;i<players.length;i++) sim[i] = randNorm(ms.mus[i], ms.sigs[i]);
+            samples.push(sim);
+          }
+          if (samples.length > 5000) samples = samples.slice(samples.length - 5000), board._parlayCache.samples = samples; else board._parlayCache.samples = samples;
+        }
+
+        var L = selections.length;
+        var marg = new Array(L).fill(0);
+        var joint = new Array(L);
+        for (var i=0;i<L;i++) { joint[i] = new Array(L).fill(0); }
+
+        for (var t=0;t<N;t++) {
+          var sim = samples[t];
+          var sorted = sim.map(function(v,i){ return {v:v,i:i} }).sort(function(a,b){ return b.v - a.v });
+          for (var i=0;i<L;i++) {
+            var s = selections[i];
+            var pidx = players.findIndex(function(pp){ return pp.nome === s.player_name });
+            var oki = false;
+            if (s.bet_type === 'giornata_win') oki = (sorted[0].i === pidx);
+            else if (s.bet_type === 'giornata_podio') oki = (sorted.slice(0,3).map(function(x){return x.i}).indexOf(pidx) !== -1);
+            else if (s.bet_type === 'giornata_over_20') oki = (sim[pidx] > 20);
+            else if (s.bet_type === 'giornata_over_25') oki = (sim[pidx] > 25);
+            marg[i] += oki ? 1 : 0;
+            for (var j=i;j<L;j++) {
+              var s2 = selections[j];
+              var pidx2 = players.findIndex(function(pp){ return pp.nome === s2.player_name });
+              var okj = false;
+              if (s2.bet_type === 'giornata_win') okj = (sorted[0].i === pidx2);
+              else if (s2.bet_type === 'giornata_podio') okj = (sorted.slice(0,3).map(function(x){return x.i}).indexOf(pidx2) !== -1);
+              else if (s2.bet_type === 'giornata_over_20') okj = (sim[pidx2] > 20);
+              else if (s2.bet_type === 'giornata_over_25') okj = (sim[pidx2] > 25);
+              if (oki && okj) joint[i][j] += 1;
+              if (i !== j && oki && okj) joint[j][i] += 1;
+            }
+          }
+        }
+
+        // convert counts to probabilities and ratios
+        var margP = marg.map(function(c){ return Math.max(1e-12, c / N); });
+        var jointP = joint.map(function(row){ return row.map(function(c){ return Math.max(0, c / N); }); });
+        var ratio = jointP.map(function(row, i){ return row.map(function(jp, j){ var denom = margP[i] * margP[j]; return denom > 0 ? jp / denom : 0; }); });
+        return { marginals: margP, joint: jointP, ratio: ratio };
+      }
+
+      // Render the pairwise correlation grid into container element
+      // Also shows original product quota vs MC quota and explanatory text
+      function renderCorrelationGrid(selections, corrObj, parlayProb, container) {
+        if (!corrObj || !container) return;
+        var L = selections.length;
+        // compute product base quota from selections
+        var prodBase = selections.reduce(function(acc,s){ return acc * (Number(s.quota) || 1); }, 1);
+        var bonus = getBonus(selections.length);
+        var prodFinal = prodBase * bonus;
+        var mcBase = parlayProb && parlayProb > 0 ? (1 / parlayProb) : null;
+        var mcFinal = mcBase ? (mcBase * bonus) : null;
+
+        var html = '<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:8px">'
+                 + '<div style="flex:1;padding:12px;border-radius:8px;background:var(--card);box-shadow:0 6px 14px rgba(0,0,0,0.04)">'
+                 + '<div style="font-weight:700;margin-bottom:6px">Quota prodotto (client)</div>'
+                 + '<div style="font-size:1.1rem">@' + fmtQ(prodBase) + '</div>'
+                 + '<div style="font-size:0.9rem;color:var(--text-muted)">Finale con bonus: <strong>@' + fmtQ(prodFinal) + '</strong></div>'
+                 + '</div>'
+                 + '<div style="flex:1;padding:12px;border-radius:8px;background:var(--card);box-shadow:0 6px 14px rgba(0,0,0,0.04)">'
+                 + '<div style="font-weight:700;margin-bottom:6px">Quota MC (1 / P(congiunta))</div>'
+                 + (mcBase ? ('<div style="font-size:1.1rem">@' + fmtQ(mcBase) + '</div><div style="font-size:0.9rem;color:var(--text-muted)">Finale con bonus: <strong>@' + fmtQ(mcFinal) + '</strong></div>') : '<div style="color:var(--text-muted)">Calcolo in corso…</div>')
+                 + '</div>'
+                 + '<div style="flex:1;padding:12px;border-radius:8px;background:var(--card);box-shadow:0 6px 14px rgba(0,0,0,0.04)">'
+                 + '<div style="font-weight:700;margin-bottom:6px">Interpretazione</div>'
+                 + '<div style="font-size:0.95rem;color:var(--text-muted)">Se la quota MC è inferiore alla quota prodotto, le selezioni sono positivamente correlate (più scenari favorevoli del previsto) e la multipla reale vale meno del prodotto. La matrice sottostante mostra la correlazione per coppia; clicca sui nomi per evidenziare righe/colonne.</div>'
+                 + '</div>'
+                 + '</div>';
+
+        // Legend
+        html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'
+             + '<div style="width:14px;height:14px;background:#ff9b9b;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Forte correlazione +</div>'
+             + '<div style="width:14px;height:14px;background:#ffd7a6;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Lievi +</div>'
+             + '<div style="width:14px;height:14px;background:#e9f8ea;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Neutrale</div>'
+             + '<div style="width:14px;height:14px;background:#cfe7ff;border-radius:3px"></div><div style="font-size:0.85rem;color:var(--text-muted)">Negativa</div>'
+             + '</div>';
+
+        html += '<div style="overflow:auto;border-radius:8px;padding:8px;background:var(--surface);">';
+        html += '<table class="corr-grid" style="border-collapse:collapse;width:100%;font-size:0.98rem">';
+        // header
+        html += '<tr><th style="padding:10px 10px 10px 12px"></th>' + selections.map(function(s){ return '<th style="text-align:left;padding:10px 14px;min-width:140px">' + esc(s.player_name) + '<div style="font-size:0.75rem;color:var(--text-muted)">' + esc(s.market_label) + '</div></th>'; }).join('') + '</tr>';
+        for (var i=0;i<L;i++) {
+          html += '<tr>' + '<td style="padding:12px 10px;font-weight:700;border-right:1px solid rgba(0,0,0,0.06)">' + esc(selections[i].player_name) + '</td>';
+          for (var j=0;j<L;j++) {
+            var r = corrObj.ratio[i][j];
+            var p = corrObj.joint[i][j];
+            var color = '#fff';
+            if (i === j) { color = '#f7f7f7'; }
+            else if (r > 1.3) color = '#ff9b9b';
+            else if (r > 1.15) color = '#ffd7a6';
+            else if (r > 0.95) color = '#e9f8ea';
+            else color = '#cfe7ff';
+            var display = (i===j) ? ('P=' + (corrObj.marginals[i]*100).toFixed(1) + '%') : (r ? r.toFixed(2) : '—');
+            var sub = (i===j) ? '' : ('<div style="font-size:0.78rem;color:var(--text-muted)">J=' + (p*100).toFixed(2) + '%</div>');
+            html += '<td style="padding:12px;text-align:center;background:' + color + ';border:1px solid rgba(0,0,0,0.04)">' + display + sub + '</td>';
+          }
+          html += '</tr>';
+        }
+        html += '</table>';
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      // Helper to compute and render in one go (async-safe)
+      function computeAndRenderCorrelationGrid(board, selections, N, container) {
+        try {
+          var corr = computePairwiseCorrelations(board, selections, N || 2000);
+          renderCorrelationGrid(selections, corr, container);
+        } catch (e) { console.error('computeAndRenderCorrelationGrid', e); container.innerHTML = ''; }
+      }
+
+      /* ── Board click delegation ── */
+      function attachBoardClicks(tbody, panelName) {
+        tbody.querySelectorAll('.bet-cell[data-bet]').forEach(function(cell) {
+          cell.addEventListener('click', function() {
+            toggleSelection(JSON.parse(cell.getAttribute('data-bet').replace(/&#39;/g,"'")), panelName)
+          })
+        })
+      }
+
+      /* ── Coppie di mercati incompatibili per lo stesso giocatore ── */
+      var CONFLICTING_PAIRS = [
+        ['giornata_win',    'giornata_podio'],   // vince ⇒ podio
+        ['giornata_over_25','giornata_over_20'],  // >25 ⇒ >20
+        ['titolo',          'podio'],             // titolo ⇒ podio
+        ['titolo',          'top5'],              // titolo ⇒ top5
+        ['podio',           'top5'],              // podio  ⇒ top5
+      ]
+
+      function getConflictMessage(newBd, selections) {
+        if (!newBd.player_name || newBd.player_name === '—') return null
+        for (var i = 0; i < selections.length; i++) {
+          var ex = selections[i]
+          if (ex.player_name !== newBd.player_name) continue
+          // stesso contesto (stessa giornata o stessa stagione)
+          var sameCtx = newBd.giornata_date && ex.giornata_date
+            ? newBd.giornata_date === ex.giornata_date
+            : newBd.season_id === ex.season_id
+          if (!sameCtx) continue
+          for (var j = 0; j < CONFLICTING_PAIRS.length; j++) {
+            var p = CONFLICTING_PAIRS[j]
+            if ((p[0] === newBd.bet_type && p[1] === ex.bet_type) ||
+                (p[1] === newBd.bet_type && p[0] === ex.bet_type)) {
+              return '⛔ Scommessa impossibile: "' + esc(ex.market_label) + '" e "' + esc(newBd.market_label) + '" sono correlate per ' + esc(newBd.player_name) + '.'
+            }
+          }
+        }
+        return null
+      }
+
+      /* ── Toggle selezione nella schedina ── */
+      function toggleSelection(bd, panelName) {
+        if (window.SlipStore && typeof window.SlipStore.toggle === 'function'){
+          var res = window.SlipStore.toggle(bd, panelName, getConflictMessage);
+          if (res && res.error){
+            if (res.error === 'panel_locked'){
+              errBox.textContent = '🔒 Stai costruendo una schedina su ' + getPanelLabel(_selPanel) + '. Svuota per cambiare pannello.'
+              errBox.hidden = false; setTimeout(function(){ errBox.hidden = true }, 3000); return
+            }
+            if (res.error === 'limit'){
+              errBox.textContent = 'Massimo 10 selezioni per multipla.'; errBox.hidden = false; setTimeout(function(){ errBox.hidden = true }, 2000); return
+            }
+            if (res.error === 'conflict'){
+              errBox.textContent = res.message || 'Scommessa incompatibile'; errBox.hidden = false; setTimeout(function(){ errBox.hidden = true }, 3500); return
+            }
+          }
+          // sync local snapshot
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          syncCellHighlights(); renderSelectionArea(); errBox.hidden = true; return
+        }
+        // fallback legacy behavior
+        if (_selPanel && _selPanel !== panelName) {
+          errBox.textContent = '🔒 Stai costruendo una schedina su ' + getPanelLabel(_selPanel) + '. Svuota per cambiare pannello.'
+          errBox.hidden = false
+          setTimeout(function(){ errBox.hidden = true }, 3000)
+          return
+        }
+        var key = bd.bet_type + '|' + bd.player_name + '|' + bd.market_label
+        var idx = _selections.findIndex(function(s){
+          return (s.bet_type + '|' + s.player_name + '|' + s.market_label) === key
+        })
+        if (idx >= 0) {
+          _selections.splice(idx, 1)
+          if (_selections.length === 0) _selPanel = null
+        } else {
+          if (_selections.length >= 10) {
+            errBox.textContent = 'Massimo 10 selezioni per multipla.'
+            errBox.hidden = false
+            setTimeout(function(){ errBox.hidden = true }, 2000)
+            return
+          }
+          var conflict = getConflictMessage(bd, _selections)
+          if (conflict) {
+            errBox.textContent = conflict
+            errBox.hidden = false
+            setTimeout(function(){ errBox.hidden = true }, 3500)
+            return
+          }
+          _selections.push(bd)
+          if (!_selPanel) _selPanel = panelName
+        }
+        syncCellHighlights()
+        renderSelectionArea()
+        errBox.hidden = true
+      }
+
+      /* ── Rimuove una leg per indice ── */
+      function removeFromSlip(idx) {
+        if (window.SlipStore && typeof window.SlipStore.removeAt === 'function'){
+          window.SlipStore.removeAt(idx);
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          syncCellHighlights(); renderSelectionArea(); return
+        }
+        _selections.splice(idx, 1)
+        if (_selections.length === 0) _selPanel = null
+        syncCellHighlights()
+        renderSelectionArea()
+      }
+
+      /* ── Svuota tutta la schedina ── */
+      function clearSlip() {
+        if (window.SlipStore && typeof window.SlipStore.clear === 'function'){
+          window.SlipStore.clear();
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          syncCellHighlights(); renderSelectionArea(); return
+        }
+        _selections = []; _selPanel = null
+        syncCellHighlights()
+        renderSelectionArea()
+      }
+
+      /* ── Sincronizza stile .selected sulle celle ── */
+      function syncCellHighlights() {
+        document.querySelectorAll('.bet-cell.selected, .bet-speciale-card.selected')
+          .forEach(function(c){ c.classList.remove('selected') })
+        _selections.forEach(function(s) {
+          var key = s.bet_type + '|' + s.player_name + '|' + s.market_label
+          document.querySelectorAll('.bet-cell[data-bet]').forEach(function(cell) {
+            try {
+              var bd = JSON.parse(cell.getAttribute('data-bet').replace(/&#39;/g,"'"))
+              if ((bd.bet_type+'|'+bd.player_name+'|'+bd.market_label) === key)
+                cell.classList.add('selected')
+            } catch(e){}
+          })
+          document.querySelectorAll('.bet-speciale-card[data-bet]').forEach(function(card) {
+            try {
+              var bd = JSON.parse(card.getAttribute('data-bet').replace(/&#39;/g,"'"))
+              if ((bd.bet_type+'|'+bd.player_name+'|'+bd.market_label) === key)
+                card.classList.add('selected')
+            } catch(e){}
+          })
+        })
+      }
+
+      /* ── Render area selezione / schedina ── */
+      function renderSelectionArea() {
+        var slip  = document.getElementById('bet-slip')
+        var bkdn  = document.getElementById('bet-breakdown')
+        var amt   = parseInt(inputAmt.value) || 0
+
+        if (_selections.length === 0) {
+          selArea.hidden = true
+          slip.innerHTML = ''
+          bkdn.innerHTML = ''
+          btnConfirm.disabled = true
+          btnConfirm.textContent = 'Seleziona una scommessa'
+          return
+        }
+        selArea.hidden = false
+
+        /* ---- Slip HTML ---- */
+        if (_selections.length === 1) {
+          var s = _selections[0]
+          slip.innerHTML = '<div class="bet-selected-display">'
+            + '<div class="bet-sel-main">'
+            + '<span class="bet-sel-player">' + esc(s.player_name !== '—' ? s.player_name : '') + '</span>'
+            + ' <span class="bet-sel-market">' + esc(s.market_label) + '</span>'
+            + ' <span class="bet-q">@' + fmtQ(s.quota) + '</span>'
+            + '</div>'
+            + '<button class="bet-slip-rm" data-idx="0" title="Rimuovi selezione">✕</button>'
+            + '</div>'
+        } else {
+          slip.innerHTML = '<div class="bet-slip-hdr">'
+            + '<span class="bet-slip-title">📋 ' + _selections.length + ' selezioni · <em>' + getPanelLabel(_selPanel) + '</em></span>'
+            + '<button class="bet-slip-clear" id="_btn-clear-slip">Svuota ✕</button>'
+            + '</div>'
+            + '<ul class="bet-slip-legs">'
+            + _selections.map(function(s, i) {
+                return '<li class="bet-slip-leg">'
+                  + '<span class="bet-slip-leg-txt">'
+                  + (s.player_name !== '—' ? '<strong>' + esc(s.player_name) + '</strong> · ' : '')
+                  + esc(s.market_label) + '</span>'
+                  + '<span class="bet-q">@' + fmtQ(s.quota) + '</span>'
+                  + '<button class="bet-slip-rm" data-idx="' + i + '">✕</button>'
+                  + '</li>'
+              }).join('')
+            + '</ul>'
+          // Binding diretto più affidabile della sola event delegation
+          var clearBtn = document.getElementById('_btn-clear-slip')
+          if (clearBtn) clearBtn.addEventListener('click', clearSlip)
+        }
+
+        /* ---- Breakdown ---- */
+        var baseQ  = _selections.reduce(function(acc, s){ return acc * s.quota }, 1)
+        var bonus  = getBonus(_selections.length)
+        var finalQ = _selections.length > 1 ? baseQ * bonus : baseQ
+        var html   = ''
+
+        if (_selections.length > 1) {
+          var bonusPct = Math.round((bonus - 1) * 100)
+          html += '<div class="bd-line">'
+            + '<span>Quota base (' + _selections.length + ' selezioni)</span>'
+            + '<span>' + _selections.map(function(s){ return fmtQ(s.quota) }).join(' × ')
+            + ' = <strong>' + fmtQ(baseQ) + '</strong></span></div>'
+          html += '<div class="bd-line bd-line--bonus">'
+            + '<span>Bonus multipla ' + _selections.length + ' selezioni</span>'
+            + '<span>×' + fmtQ(bonus) + ' <em>(+' + bonusPct + '%)</em></span></div>'
+          html += '<div class="bd-line bd-line--total">'
+            + '<span>Quota finale</span>'
+            + '<span>' + fmtQ(finalQ) + '</span></div>'
+        }
+        if (amt >= 10) {
+          html += '<div class="bd-line bd-line--win">'
+            + '<span>Vincita potenziale</span>'
+            + '<strong>' + fmtC(Math.floor(amt * finalQ)) + ' 🪙</strong></div>'
+        } else if (_selections.length === 1) {
+          html += '<div class="bd-line"><span>Quota</span><span>@' + fmtQ(finalQ) + '</span></div>'
+        }
+        bkdn.innerHTML = html
+
+        /* ---- Confirm button ---- */
+        btnConfirm.disabled = false
+        btnConfirm.textContent = _selections.length === 1
+          ? 'Conferma scommessa'
+          : 'Conferma multipla (' + _selections.length + ' selezioni)'
+
+        // Render correlation grid for giornata parlays
+        var corrEl = document.getElementById('bet-corr-grid');
+        if (_selPanel === 'giornata' && _selections.length > 1) {
+          try {
+            corrEl.style.display = '';
+            var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
+            computeAndRenderCorrelationGrid(board, _selections, 2000, corrEl);
+          } catch (e) { console.error('corr grid failed', e); corrEl.style.display='none' }
+        } else {
+          corrEl.style.display = 'none';
+          corrEl.innerHTML = '';
+        }
+      }
+
+      // subscribe to SlipStore updates if available (keeps local _selections in sync)
+      if (window.SlipStore && typeof window.SlipStore.onChange === 'function'){
+        try {
+          _selections = window.SlipStore.getSelections(); _selPanel = window.SlipStore.getPanel();
+          window.SlipStore.onChange(function(newSelections){ _selections = newSelections; syncCellHighlights(); renderSelectionArea(); });
+        } catch(e){ console.error('SlipStore subscribe failed', e); }
+      }
+
+      /* ── Chip quick-amounts ── */
+      document.querySelectorAll('.bet-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+          inputAmt.value = chip.getAttribute('data-amt')
+          document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
+          chip.classList.add('active')
+          renderSelectionArea()
+        })
+      })
+      inputAmt.addEventListener('input', function() {
+        document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
+        renderSelectionArea()
+      })
+
+      /* ── Event delegation su #bet-slip (rimozione leg, svuota) ── */
+      document.getElementById('bet-slip').addEventListener('click', function(e) {
+        var rm = e.target.closest('.bet-slip-rm')
+        if (rm) { removeFromSlip(parseInt(rm.getAttribute('data-idx'))); return }
+        if (e.target.closest('#_btn-clear-slip')) clearSlip()
+      })
+
+      /* ── Tab switching ── */
+      document.querySelectorAll('.bet-tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.bet-tab-btn').forEach(function(b){ b.classList.remove('active') })
+          btn.classList.add('active')
+          document.querySelectorAll('.bet-tab-pane').forEach(function(p){ p.hidden = true })
+          document.getElementById('bet-tab-' + btn.getAttribute('data-tab')).hidden = false
+        })
+      })
+
+      /* ── Init bet modal tabs from CSL.sisal ── */
+      function _initBetModalTabs() {
+        var boards = CSL.sisal || []
+        if (!boards.length) return
+        // Rebuild season select (avoid duplicates)
+        while (selSeason.options.length) selSeason.remove(0)
+        boards.slice().reverse().forEach(function(b) {
+          var opt = document.createElement('option')
+          opt.value = b.season_id; opt.textContent = b.season_label
+          selSeason.appendChild(opt)
+        })
+        // default: most recent
+        _seasonId = boards[boards.length - 1].season_id
+        selSeason.value = _seasonId
+        var defaultBoard = boards.find(function(b){ return b.season_id === _seasonId }) || boards[boards.length - 1]
+        populateStagioneTab(_seasonId)
+        populateGiornataTab(defaultBoard)
+        populateSpecialiTab(defaultBoard)
+      }
+
+      /* ── Init on DOMContentLoaded (fast path with static data) ── */
+      document.addEventListener('DOMContentLoaded', function() {
+        _initBetModalTabs()
+      })
+
+      /* ── Re-init when live boards are ready (from app.js initSisal) ── */
+      document.addEventListener('sisal:boards-ready', function() {
+        // clear any cached parlay samples when boards update
+        try { (CSL.sisal || []).forEach(function(b){ if (b && b._parlayCache) delete b._parlayCache }); } catch(e){}
+        _initBetModalTabs()
+        clearSlip()
+      })
+
+      selSeason.addEventListener('change', function() {
+        _seasonId = selSeason.value
+        var board = (CSL.sisal || []).find(function(b){ return b.season_id === _seasonId })
+        populateStagioneTab(_seasonId)
+        populateGiornataTab(board)
+        populateSpecialiTab(board)
+        clearSlip()
+      })
+
+      /* ── Auth + wallet ── */
+      document.addEventListener('csl:auth-ready', async function() {
+        if (!CSLAuth.isLoggedIn()) return
+        widget.hidden = false
+        var w = await CSLAuth.getWallet()
+        _wallet = w.total
+        document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
+        document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
+      })
+
+      /* ── Modal open / close ── */
+      btnOpen.addEventListener('click', function() {
+        errBox.hidden = true; sucBox.hidden = true
+        // determine current board for the selected season
+        var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
+        var blocked = isBettingBlockedForBoard(board);
+        overlay.hidden = false
+        document.body.style.overflow = 'hidden'
+
+        var modal = overlay.querySelector('.bet-modal');
+        // remove any previous block banner
+        var existing = document.getElementById('bet-block-banner');
+        if (existing) existing.remove();
+        if (blocked) {
+          // darken modal and show persistent banner
+          if (modal) modal.style.filter = 'brightness(0.72)';
+          var banner = document.createElement('div');
+          banner.id = 'bet-block-banner';
+          banner.textContent = 'Giornata iniziata, non si accettano più scommesse';
+          banner.style.cssText = 'position:fixed;left:50%;top:12%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 14px;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.35);z-index:2000;opacity:0.95';
+          document.body.appendChild(banner);
+          // disable confirm and selection interactions
+          if (btnConfirm) btnConfirm.disabled = true;
+        } else {
+          if (modal) modal.style.filter = '';
+          if (btnConfirm) btnConfirm.disabled = false;
+        }
+      })
+      function closeModal() {
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+        var banner = document.getElementById('bet-block-banner'); if (banner) banner.remove();
+        var modal = overlay.querySelector('.bet-modal'); if (modal) modal.style.filter = '';
+        if (btnConfirm) btnConfirm.disabled = false;
+      }
+      btnClose.addEventListener('click', closeModal)
+      overlay.addEventListener('click', function(e){ if (e.target === overlay) closeModal() })
+      document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal() })
+
+      /* ── Confirm bet (singola o multipla) ── */
+      btnConfirm.addEventListener('click', async function() {
+        errBox.hidden = true; sucBox.hidden = true
+        if (!_selections.length) return
+        var amt = parseInt(inputAmt.value) || 0
+        if (amt < 10)     { errBox.textContent = 'Importo minimo 10 Bossoli.'; errBox.hidden = false; return }
+        if (amt > _wallet){ errBox.textContent = 'Saldo insufficiente (' + fmtC(_wallet) + ' Bossoli).'; errBox.hidden = false; return }
+
+        var baseQ  = _selections.reduce(function(acc, s){ return acc * s.quota }, 1)
+        var bonus  = getBonus(_selections.length)
+        var finalQ = _selections.length > 1 ? baseQ * bonus : baseQ
+        var nSel   = _selections.length
+
+        // If this is a giornata multipla, estimate joint probability via Monte Carlo
+        if (nSel > 1 && _selPanel === 'giornata') {
+          try {
+            btnConfirm.disabled = true; btnConfirm.textContent = 'Calcolo quota multipla…'
+            var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
+            var parlayProb = await estimateNextDayParlayProb(board, _selections, 2000);
+            if (parlayProb && parlayProb > 0) {
+              var mcBaseQ = 1 / parlayProb;
+              var mcFinalQ = mcBaseQ * bonus;
+              // override baseQ/finalQ to the MC-derived values
+              baseQ = Math.round(mcBaseQ * 10000) / 10000;
+              finalQ = Math.round(mcFinalQ * 10000) / 10000;
+            }
+          } catch (e) {
+            console.error('MC parlay estimate failed', e);
+          } finally {
+            // restore button text/state later after RPC
+          }
+        }
+
+        btnConfirm.disabled = true; btnConfirm.textContent = 'Elaborazione…'
+
+        var res
+        if (_selections.length === 1) {
+          var s = _selections[0]
+          res = await CSLAuth.placeBet(
+            s.season_id, s.bet_type, s.player_name, amt, s.quota,
+            { giornata_date: s.giornata_date, giornata_num: s.giornata_num, market_label: s.market_label }
+          )
+        } else {
+          res = await CSLAuth.placeParlay(
+            _seasonId, _selPanel, _selections, amt,
+            Math.round(baseQ  * 10000) / 10000,
+            Math.round(bonus  * 10000) / 10000,
+            Math.round(finalQ * 10000) / 10000,
+            { giornata_date: _selPanel === 'giornata' ? _selections[0].giornata_date : null,
+              giornata_num:  _selPanel === 'giornata' ? _selections[0].giornata_num  : null }
+          )
+        }
+
+        btnConfirm.disabled = false
+        btnConfirm.textContent = nSel === 1 ? 'Conferma scommessa' : 'Conferma multipla (' + nSel + ' selezioni)'
+
+        if (res && res.error) {
+          errBox.textContent = res.error; errBox.hidden = false
+        } else {
+          _wallet = (res && res.new_balance != null) ? res.new_balance : _wallet - amt
+          document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
+          document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
+          sucBox.textContent = '✅ ' + (nSel > 1 ? 'Multipla' : 'Scommessa') + ' piazzata! Saldo: ' + fmtC(_wallet) + ' Bossoli.'
+          sucBox.hidden = false
+          clearSlip()
+          inputAmt.value = ''
+          document.querySelectorAll('.bet-chip').forEach(function(c){ c.classList.remove('active') })
+        }
+      })
+    })()
+  </script>
+</body>
+</html>

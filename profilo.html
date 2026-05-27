@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profilo — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div id="profile-loading" class="page-loading">Caricamento profilo…</div>
+      <div id="profile-not-found" class="page-error" hidden>Giocatore non trovato.</div>
+      <div id="profile-login-required" class="page-error" hidden>
+        <a href="login.html">Accedi</a> per visualizzare il tuo profilo.
+      </div>
+
+      <div id="profile-content" hidden>
+
+        <!-- ── Header profilo (sempre visibile) ── -->
+        <div class="profile-header card">
+          <div class="profile-avatar" id="profile-avatar">?</div>
+          <div class="profile-info">
+            <h1 class="profile-name" id="profile-name">—</h1>
+            <div class="profile-meta">
+              <span class="profile-role badge" id="profile-role-badge"></span>
+              <span class="profile-season" id="profile-season-label"></span>
+            </div>
+          </div>
+          <!-- Wallet badge (solo profilo proprio) -->
+          <div id="profile-wallet-badge" class="profile-wallet-badge" hidden>
+            <span class="wallet-icon">🪙</span>
+            <span id="wallet-balance-header">—</span>
+            <span class="wallet-label">Bossoli</span>
+          </div>
+        </div>
+
+        <!-- ── Layout sidebar + main ── -->
+        <div id="profile-own-layout" class="profile-layout" hidden>
+
+          <!-- Sidebar navigazione -->
+          <nav class="profile-sidebar" aria-label="Sezioni profilo">
+            <button class="profile-sidebar-btn active" data-tab="dashboard">
+              <span class="sidebar-icon">🏠</span> Dashboard
+            </button>
+            <button class="profile-sidebar-btn" data-tab="statistiche">
+              <span class="sidebar-icon">📊</span> Statistiche
+            </button>
+            <button class="profile-sidebar-btn" data-tab="scommesse">
+              <span class="sidebar-icon">🎰</span> Scommesse
+            </button>
+            <button class="profile-sidebar-btn" data-tab="impostazioni">
+              <span class="sidebar-icon">⚙</span> Impostazioni
+            </button>
+          </nav>
+
+          <!-- Contenuto tab -->
+          <div class="profile-main">
+
+            <!-- ── Tab: Dashboard ── -->
+            <div id="tab-dashboard" class="profile-tab">
+
+              <!-- Wallet card -->
+              <section>
+                <h2 class="section-title">🪙 Bossoli</h2>
+                <div class="wallet-card card" id="wallet-card">
+                  <div class="wallet-total">
+                    <div class="wallet-amount" id="wallet-total-amount">—</div>
+                    <div class="wallet-amount-label">Bossoli disponibili</div>
+                  </div>
+                  <div class="wallet-breakdown" id="wallet-breakdown"></div>
+                </div>
+              </section>
+
+              <!-- Scommesse attive (dashboard) -->
+              <section style="margin-top:1.75rem">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+                  <h2 class="section-title" style="margin:0">🎰 Scommesse attive</h2>
+                  <button class="btn-link-sm" id="btn-goto-scommesse">Vedi tutte →</button>
+                </div>
+                <div id="dashboard-active-bets">
+                  <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
+                </div>
+              </section>
+
+            </div>
+
+            <!-- ── Tab: Statistiche ── -->
+            <div id="tab-statistiche" class="profile-tab" hidden>
+
+              <section>
+                <h2 class="section-title">📊 Stagione attiva</h2>
+                <div class="profile-stats-grid" id="profile-stats-grid"></div>
+              </section>
+
+              <section style="margin-top:2rem">
+                <h2 class="section-title">🏆 Posizione in classifica</h2>
+                <div class="profile-rank-card card" id="profile-rank-card"></div>
+              </section>
+
+              <section style="margin-top:2rem">
+                <h2 class="section-title">📅 Giornate disputate</h2>
+                <div class="profile-giornate" id="profile-giornate"></div>
+              </section>
+
+              <section id="profile-sparkline-section" style="margin-top:2rem" hidden>
+                <h2 class="section-title">📈 Andamento punteggi</h2>
+                <div class="card profile-sparkline-card">
+                  <div class="profile-sparkline-wrap"></div>
+                </div>
+              </section>
+
+              <section id="profile-sisal-section" style="margin-top:2rem" hidden>
+                <h2 class="section-title">📊 Quote SISAL</h2>
+                <div class="card profile-sisal-card">
+                  <div id="profile-sisal-content"></div>
+                </div>
+              </section>
+
+            </div>
+
+            <!-- ── Tab: Scommesse ── -->
+            <div id="tab-scommesse" class="profile-tab" hidden>
+              <div class="bets-tab-header">
+                <h2 class="section-title" style="margin:0">🎰 Le mie scommesse</h2>
+                <div class="bet-filter-tabs" id="bet-filter-tabs">
+                  <button class="bet-filter-btn active" data-filter="tutte">Tutte</button>
+                  <button class="bet-filter-btn" data-filter="attiva">⏳ Attive</button>
+                  <button class="bet-filter-btn" data-filter="vinta">✅ Vinte</button>
+                  <button class="bet-filter-btn" data-filter="persa">❌ Perse</button>
+                  <button class="bet-filter-btn" data-filter="annullata">↩ Annullate</button>
+                </div>
+              </div>
+              <div id="all-bets-list">
+                <p class="text-muted" style="padding:0.5rem 0">Caricamento…</p>
+              </div>
+            </div>
+
+            <!-- ── Tab: Impostazioni ── -->
+            <div id="tab-impostazioni" class="profile-tab" hidden>
+              <h2 class="section-title">🔒 Cambia password</h2>
+              <div class="card" style="max-width:460px">
+                <form id="form-change-password">
+                  <div class="form-group" style="margin-bottom:1rem">
+                    <label>Nuova password</label>
+                    <input type="password" class="form-input" id="pw-new"
+                           placeholder="Minimo 8 caratteri" minlength="8" required>
+                  </div>
+                  <div class="form-group" style="margin-bottom:1.25rem">
+                    <label>Conferma nuova password</label>
+                    <input type="password" class="form-input" id="pw-confirm"
+                           placeholder="Ripeti la nuova password" required>
+                  </div>
+                  <div class="form-error"   id="pw-error"   hidden></div>
+                  <div class="form-success" id="pw-success" hidden></div>
+                  <button type="submit" class="btn-primary" id="btn-change-password" style="margin-top:0.75rem">
+                    Aggiorna password
+                  </button>
+                </form>
+              </div>
+            </div>
+
+          </div><!-- /profile-main -->
+        </div><!-- /profile-own-layout -->
+
+        <!-- ── Layout senza sidebar (profilo altrui) ── -->
+        <div id="profile-other-layout">
+
+          <section class="profile-stats-section" style="margin-top:1.5rem">
+            <h2 class="section-title">📊 Stagione attiva</h2>
+            <div class="profile-stats-grid" id="profile-stats-grid-other"></div>
+          </section>
+
+          <section style="margin-top:2rem">
+            <h2 class="section-title">🏆 Posizione in classifica</h2>
+            <div class="profile-rank-card card" id="profile-rank-card-other"></div>
+          </section>
+
+          <section style="margin-top:2rem">
+            <h2 class="section-title">📅 Giornate disputate</h2>
+            <div class="profile-giornate" id="profile-giornate-other"></div>
+          </section>
+
+          <section id="profile-sparkline-section-other" style="margin-top:2rem" hidden>
+            <h2 class="section-title">📈 Andamento punteggi</h2>
+            <div class="card profile-sparkline-card">
+              <div class="profile-sparkline-wrap"></div>
+            </div>
+          </section>
+
+          <section id="profile-sisal-section-other" style="margin-top:2rem;margin-bottom:3rem" hidden>
+            <h2 class="section-title">📊 Quote SISAL</h2>
+            <div class="card profile-sisal-card">
+              <div id="profile-sisal-content-other"></div>
+            </div>
+          </section>
+
+        </div><!-- /profile-other-layout -->
+
+      </div><!-- /profile-content -->
+
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/ranking.js"></script>
+  <script src="data/data.js"></script>
+  <script src="data/sisal.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    /* ────────────────────────────────────────────────────────────
+       PROFILO — script principale
+    ──────────────────────────────────────────────────────────── */
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function _esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }
+    function formatDate(dateStr) {
+      return new Date(dateStr + 'T00:00:00')
+        .toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
+    }
+    function fmtQ(n) {
+      return Number(n||0).toLocaleString('it-IT', {minimumFractionDigits:2, maximumFractionDigits:2})
+    }
+    function fmtCoins(n) { return Number(n||0).toLocaleString('it-IT') }
+
+    // ── Sparkline profilo (più fine + più info) ───────────────────
+    function buildProfileSparkline(timeline) {
+      if (!timeline || timeline.length < 2) return ''
+      var W = 600, H = 88, PADX = 28, PADY_T = 24, PADY_B = 22
+      var graphH = H - PADY_T - PADY_B  // area grafico: 42px
+      var scores = timeline.map(function(t) { return t.punteggio })
+      var minV = Math.min.apply(null, scores)
+      var maxV = Math.max.apply(null, scores)
+      var range = maxV - minV || 1
+      var avg = scores.reduce(function(a,b){return a+b},0) / scores.length
+
+      function px(i) { return PADX + (i / (timeline.length - 1)) * (W - PADX * 2) }
+      function py(v) { return PADY_T + graphH - ((v - minV) / range) * graphH }
+
+      var pts = timeline.map(function(t,i) { return px(i)+','+py(t.punteggio) }).join(' ')
+      var avgY = py(avg).toFixed(1)
+
+      // Area riempimento
+      var areaD = 'M '+px(0)+','+py(timeline[0].punteggio)
+        + timeline.slice(1).map(function(t,i){ return ' L '+px(i+1)+','+py(t.punteggio) }).join('')
+        + ' L '+px(timeline.length-1)+','+(PADY_T+graphH)
+        + ' L '+px(0)+','+(PADY_T+graphH)+' Z'
+
+      var isUp = scores[scores.length-1] > scores[0]
+      var isFlat = scores[scores.length-1] === scores[0]
+      var lineColor = isFlat ? 'rgba(255,255,255,0.3)' : (isUp ? '#66bb6a' : '#ef5350')
+      var areaId = 'psg'+Math.random().toString(36).slice(2,8)
+
+      // Etichette punteggio sopra ogni punto
+      var labels = timeline.map(function(t,i) {
+        var cx = px(i), cy = py(t.punteggio)
+        var labelY = cy - 8
+        if (labelY < 4) labelY = cy + 16
+        return '<text class="spark-label" x="'+cx.toFixed(1)+'" y="'+labelY.toFixed(1)+'"'
+          +' text-anchor="middle">'+t.punteggio+'</text>'
+      }).join('')
+
+      // Etichette giornata sotto (G1, G2…)
+      var roundLabels = timeline.map(function(t,i) {
+        var recMark = t.recupero ? '<tspan fill="#64b5f6">R</tspan>' : ''
+        return '<text class="spark-round-label" x="'+px(i).toFixed(1)+'" y="'+(H-4)+'"'
+          +' text-anchor="middle">G'+(i+1)+recMark+'</text>'
+      }).join('')
+
+      // Linea media tratteggiata
+      var avgLine = '<line x1="'+PADX+'" y1="'+avgY+'" x2="'+(W-PADX)+'" y2="'+avgY+'"'
+        +' class="spark-avg-line"/>'
+      // Label media
+      var avgLabel = '<text class="spark-avg-label" x="'+(W-PADX+3)+'" y="'+(parseFloat(avgY)+4)+'">'
+        +'⌀ '+avg.toFixed(1)+'</text>'
+
+      // Dots interattivi
+      var dots = timeline.map(function(t,i) {
+        var cx = px(i).toFixed(1), cy = py(t.punteggio).toFixed(1)
+        var isLast = i === timeline.length - 1
+        var dotFill = t.recupero ? '#64b5f6' : (isLast ? lineColor : 'rgba(255,255,255,0.65)')
+        return '<circle class="spark-dot'+(isLast?' spark-dot--last':'')+(t.recupero?' spark-dot--recupero':'')
+          +'" cx="'+cx+'" cy="'+cy+'" r="'+(isLast?3.5:2.5)+'" fill="'+dotFill+'"'
+          +' data-date="'+t.data+'" data-score="'+t.punteggio+'" data-recupero="'+(t.recupero?'1':'0')+'"/>'
+      }).join('')
+
+      return '<svg class="sparkline sparkline--profile" viewBox="0 0 '+W+' '+H+'"'
+        +' preserveAspectRatio="none" aria-hidden="true">'
+        +'<defs><linearGradient id="'+areaId+'" x1="0" y1="0" x2="0" y2="1">'
+        +'<stop offset="0%" stop-color="'+lineColor+'" stop-opacity="0.18"/>'
+        +'<stop offset="100%" stop-color="'+lineColor+'" stop-opacity="0"/>'
+        +'</linearGradient></defs>'
+        +'<path class="spark-area" d="'+areaD+'" fill="url(#'+areaId+')"/>'
+        + avgLine + avgLabel
+        +'<polyline class="spark-line" points="'+pts+'"'
+        +' fill="none" stroke="'+lineColor+'" stroke-width="1.3"'
+        +' stroke-linejoin="round" stroke-linecap="round"/>'
+        + labels + roundLabels + dots
+        +'</svg>'
+    }
+
+    // ── Render sezione statistiche ────────────────────────────────
+    function renderStats(playerName, playerData, giornatePersonali, prefix, isOwnProfile) {
+      var sfx = prefix  // '' o '-other'
+
+      // Stats grid
+      var statsGrid = document.getElementById('profile-stats-grid'+sfx)
+      if (playerData && statsGrid) {
+        var winRate = playerData.partite > 0 ? Math.round(playerData.vittorie / playerData.partite * 100) : 0
+        var posLabel = playerData.posizione <= 3
+          ? ['🥇','🥈','🥉'][playerData.posizione - 1] : '#' + playerData.posizione
+        var recHtml = playerData.recuperi_usati > 0
+          ? '<span class="recupero-counter recupero-counter--used">'
+            + playerData.recuperi_usati + '/' + playerData.recuperi_max + 'R</span>'
+          : ''
+        statsGrid.innerHTML = [
+          { icon:'📍', val:posLabel, label:'Posizione', extra:'', cls:'profile-stat-card--pos' },
+          { icon:'⚡', val:playerData.punti_campionato, label:'Punti camp.', extra:'', cls:'profile-stat-card--primary', color:'var(--primary)' },
+          { icon:'🎯', val:playerData.record+'<small>/50</small>', label:'Record', extra:'', cls:'profile-stat-card--gold', color:'var(--secondary)' },
+          { icon:'📊', val:playerData.media_tiro.toFixed(1), label:'Media tiro', extra:'', cls:'' },
+          { icon:'🏆', val:playerData.vittorie, label:'Vittorie', extra:'<span class="profile-stat-sub">('+winRate+'%)</span>', cls:'' },
+          { icon:'📅', val:playerData.partite, label:'Giornate', extra:recHtml, cls:'' },
+        ].map(function(s) {
+          return '<div class="profile-stat-card card '+s.cls+'">'
+            +'<div class="profile-stat-icon">'+s.icon+'</div>'
+            +'<div class="profile-stat-value"'+(s.color?' style="color:'+s.color+'"':'')+'>'+s.val+'</div>'
+            +'<div class="profile-stat-label">'+s.label+(s.extra?' '+s.extra:'')+'</div>'
+            +'</div>'
+        }).join('')
+      } else if (statsGrid) {
+        statsGrid.innerHTML = '<p class="text-muted">Nessuna statistica disponibile per questa stagione.</p>'
+      }
+
+      // Rank card
+      var rankCard = document.getElementById('profile-rank-card'+sfx)
+      if (rankCard) {
+        if (playerData) {
+          var posBadge = playerData.posizione <= 3 ? ['🥇','🥈','🥉'][playerData.posizione-1] : '#'+playerData.posizione
+          rankCard.innerHTML = '<div class="rank-summary">'
+            +'<span class="rank-position-big">'+posBadge+'</span>'
+            +'<div class="rank-details">'
+            +'<div><strong>'+playerData.punti_campionato+'</strong> punti campionato</div>'
+            +'<div><strong>'+playerData.punti_tiro+'</strong> punti tiro</div>'
+            +'<div>Recuperi: '+playerData.recuperi_usati+'/'+playerData.recuperi_max+'</div>'
+            +'</div></div>'
+        } else {
+          rankCard.innerHTML = '<p class="text-muted">Giocatore non in classifica nella stagione corrente.</p>'
+        }
+      }
+
+      // Giornate
+      var giornateEl = document.getElementById('profile-giornate'+sfx)
+      if (giornateEl) {
+        if (!giornatePersonali.length) {
+          giornateEl.innerHTML = '<p class="text-muted">Nessuna giornata registrata.</p>'
+        } else {
+          giornateEl.innerHTML = giornatePersonali.map(function(g) {
+            var r = g.risultato
+            var attempts = [r.t1, r.t2, r.t3].map(function(t) {
+              return t === -1
+                ? '<span class="attempt attempt-skipped">—</span>'
+                : '<span class="attempt">'+t+'</span>'
+            }).join('')
+            return '<div class="profile-giornata-row card">'
+              +'<div class="profile-giornata-date">'
+              +'<span class="giornata-num">G'+g.numero+'</span>'
+              +'<span class="giornata-day">'+_esc(g.giorno)+'</span>'
+              +'<span class="giornata-date-str">'+formatDate(g.data)+'</span>'
+              +(r.recupero ? '<span class="badge-recupero">recupero</span>' : '')
+              +'</div>'
+              +'<div class="profile-giornata-tentativi">'+attempts+'</div>'
+              +'<div class="profile-giornata-best"><span class="attempt-best">'+r.punteggio+'</span></div>'
+              +'<div class="profile-giornata-pos">'
+              +'<span class="rank-badge rank-badge-'+(r.posizione<=3?r.posizione:'other')+'">'
+              +(r.posizione<=3?['🥇','🥈','🥉'][r.posizione-1]:'#'+r.posizione)+'</span>'
+              +'<span class="camp-pts camp-pts-'+r.punti_campionato+'">'+r.punti_campionato+' pt</span>'
+              +'</div>'
+              +'</div>'
+          }).join('')
+        }
+      }
+
+      // Sparkline (profilo migliorato)
+      if (giornatePersonali.length >= 2) {
+        var timeline = giornatePersonali.slice()
+          .sort(function(a,b){ return a.data.localeCompare(b.data) })
+          .map(function(g){ return { data:g.data, punteggio:g.risultato.punteggio, recupero:g.risultato.recupero||false } })
+
+        var sparkSectionId = 'profile-sparkline-section' + (sfx ? sfx : '')
+        var sparkSection = document.getElementById(sparkSectionId)
+        if (sparkSection) {
+          sparkSection.hidden = false
+          var sparkWrap = sparkSection.querySelector('.profile-sparkline-wrap')
+          sparkWrap.innerHTML = buildProfileSparkline(timeline)
+            + '<div class="sparkline-tooltip" style="display:none"></div>'
+          var tip = sparkWrap.querySelector('.sparkline-tooltip')
+          sparkWrap.querySelectorAll('.spark-dot').forEach(function(dot) {
+            dot.addEventListener('mouseenter', function() {
+              var d = new Date(dot.getAttribute('data-date')+'T00:00:00')
+              var label = d.toLocaleDateString('it-IT',{day:'numeric',month:'short'})
+              var recLabel = dot.getAttribute('data-recupero')==='1' ? ' [R]' : ''
+              tip.textContent = label+recLabel+' — '+dot.getAttribute('data-score')+' pt'
+              tip.style.display = 'block'
+              var wRect = sparkWrap.getBoundingClientRect()
+              var dRect = dot.getBoundingClientRect()
+              tip.style.left = Math.min(
+                Math.max(dRect.left - wRect.left + dRect.width/2, 32),
+                sparkWrap.offsetWidth - 32
+              )+'px'
+            })
+            dot.addEventListener('mouseleave', function(){ tip.style.display='none' })
+          })
+        }
+      }
+
+      // SISAL
+      if (window.CSL && CSL.sisal && CSL.sisal.length) {
+        var board = CSL.sisal.find(function(b){ return b.season_id === _seasonId })
+          || CSL.sisal[CSL.sisal.length-1]
+        if (board) {
+          var sp = board.players.find(function(p){ return p.nome.toLowerCase()===playerName.toLowerCase() })
+          if (sp) {
+            var sisalSectionId = 'profile-sisal-section' + (sfx ? sfx : '')
+            var sisalSection = document.getElementById(sisalSectionId)
+            var contentId = 'profile-sisal-content' + (sfx ? sfx : '')
+            if (sisalSection) {
+              sisalSection.hidden = false
+              renderSisalProfile(sp, board, document.getElementById(contentId))
+            }
+          }
+        }
+      }
+    }
+
+    // ── Render SISAL profilo ──────────────────────────────────────
+    function renderSisalProfile(p, board, container) {
+      if (!container) return
+      var trendClass = p.trend==='Caldo' ? 'sisal-chip--hot' : p.trend==='Freddo' ? 'sisal-chip--cold' : 'sisal-chip--steady'
+      var trendIcon  = p.trend==='Caldo' ? '🔥' : p.trend==='Freddo' ? '🧊' : '→'
+      var quotes = [
+        { label:'Titolo',    val:p.quote_titolo,  icon:'🏆', featured:true  },
+        { label:'Podio',     val:p.quote_podio,   icon:'🥉', featured:false },
+        { label:'Top 5',     val:p.quote_top5,    icon:'⭐', featured:false },
+        { label:'Best ≥30',  val:p.quote_best_30, icon:'🎯', featured:false },
+        { label:'Media ≥18', val:p.quote_avg_18,  icon:'📊', featured:false },
+      ]
+      container.innerHTML =
+        '<div class="profile-sisal-meta">'
+        +'<span class="sisal-chip '+trendClass+'">'+trendIcon+' '+_esc(p.trend)+'</span>'
+        +'<span class="profile-sisal-conf-wrap">'
+        +'<span class="sisal-confidence-bar" style="width:100px"><span class="sisal-confidence-fill" style="width:'+p.confidence+'%"></span></span>'
+        +'<span class="profile-sisal-conf-label">conf. '+p.confidence+'%</span>'
+        +'</span>'
+        +'<span class="profile-sisal-giornate">G'+board.giornate_giocate+'/'+board.giornate_totali+' giocate</span>'
+        +'</div>'
+        +'<div class="profile-sisal-quotes">'
+        +quotes.map(function(q) {
+          return '<div class="profile-sisal-quote-item'+(q.featured?' profile-sisal-quote-item--featured':'')+'">'
+            +'<div class="profile-sisal-quote-label">'+q.icon+' '+_esc(q.label)+'</div>'
+            +'<div class="'+(q.featured?'sisal-quote--featured':'sisal-quote')+' profile-sisal-quote-val">'+fmtQ(q.val)+'</div>'
+            +'</div>'
+        }).join('')
+        +'</div>'
+        +(p.note ? '<div class="profile-sisal-note">&#8220;'+_esc(p.note)+'&#8221;</div>' : '')
+        +'<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — '+_esc(board.season_label)+'</p>'
+    }
+
+    // ── Wallet dashboard ─────────────────────────────────────────
+    async function renderWallet() {
+      var wallet = await CSLAuth.getWallet()
+      var total  = wallet.total
+
+      // Badge nell'header
+      var badge = document.getElementById('profile-wallet-badge')
+      badge.hidden = false
+      document.getElementById('wallet-balance-header').textContent = fmtCoins(total)
+
+      // Wallet card nel tab Dashboard
+      document.getElementById('wallet-total-amount').textContent = fmtCoins(total) + ' 🪙'
+      var breakdown = document.getElementById('wallet-breakdown')
+      breakdown.innerHTML =
+        '<div class="wallet-row"><span class="wallet-row-label">Giornate giocate</span>'
+        +'<span class="wallet-row-val">+'+fmtCoins(wallet.base_coins)+'</span></div>'
+        +'<div class="wallet-row"><span class="wallet-row-label">Netto scommesse</span>'
+        +'<span class="wallet-row-val '+(wallet.bet_coins>=0?'wallet-pos':'wallet-neg')
+        +'">'+(wallet.bet_coins>=0?'+':'')+fmtCoins(wallet.bet_coins)+'</span></div>'
+    }
+
+    // ── Scommesse — helpers ──────────────────────────────────────
+    var _BET_LABELS = {
+      titolo:'🏆 Titolo campionato', podio:'🥉 Podio campionato',
+      top5:'⭐ Top 5', best_30:'🎯 Best ≥30', avg_18:'📊 Media ≥18',
+      giornata_win:'🥇 Vince la giornata', giornata_podio:'🥉 Podio giornata',
+      giornata_over_20:'🎯 Over 20 punti', giornata_over_25:'🎯 Over 25 punti',
+      giornata_over_30:'🎯 Over 30 punti', speciale:'✨ Speciale'
+    }
+    function _betLabel(b) { return _BET_LABELS[b.bet_type] || b.bet_type }
+
+    function _cancelInfo(createdAt) {
+      var rem = new Date(createdAt).getTime() + 3600000 - Date.now()
+      if (rem <= 0) return { canCancel:false }
+      return { canCancel:true, label: Math.floor(rem/60000)+'m '+ Math.floor((rem%60000)/1000)+'s' }
+    }
+
+    // ── Indicatore stato corrente (porta logica da admin.js) ──────
+    function _normBetName(s) { return (s||'').toLowerCase().trim() }
+
+    function _getBetCurrentStatus(betType, playerName, giornataDate, seasonId) {
+      var stagione = (CSL.stagioni||[]).find(function(st){ return st.id===seasonId })
+      if (!stagione) return null
+      var pn = _normBetName(playerName)
+      var ok = pn && pn !== '—'
+
+      var stagBets = ['titolo','podio','top5','best_30','avg_18']
+      if (stagBets.indexOf(betType) >= 0) {
+        if (!ok) return null
+        var p = (stagione.classifica||[]).find(function(r){ return _normBetName(r.nome)===pn })
+        if (!p) return null
+        var pos = p.posizione
+        if (betType==='titolo')  return pos===1  ? {l:'1° ✓', c:'w'} : {l:pos+'°', c:'l'}
+        if (betType==='podio')   return pos<=3   ? {l:pos+'° ✓', c:'w'} : {l:pos+'°', c:'l'}
+        if (betType==='top5')    return pos<=5   ? {l:pos+'° ✓', c:'w'} : {l:pos+'°', c:'l'}
+        if (betType==='best_30') return p.record>=30   ? {l:'Rec '+p.record+' ✓', c:'w'} : {l:'Rec '+p.record+' — serve 30+', c:'l'}
+        if (betType==='avg_18')  return p.media_tiro>=18 ? {l:'Media '+p.media_tiro.toFixed(1)+' ✓', c:'w'} : {l:'Media '+p.media_tiro.toFixed(1)+' — serve ≥18', c:'l'}
+      }
+
+      if (betType.indexOf('giornata_')===0) {
+        if (!giornataDate) return null
+        var today = new Date(); today.setHours(0,0,0,0)
+        var ggDate = new Date(giornataDate+'T00:00:00')
+        if (ggDate > today) return {l:'Non ancora disputata', c:'p'}
+        var giornata = (stagione.giornate||[]).find(function(g){ return g.data===giornataDate })
+        if (!giornata) return {l:'Risultati non ancora inseriti', c:'u'}
+        if (!ok) return null
+        var pr = (giornata.risultati||[]).find(function(r){ return _normBetName(r.nome)===pn })
+        if (!pr) return {l:'Giocatore assente', c:'u'}
+        var ps = pr.posizione, sc = pr.punteggio
+        if (betType==='giornata_win')     return ps===1  ? {l:'1° — '+sc+'pt. ✓', c:'w'} : {l:ps+'° — '+sc+'pt.', c:'l'}
+        if (betType==='giornata_podio')   return ps<=3   ? {l:ps+'° — '+sc+'pt. ✓', c:'w'} : {l:ps+'° — '+sc+'pt.', c:'l'}
+        if (betType==='giornata_over_20') return sc>=20  ? {l:sc+'pt. ✓', c:'w'} : {l:sc+'pt. — serve 20+', c:'l'}
+        if (betType==='giornata_over_25') return sc>=25  ? {l:sc+'pt. ✓', c:'w'} : {l:sc+'pt. — serve 25+', c:'l'}
+        if (betType==='giornata_over_30') return sc>=30  ? {l:sc+'pt. ✓', c:'w'} : {l:sc+'pt. — serve 30+', c:'l'}
+      }
+      return null
+    }
+
+    function _betCurHtml(st) {
+      if (!st) return ''
+      var cls   = {w:'bet-cur-win',l:'bet-cur-lose',p:'bet-cur-pending',u:'bet-cur-unknown'}[st.c] || 'bet-cur-unknown'
+      var icon  = {w:'🟢',l:'🔴',p:'⏳',u:'❓'}[st.c] || '❓'
+      return '<span class="bet-current-status '+cls+'">'+icon+' '+_esc(st.l)+'</span>'
+    }
+
+    // ── Render contesto scommessa (data giornata + label speciale) ─
+    function _betContextHtml(b, isActive) {
+      var parts = []
+      var isGiornata = b.bet_type && b.bet_type.indexOf('giornata_')===0
+      var isSpeciale = b.bet_type === 'speciale'
+      if (b.player_name && b.player_name !== '—' && b.player_name.trim()) {
+        parts.push('<span class="bet-ctx-player">🎯 '+_esc(b.player_name)+'</span>')
+      }
+      if (b.giornata_date) {
+        var today = new Date(); today.setHours(0,0,0,0)
+        var ggD   = new Date(b.giornata_date+'T00:00:00')
+        var ggFmt = ggD.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+        var ggNum = b.giornata_num ? ' — GG'+b.giornata_num : ''
+        var past  = isActive && ggD < today
+        parts.push('<span class="bet-ctx-date'+(past?' bet-ctx-date--past':'')+'">📅 '+ggFmt+ggNum+'</span>')
+      } else if (isGiornata) {
+        parts.push('<span class="bet-ctx-warn">⚠ Giornata non specificata</span>')
+      }
+      if (isSpeciale && b.market_label) {
+        parts.push('<span class="bet-ctx-label">💬 '+_esc(b.market_label)+'</span>')
+      }
+      return parts.length ? '<div class="bet-card-context">'+parts.join('')+'</div>' : ''
+    }
+
+    // ── Status badge ──────────────────────────────────────────────
+    function _betStatusBadge(status) {
+      var map = {
+        attiva:    '<span class="bet-status bet-status--active">⏳ Attiva</span>',
+        vinta:     '<span class="bet-status bet-status--won">✅ Vinta</span>',
+        persa:     '<span class="bet-status bet-status--lost">❌ Persa</span>',
+        annullata: '<span class="bet-status bet-status--cancelled">↩ Annullata</span>',
+      }
+      return map[status] || '<span class="bet-status">'+_esc(status)+'</span>'
+    }
+
+    // ── Wallet update helper ──────────────────────────────────────
+    async function _updateWalletDisplay() {
+      var w = await CSLAuth.getWallet()
+      var tot = w.total
+      var hdEl  = document.getElementById('wallet-balance-header')
+      var totEl = document.getElementById('wallet-total-amount')
+      if (hdEl)  hdEl.textContent  = fmtCoins(tot)
+      if (totEl) totEl.textContent = fmtCoins(tot) + ' 🪙'
+    }
+
+    // ── renderActiveBets (Dashboard) ─────────────────────────────
+    async function renderActiveBets(container) {
+      var results = await Promise.all([CSLAuth.getBets(), CSLAuth.getParlayBets()])
+      var singole = results[0].filter(function(b){ return b.status==='attiva' })
+      var parlay  = results[1].filter(function(b){ return b.status==='attiva' })
+      if (!singole.length && !parlay.length) {
+        container.innerHTML = '<p class="text-muted">Nessuna scommessa attiva al momento. <a href="sisal.html" class="btn-link-sm">Vai al SISAL →</a></p>'
+        return
+      }
+      var today = new Date(); today.setHours(0,0,0,0)
+
+      function renderSingola(b) {
+        var potential = Math.floor(b.importo * b.quota)
+        var ci  = _cancelInfo(b.created_at)
+        var ctx = _betContextHtml(b, true)
+        var curSt = _getBetCurrentStatus(b.bet_type, b.player_name, b.giornata_date, _seasonId)
+        var isExpired = b.giornata_date && new Date(b.giornata_date+'T00:00:00') < today
+        var cardCls = isExpired ? 'bet-row card admin-bet-card--expired' : 'bet-row card'
+        var cancelHtml = ci.canCancel
+          ? '<button class="btn-cancel-bet" data-bid="'+_esc(b.id)+'">✕ Cancella ('+ci.label+')</button>'
+          : ''
+        return '<div class="'+cardCls+'" id="brow-'+_esc(b.id)+'">'
+          +'<div class="bet-card-header-compact">'
+          +'<span class="bet-type-badge">'+_esc(_betLabel(b))+'</span>'
+          +(isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : '')
+          +'</div>'
+          +ctx
+          +'<div class="bet-row-amounts">'
+          +'<span class="bet-row-importo">🪙 '+fmtCoins(b.importo)+' puntati</span>'
+          +'<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+          +'</div>'
+          +'<div class="bet-row-footer">'
+          +_betCurHtml(curSt)
+          +(cancelHtml ? '<div class="bet-row-actions">'+cancelHtml+'</div>' : '')
+          +'</div>'
+          +'</div>'
+      }
+
+      function renderParlayActive(p) {
+        var legs      = Array.isArray(p.legs) ? p.legs : []
+        var potential = Math.floor(p.importo * p.quota_final)
+        var ci        = _cancelInfo(p.created_at)
+        var isExpired = p.giornata_date && new Date(p.giornata_date+'T00:00:00') < today
+        var cardCls   = isExpired ? 'bet-row card admin-bet-card--expired' : 'bet-row card'
+        var panelLabel = {stagione:'📅 Stagione',giornata:'⚡ Giornata',speciali:'✨ Speciali'}
+        var legsHtml  = legs.map(function(l, i) {
+          var legDate = l.giornata_date || p.giornata_date
+          var legSt   = _getBetCurrentStatus(l.bet_type, l.player_name, legDate, p.season_id)
+          var lTipo   = _BET_LABELS[l.bet_type] || l.bet_type || '?'
+          var lPlayer = (l.player_name && l.player_name !== '—') ? '<strong>'+_esc(l.player_name)+'</strong> · ' : ''
+          return '<div class="parlay-leg"><span class="bet-leg-num">'+(i+1)+'</span> '+lPlayer+_esc(lTipo)
+            +(l.market_label ? ' <em class="text-muted">— '+_esc(l.market_label)+'</em>' : '')
+            +' <em class="text-muted">@'+fmtQ(l.quota)+'</em>'
+            +(legSt ? ' '+_betCurHtml(legSt) : '')
+            +'</div>'
+        }).join('')
+        // Overall parlay indicator
+        var legStatuses = legs.map(function(l){ return _getBetCurrentStatus(l.bet_type, l.player_name, l.giornata_date||p.giornata_date, p.season_id) })
+        var nW = legStatuses.filter(function(s){ return s&&s.c==='w' }).length
+        var nL = legStatuses.filter(function(s){ return s&&s.c==='l' }).length
+        var overallHtml = ''
+        if (nL > 0)                      overallHtml = '<span class="bet-current-status bet-cur-lose">🔴 '+nL+' gamba'+(nL!==1?'e':'')+' perdente'+(nL!==1?'i':'')+' — a rischio</span>'
+        else if (nW === legs.length && nW > 0) overallHtml = '<span class="bet-current-status bet-cur-win">🟢 Tutte vincenti ('+nW+'/'+legs.length+')</span>'
+        else if (nW > 0)                 overallHtml = '<span class="bet-current-status bet-cur-pending">⏳ '+nW+'/'+legs.length+' vincenti</span>'
+        // Date ref
+        var dateRefHtml = ''
+        if (p.giornata_date) {
+          var ggD   = new Date(p.giornata_date+'T00:00:00')
+          var ggFmt = ggD.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'})
+          var ggNum = p.giornata_num ? ' — GG'+p.giornata_num : ''
+          dateRefHtml = '<div class="bet-card-context"><span class="bet-ctx-date'+(isExpired?' bet-ctx-date--past':'')+'">📅 '+ggFmt+ggNum+'</span></div>'
+        }
+        var cancelHtml = ci.canCancel
+          ? '<button class="btn-cancel-bet" data-pid="'+_esc(p.id)+'">✕ Cancella ('+ci.label+')</button>'
+          : ''
+        var bonusPct = Math.round((p.bonus_mult - 1) * 100)
+        return '<div class="'+cardCls+'">'
+          +'<div class="bet-card-header-compact">'
+          +'<span class="bet-type-badge">📋 '+_esc(panelLabel[p.panel]||p.panel)
+            +' · '+legs.length+' sel. @'+fmtQ(p.quota_final)
+            +(bonusPct>0?' <em class="parlay-bonus">(+'+bonusPct+'%)</em>':'')
+            +'</span>'
+          +(isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : '')
+          +'</div>'
+          +dateRefHtml
+          +'<div class="parlay-legs-list">'+legsHtml+'</div>'
+          +'<div class="bet-row-amounts">'
+          +'<span class="bet-row-importo">🪙 '+fmtCoins(p.importo)+' puntati</span>'
+          +'<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+          +'</div>'
+          +'<div class="bet-row-footer">'
+          +overallHtml
+          +(cancelHtml ? '<div class="bet-row-actions">'+cancelHtml+'</div>' : '')
+          +'</div>'
+          +'</div>'
+      }
+
+      // Merge and sort by date
+      var merged = [
+        ...singole.map(function(b){ return {_tipo:'singola', _d:b.created_at, _b:b} }),
+        ...parlay.map(function(p){  return {_tipo:'parlay',  _d:p.created_at, _b:p} }),
+      ].sort(function(a,b){ return b._d.localeCompare(a._d) })
+
+      container.innerHTML = '<div class="bets-list" id="active-bets-list">'
+        + merged.map(function(item){
+            return item._tipo === 'singola' ? renderSingola(item._b) : renderParlayActive(item._b)
+          }).join('')
+        +'</div>'
+
+      container.addEventListener('click', async function(e) {
+        var btn = e.target.closest('.btn-cancel-bet')
+        if (!btn) return
+        var bid = btn.dataset.bid, pid = btn.dataset.pid
+        btn.disabled = true; btn.textContent = 'Annullamento…'
+        var res = bid ? await CSLAuth.cancelBet(bid) : await CSLAuth.cancelParlay(pid)
+        if (res && res.error) {
+          btn.disabled = false; btn.textContent = '✕ Cancella'
+        } else {
+          await renderActiveBets(container)
+          _updateWalletDisplay()
+        }
+      })
+    }
+
+    // ── renderAllBets (Tab Scommesse — singole + parlay unificati) ─
+    var _allBetsCache  = null
+    var _allBetsFilter = 'tutte'
+
+    async function renderAllBets(container) {
+      if (!_allBetsCache) {
+        container.innerHTML = '<p class="text-muted">Caricamento…</p>'
+        var results = await Promise.all([CSLAuth.getBets(), CSLAuth.getParlayBets()])
+        _allBetsCache = {
+          singole: results[0],
+          parlay:  results[1],
+        }
+      }
+      _renderFilteredBets(container)
+
+      // Bind filter buttons (once)
+      document.querySelectorAll('.bet-filter-btn').forEach(function(btn) {
+        btn.onclick = function() {
+          document.querySelectorAll('.bet-filter-btn').forEach(function(b){ b.classList.remove('active') })
+          btn.classList.add('active')
+          _allBetsFilter = btn.dataset.filter
+          _renderFilteredBets(container)
+        }
+      })
+
+      // Bind cancel events
+      container.addEventListener('click', async function(e) {
+        var btn = e.target.closest('.btn-cancel-bet')
+        if (!btn) return
+        var bid = btn.dataset.bid, pid = btn.dataset.pid
+        btn.disabled = true; btn.textContent = 'Annullamento…'
+        var res = bid ? await CSLAuth.cancelBet(bid) : await CSLAuth.cancelParlay(pid)
+        if (res && res.error) {
+          btn.disabled = false; btn.textContent = '✕ Cancella'
+        } else {
+          _allBetsCache = null  // invalida cache
+          await renderAllBets(container)
+          _updateWalletDisplay()
+          // Aggiorna anche dashboard
+          await renderActiveBets(document.getElementById('dashboard-active-bets'))
+        }
+      })
+    }
+
+    function _renderFilteredBets(container) {
+      var f = _allBetsFilter
+      var singole = (_allBetsCache.singole||[]).filter(function(b){ return f==='tutte'||b.status===f })
+      var parlay  = (_allBetsCache.parlay ||[]).filter(function(b){ return f==='tutte'||b.status===f })
+
+      // Riepilogo contatori (sempre su dati non filtrati)
+      var allS = _allBetsCache.singole||[], allP = _allBetsCache.parlay||[]
+      var counts = {}
+      ;['attiva','vinta','persa','annullata'].forEach(function(s) {
+        counts[s] = allS.filter(function(b){return b.status===s}).length
+                  + allP.filter(function(b){return b.status===s}).length
+      })
+      // Aggiorna badge sui filter buttons
+      document.querySelectorAll('.bet-filter-btn').forEach(function(btn) {
+        var fv = btn.dataset.filter
+        var cnt = fv === 'tutte' ? (allS.length+allP.length) : (counts[fv]||0)
+        var label = {tutte:'Tutte',attiva:'⏳ Attive',vinta:'✅ Vinte',persa:'❌ Perse',annullata:'↩ Annullate'}[fv] || fv
+        btn.innerHTML = label + (cnt > 0 ? ' <span class="bet-filter-count">'+cnt+'</span>' : '')
+      })
+
+      var merged = [
+        ...singole.map(function(b){ return Object.assign({_tipo:'singola'}, b) }),
+        ...parlay.map(function(b){  return Object.assign({_tipo:'parlay'},  b) }),
+      ].sort(function(a,b){ return b.created_at.localeCompare(a.created_at) })
+
+      if (!merged.length) {
+        container.innerHTML = '<p class="text-muted" style="padding:1rem 0">Nessuna scommessa'+(f!=='tutte'?' con questo filtro':'ancora effettuata')+'.</p>'
+        return
+      }
+
+      var today = new Date(); today.setHours(0,0,0,0)
+      container.innerHTML = '<div class="bets-list">'
+        + merged.map(function(b) {
+          return b._tipo === 'singola' ? _renderSingolaBetCard(b, today) : _renderParlayBetCard(b, today)
+        }).join('')
+        + '</div>'
+    }
+
+    function _renderSingolaBetCard(b, today) {
+      var isActive  = b.status === 'attiva'
+      var isExpired = isActive && b.giornata_date && new Date(b.giornata_date+'T00:00:00') < today
+      var cardCls   = isExpired ? 'bet-row card admin-bet-card--expired' : 'bet-row card'
+      var potential = Math.floor(b.importo * b.quota)
+      var dateStr   = new Date(b.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
+      var ctx       = _betContextHtml(b, isActive)
+
+      var profitHtml = ''
+      if (!isActive && b.vincita_netta !== null && b.vincita_netta !== undefined) {
+        profitHtml = '<span class="bet-row-profit '+(b.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'
+          +(b.vincita_netta>=0?'+':'')+fmtCoins(b.vincita_netta)+' Bossoli</span>'
+      }
+
+      var ci = isActive ? _cancelInfo(b.created_at) : null
+      var cancelHtml = (ci && ci.canCancel)
+        ? '<button class="btn-cancel-bet" data-bid="'+_esc(b.id)+'">✕ Cancella ('+ci.label+')</button>'
+        : ''
+
+      var curSt = isActive ? _getBetCurrentStatus(b.bet_type, b.player_name, b.giornata_date, _seasonId) : null
+
+      return '<div class="'+cardCls+'">'
+        +'<div class="bet-card-header-compact">'
+        +'<span class="bet-card-date">'+dateStr+'</span>'
+        +'<span class="bet-type-badge">'+_esc(_betLabel(b))+'</span>'
+        +_betStatusBadge(b.status)
+        +(isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : '')
+        +'</div>'
+        +ctx
+        +'<div class="bet-row-amounts">'
+        +'<span class="bet-row-importo">🪙 '+fmtCoins(b.importo)+' puntati</span>'
+        +(isActive
+          ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+          : profitHtml)
+        +'</div>'
+        +'<div class="bet-row-footer">'
+        +_betCurHtml(curSt)
+        +(cancelHtml ? '<div class="bet-row-actions">'+cancelHtml+'</div>' : '')
+        +'</div>'
+        +'</div>'
+    }
+
+    function _renderParlayBetCard(p, today) {
+      var isActive  = p.status === 'attiva'
+      var isExpired = isActive && p.giornata_date && new Date(p.giornata_date+'T00:00:00') < today
+      var cardCls   = isExpired ? 'bet-row card parlay-row admin-bet-card--expired' : 'bet-row card parlay-row'
+      var legs      = Array.isArray(p.legs) ? p.legs : []
+      var potential = Math.floor(p.importo * p.quota_final)
+      var bonusPct  = Math.round((p.bonus_mult - 1) * 100)
+      var dateStr   = new Date(p.created_at).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})
+      var panelLabel = {stagione:'📅 Stagione',giornata:'⚡ Giornata',speciali:'✨ Speciali'}
+      var profitHtml = ''
+      if (!isActive && p.vincita_netta !== null && p.vincita_netta !== undefined) {
+        profitHtml = '<span class="bet-row-profit '+(p.vincita_netta>=0?'wallet-pos':'wallet-neg')+'">'
+          +(p.vincita_netta>=0?'+':'')+fmtCoins(p.vincita_netta)+' Bossoli</span>'
+      }
+
+      // Render gambe con stato
+      var legsHtml = legs.map(function(l, i) {
+        var legDate = l.giornata_date || p.giornata_date
+        var legSt   = isActive ? _getBetCurrentStatus(l.bet_type, l.player_name, legDate, p.season_id) : null
+        var lTipo   = _BET_LABELS[l.bet_type] || l.bet_type || '?'
+        var lLabel  = l.market_label ? ' <em class="text-muted">— '+_esc(l.market_label)+'</em>' : ''
+        var lPlayer = (l.player_name && l.player_name !== '—') ? '<strong>🎯 '+_esc(l.player_name)+'</strong> · ' : ''
+        return '<div class="parlay-leg">'
+          +'<span class="bet-leg-num">'+(i+1)+'</span> '
+          +lPlayer+_esc(lTipo)+lLabel
+          +' <em class="text-muted">@'+fmtQ(l.quota)+'</em>'
+          +(legSt ? ' '+_betCurHtml(legSt) : '')
+          +'</div>'
+      }).join('')
+
+      // Riepilogo overall parlay
+      var overallHtml = ''
+      if (isActive && legs.length > 0) {
+        var legStatuses = legs.map(function(l) {
+          return _getBetCurrentStatus(l.bet_type, l.player_name, l.giornata_date||p.giornata_date, p.season_id)
+        })
+        var nW = legStatuses.filter(function(s){ return s&&s.c==='w' }).length
+        var nL = legStatuses.filter(function(s){ return s&&s.c==='l' }).length
+        if (nL > 0) {
+          overallHtml = '<span class="bet-current-status bet-cur-lose">🔴 '+nL+' gamba'+
+            (nL!==1?'e':'')+' perdente'+(nL!==1?'i':'')+' — schedina a rischio</span>'
+        } else if (nW === legs.length && nW > 0) {
+          overallHtml = '<span class="bet-current-status bet-cur-win">🟢 Tutte vincenti ('+nW+'/'+legs.length+')</span>'
+        } else if (nW > 0) {
+          overallHtml = '<span class="bet-current-status bet-cur-pending">⏳ '+nW+'/'+legs.length+' vincenti — in corso</span>'
+        }
+      }
+
+      // Data giornata
+      var dateRefHtml = ''
+      if (p.giornata_date) {
+        var ggD   = new Date(p.giornata_date+'T00:00:00')
+        var ggFmt = ggD.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+        var ggNum = p.giornata_num ? ' — GG'+p.giornata_num : ''
+        dateRefHtml = '<div class="bet-card-context">'
+          +'<span class="bet-ctx-date'+(isExpired?' bet-ctx-date--past':'')+'">📅 '+ggFmt+ggNum+'</span>'
+          +'</div>'
+      }
+
+      var ci = isActive ? _cancelInfo(p.created_at) : null
+      var cancelHtml = (ci && ci.canCancel)
+        ? '<button class="btn-cancel-bet" data-pid="'+_esc(p.id)+'">✕ Cancella ('+ci.label+')</button>'
+        : ''
+
+      return '<div class="'+cardCls+'">'
+        +'<div class="bet-card-header-compact">'
+        +'<span class="bet-card-date">'+dateStr+'</span>'
+        +'<span class="bet-type-badge">📋 '+_esc(panelLabel[p.panel]||p.panel)
+          +' · '+legs.length+' selezioni@'+fmtQ(p.quota_final)
+          +(bonusPct>0?' <em class="parlay-bonus">(+'+bonusPct+'%)</em>':'')+'</span>'
+        +_betStatusBadge(p.status)
+        +(isExpired ? '<span class="badge badge-expired">⚠ Data passata</span>' : '')
+        +'</div>'
+        +dateRefHtml
+        +'<div class="parlay-legs-list">'+legsHtml+'</div>'
+        +'<div class="bet-row-amounts">'
+        +'<span class="bet-row-importo">🪙 '+fmtCoins(p.importo)+' puntati</span>'
+        +(isActive
+          ? '<span class="bet-row-potenziale">→ '+fmtCoins(potential)+' potenziali</span>'
+          : profitHtml)
+        +'</div>'
+        +(overallHtml || cancelHtml ? '<div class="bet-row-footer">'+overallHtml+(cancelHtml?'<div class="bet-row-actions">'+cancelHtml+'</div>':'')+'</div>' : '')
+        +'</div>'
+    }
+
+    // ── Sidebar tab switching ─────────────────────────────────────
+    var _activeTab = 'dashboard'
+    function initSidebar() {
+      // "Vedi tutte →" nel dashboard
+      var gotoBtn = document.getElementById('btn-goto-scommesse')
+      if (gotoBtn) {
+        gotoBtn.addEventListener('click', function() {
+          var btn = document.querySelector('.profile-sidebar-btn[data-tab="scommesse"]')
+          if (btn) btn.click()
+        })
+      }
+
+      document.querySelectorAll('.profile-sidebar-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tab = btn.getAttribute('data-tab')
+          document.querySelectorAll('.profile-sidebar-btn').forEach(function(b){ b.classList.remove('active') })
+          btn.classList.add('active')
+          document.querySelectorAll('.profile-tab').forEach(function(t){ t.hidden = true })
+          var tabEl = document.getElementById('tab-'+tab)
+          if (tabEl) tabEl.hidden = false
+          _activeTab = tab
+          // Carica dati on-demand
+          if (tab === 'scommesse') {
+            var c = document.getElementById('all-bets-list')
+            if (c && c.querySelector('.text-muted')) renderAllBets(c)
+          }
+        })
+      })
+    }
+
+    // ── Cambio password ───────────────────────────────────────────
+    function initPasswordForm() {
+      var form   = document.getElementById('form-change-password')
+      var errBox = document.getElementById('pw-error')
+      var sucBox = document.getElementById('pw-success')
+      var btn    = document.getElementById('btn-change-password')
+      if (!form) return
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault()
+        errBox.hidden = true; sucBox.hidden = true
+        var newPw  = document.getElementById('pw-new').value
+        var confPw = document.getElementById('pw-confirm').value
+        if (newPw.length < 8) { errBox.textContent='La password deve essere di almeno 8 caratteri.'; errBox.hidden=false; return }
+        if (newPw !== confPw) { errBox.textContent='Le due password non coincidono.'; errBox.hidden=false; return }
+        btn.disabled = true; btn.textContent = 'Aggiornamento…'
+        var res = await CSLAuth.updatePassword(newPw)
+        btn.disabled = false; btn.textContent = 'Aggiorna password'
+        if (res.error) { errBox.textContent=res.error; errBox.hidden=false }
+        else { sucBox.textContent='✓ Password aggiornata con successo.'; sucBox.hidden=false; form.reset() }
+      })
+    }
+
+    // ── Bootstrap principale ──────────────────────────────────────
+    var _seasonId = null
+
+    document.addEventListener('csl:auth-ready', async function() {
+      var params       = new URLSearchParams(window.location.search)
+      var playerParam  = params.get('giocatore')
+      var targetPlayer = null
+      var isOwnProfile = false
+
+      if (playerParam) {
+        targetPlayer = decodeURIComponent(playerParam)
+      } else if (CSLAuth.isLoggedIn()) {
+        var prof = CSLAuth.getProfile()
+        var meta = CSLAuth.getSession()?.user?.user_metadata
+        targetPlayer = prof?.player_name || prof?.display_name || meta?.player_name || meta?.display_name
+        isOwnProfile = true
+      } else {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-login-required').hidden = false
+        return
+      }
+
+      if (!targetPlayer) {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+
+      // Carica stagioni
+      var stagioni = CSL.stagioni
+      if (window.CSLRanking) {
+        try {
+          await new Promise(function(resolve) {
+            CSLRanking.loadStagioniFromSupabase(function(data) { if (data) stagioni = data; resolve() })
+          })
+          // If we got fresh stagioni, reflect them on the global CSL object
+          if (stagioni && Array.isArray(stagioni)) {
+            try { window.CSL = window.CSL || {}; CSL.stagioni = stagioni; } catch(e) {}
+            // Recompute SISAL derived boards so profile shows up-to-date giornate/quote
+            if (typeof initSisal === 'function') {
+              try { await initSisal(); } catch(e) { console.warn('initSisal failed in profile bootstrap', e); }
+            }
+          }
+        } catch(e) {}
+      }
+
+      var seasonAttiva = stagioni.find(function(s){ return s.status==='attiva' }) || stagioni[stagioni.length-1]
+      if (!seasonAttiva) {
+        document.getElementById('profile-loading').hidden = true
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+      _seasonId = seasonAttiva.id
+
+      var playerData = seasonAttiva.classifica?.find(function(p){ return p.nome.toLowerCase()===targetPlayer.toLowerCase() })
+      document.getElementById('profile-loading').hidden = true
+
+      // I guest non sono in classifica: mostro il profilo solo se è il proprio
+      var isInAnyClassifica = stagioni.some(function(s){ return s.classifica?.some(function(p){ return p.nome.toLowerCase()===targetPlayer.toLowerCase() }) })
+      if (!isOwnProfile && !playerData && !isInAnyClassifica) {
+        document.getElementById('profile-not-found').hidden = false
+        return
+      }
+
+      document.getElementById('profile-content').hidden = false
+      document.title = targetPlayer + ' — CSL'
+
+      // Header
+      var initiali = playerData?.iniziali || targetPlayer.split(' ').map(function(w){ return w[0] }).join('').toUpperCase().slice(0,2)
+      document.getElementById('profile-avatar').textContent = initiali
+      document.getElementById('profile-name').textContent   = targetPlayer
+      var roleBadge  = document.getElementById('profile-role-badge')
+      var ownRole    = isOwnProfile ? (CSLAuth.getProfile()?.role || 'participant') : 'participant'
+      var roleLabelMap = { admin: 'Admin', participant: 'Partecipante', guest: 'Ospite' }
+      var roleBadgeMap = { admin: 'badge-admin', participant: 'badge-participant', guest: 'badge-guest' }
+      roleBadge.textContent = roleLabelMap[ownRole] || 'Partecipante'
+      roleBadge.classList.add(roleBadgeMap[ownRole] || 'badge-participant')
+      document.getElementById('profile-season-label').textContent = seasonAttiva.nome + ' ' + seasonAttiva.anno
+
+      // Giornate personali (usate in entrambi i layout)
+      var giornatePersonali = (seasonAttiva.giornate || [])
+        .map(function(g){ return Object.assign({}, g, { risultato: g.risultati.find(function(r){ return r.nome.toLowerCase()===targetPlayer.toLowerCase() }) }) })
+        .filter(function(g){ return g.risultato })
+        .sort(function(a,b){ return b.data.localeCompare(a.data) })
+
+      if (isOwnProfile) {
+        // ── Layout con sidebar ──
+        document.getElementById('profile-own-layout').hidden  = false
+        document.getElementById('profile-other-layout').style.display = 'none'
+
+        // I guest non hanno dati in classifica: salta render statistiche
+        if (playerData || giornatePersonali.length > 0) {
+          renderStats(targetPlayer, playerData, giornatePersonali, '', true)
+        } else {
+          // Nascondi il tab statistiche per i guest
+          var statsBtn = document.querySelector('.profile-sidebar-btn[data-tab="statistiche"]')
+          if (statsBtn) statsBtn.hidden = true
+          document.getElementById('profile-season-label').textContent = 'Ospite'
+        }
+        initSidebar()
+        initPasswordForm()
+
+        // Wallet + scommesse attive
+        await renderWallet()
+        await renderActiveBets(document.getElementById('dashboard-active-bets'))
+
+      } else {
+        // ── Layout senza sidebar ──
+        document.getElementById('profile-own-layout').style.display  = 'none'
+        document.getElementById('profile-other-layout').hidden = false
+
+        renderStats(targetPlayer, playerData, giornatePersonali, '-other', false)
+      }
+    })
+  </script>
+</body>
+</html>
+

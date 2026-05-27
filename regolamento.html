@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regolamento — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="page-header">
+        <h1>Regolamento</h1>
+        <p>Le regole ufficiali della CAEN Shooting League</p>
+      </div>
+
+      <div class="rules-content">
+
+        <!-- 1. Formato di gara -->
+        <div class="rules-section">
+          <h2>1. Formato di Gara</h2>
+          <ul class="rules-list">
+            <li>Le <strong>giornate di gara</strong> si disputano ogni <strong>lunedì</strong> e <strong>mercoledì</strong>.</li>
+            <li>Gli altri giorni della settimana sono considerati <strong>allenamento libero</strong> e non contano nelle classifiche ufficiali né nell'assegnazione dei titoli stagionali, salvo recuperi formalmente assegnati.</li>
+            <li>Ogni giocatore ha diritto a <strong>3 tentativi</strong> per giornata di gara.</li>
+            <li>Ogni tentativo consiste in <strong>5 colpi</strong> al bersaglio (max 50 punti per tentativo).</li>
+            <li>I tentativi fatti oltre i tre disponibili non vengono conteggiati e valgono come <strong>allenamento libero</strong>.</li>
+            <li>Il giocatore che inizia un tentativo durante una giornata valida deve intenzionalmente annunciarne la validità prima dell'inizio dei cinque colpi.</li>
+            <li>Il punteggio della giornata è il <strong>miglior tentativo</strong> tra i tre.</li>
+            <li>La partecipazione alle giornate di gara è ad <strong>accesso libero</strong>.</li>
+          </ul>
+        </div>
+
+        <!-- 2. Bersaglio -->
+        <div class="rules-section">
+          <h2>2. Bersaglio e Punteggio</h2>
+          <p>Il bersaglio è suddiviso in 10 zone non necessariamente concentriche, ciascuna con un valore diverso.</p>
+
+          <div class="target-diagram">
+            <svg viewBox="0 0 220 220" width="210" height="210"
+                 xmlns="http://www.w3.org/2000/svg"
+                 aria-label="Diagramma del bersaglio con le zone di punteggio">
+              <circle cx="110" cy="110" r="100" fill="#212121"/>
+              <circle cx="110" cy="110" r="89"  fill="#880e4f"/>
+              <circle cx="110" cy="110" r="78"  fill="#827717"/>
+              <circle cx="110" cy="110" r="67"  fill="#4e342e"/>
+              <circle cx="110" cy="110" r="56"  fill="#006064"/>
+              <circle cx="110" cy="110" r="45"  fill="#1565c0"/>
+              <circle cx="110" cy="110" r="34"  fill="#2e7d32"/>
+              <circle cx="110" cy="110" r="23"  fill="#f57f17"/>
+              <circle cx="110" cy="110" r="14"  fill="#bf360c"/>
+              <circle cx="110" cy="110" r="7"   fill="#b71c1c"/>
+              <line x1="110" y1="10"  x2="110" y2="210" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+              <line x1="10"  y1="110" x2="210" y2="110" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+              <text x="110" y="114" text-anchor="middle" fill="white" font-size="7"  font-weight="bold" font-family="monospace">10</text>
+              <text x="110" y="126" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">9</text>
+              <text x="110" y="137" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">8</text>
+              <text x="110" y="148" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">7</text>
+              <text x="110" y="159" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">6</text>
+              <text x="110" y="170" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">5</text>
+              <text x="110" y="181" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">4</text>
+              <text x="110" y="192" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">3</text>
+              <text x="110" y="201" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">2</text>
+              <text x="110" y="210" text-anchor="middle" fill="white" font-size="7"  font-family="monospace">1</text>
+            </svg>
+
+            <div class="target-legend">
+              <div class="target-legend-item"><div class="legend-dot" style="background:#b71c1c"></div><span><strong>Bullseye</strong> &mdash; 10 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#bf360c"></div><span><strong>Zona 2</strong> &mdash; 9 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#f57f17"></div><span><strong>Zona 3</strong> &mdash; 8 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#2e7d32"></div><span><strong>Zona 4</strong> &mdash; 7 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#1565c0"></div><span><strong>Zona 5</strong> &mdash; 6 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#006064"></div><span><strong>Zona 6</strong> &mdash; 5 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#4e342e"></div><span><strong>Zona 7</strong> &mdash; 4 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#827717"></div><span><strong>Zona 8</strong> &mdash; 3 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#880e4f"></div><span><strong>Zona 9</strong> &mdash; 2 pt</span></div>
+              <div class="target-legend-item"><div class="legend-dot" style="background:#212121;border:1px solid #444"></div><span><strong>Zona 10</strong> &mdash; 1 pt</span></div>
+            </div>
+          </div>
+
+          <ul class="rules-list" style="margin-top:1rem">
+            <li>Punteggio massimo per tentativo: <strong>50 punti</strong> (5 bullseye consecutivi).</li>
+            <li>Un colpo che colpisce il bordo ma non è ambiguo viene assegnato alla zona corrispondente.</li>
+            <li>Un colpo ambiguo, il cui centro cade sul bordo tra due zone, viene assegnato alla zona a punteggio più alto.</li>
+            <li>Ciascun colpo deve essere effettuato entro <strong>60 secondi</strong> dal colpo precedente.</li>
+          </ul>
+        </div>
+
+        <!-- 3. Classifica Giornaliera -->
+        <div class="rules-section">
+          <h2>3. Classifica Giornaliera</h2>
+          <ul class="rules-list">
+            <li>Al termine di ogni giornata di gara si stila una <strong>classifica giornaliera</strong> basata sul miglior tentativo di ciascun giocatore.</li>
+            <li>Il <strong>1° criterio</strong> di ordinamento è il <strong>miglior tentativo</strong> della giornata.</li>
+            <li>In caso di parità sul miglior tentativo, si applica il <strong>2° criterio</strong>: la <strong>media sui tre tentativi ufficiali della giornata</strong>.</li>
+            <li>La media sui tre tentativi è calcolata come media aritmetica di <strong>T1, T2 e T3</strong>; un tentativo non effettuato (<strong>-1</strong>) vale <strong>0</strong> ai soli fini dello spareggio.</li>
+            <li>Se la parità persiste, si applica il <strong>3° criterio</strong>: il <strong>secondo miglior tentativo</strong> tra i tre della giornata, dopo avere ordinato i tre tentativi dal più alto al più basso e dopo avere convertito ogni <strong>-1</strong> in <strong>0</strong> ai soli fini dello spareggio.</li>
+            <li>Solo se coincidono <strong>tutti e tre</strong> i criteri sportivi i giocatori restano <strong>ex aequo</strong> e condividono la stessa posizione.</li>
+            <li>In caso di posizione condivisa, la classifica usa il criterio di posizione sportiva standard: se due giocatori sono secondi, il giocatore successivo risulta quarto.</li>
+            <li>A ogni posizione corrispondono dei <strong>punti campionato</strong>:</li>
+          </ul>
+          <div style="margin:0.75rem 0 0 0;display:flex;flex-wrap:wrap;gap:0.5rem">
+            <span class="camp-pts camp-pts-10" style="font-size:0.85rem;padding:0.3rem 0.9rem">1° posto &nbsp;= &nbsp;10 punti</span>
+            <span class="camp-pts camp-pts-8" style="font-size:0.85rem;padding:0.3rem 0.9rem">2° posto &nbsp;= &nbsp;8 punti</span>
+            <span class="camp-pts camp-pts-6" style="font-size:0.85rem;padding:0.3rem 0.9rem">3° posto &nbsp;= &nbsp;6 punti</span>
+            <span class="camp-pts camp-pts-4" style="font-size:0.85rem;padding:0.3rem 0.9rem">4°-5° posto = &nbsp;4 punti</span>
+            <span class="camp-pts camp-pts-2" style="font-size:0.85rem;padding:0.3rem 0.9rem">6°-7° posto = &nbsp;2 punti</span>
+            <span class="camp-pts camp-pts-1" style="font-size:0.85rem;padding:0.3rem 0.9rem">8°-10° posto = &nbsp;1 punto</span>
+            <span class="camp-pts camp-pts-0" style="font-size:0.85rem;padding:0.3rem 0.9rem">11°+ posto = &nbsp;0 punti</span>
+          </div>
+          <ul class="rules-list" style="margin-top:0.75rem">
+            <li>In caso di posizione condivisa, tutti i giocatori coinvolti ricevono i punti previsti per quella posizione; i punti non vengono mai mediati, frazionati o ridistribuiti.</li>
+          </ul>
+        </div>
+
+        <!-- 4. Classifica Stagionale -->
+        <div class="rules-section">
+          <h2>4. Titoli Stagionali</h2>
+          <p>A fine stagione vengono incoronati <strong>due campioni distinti</strong>:</p>
+
+          <div style="display:flex;flex-direction:column;gap:0.75rem;margin:1rem 0">
+            <div style="border:1px solid var(--primary);border-radius:var(--radius);padding:1rem;background:rgba(255,102,0,0.04)">
+              <div style="font-size:0.7rem;font-family:'Orbitron',monospace;letter-spacing:0.18em;text-transform:uppercase;color:var(--primary);margin-bottom:0.5rem">🏆 Campione delle Giornate</div>
+              <ul class="rules-list" style="margin:0">
+                <li>Vince chi ha accumulato più <strong>punti campionato</strong> nelle giornate di gara.</li>
+                <li><strong>Spareggio 1°</strong>: <strong>media tiro stagionale esatta</strong>, calcolata come rapporto tra <strong>punti tiro</strong> e <strong>giornate ufficiali disputate</strong>. Ai fini dello spareggio vale il valore esatto, non quello arrotondato mostrato a video.</li>
+                <li><strong>Spareggio 2°</strong>: totale <strong>punti tiro</strong>, ossia la somma dei migliori tentativi giornalieri ufficiali.</li>
+                <li><strong>Spareggio 3°</strong>: <strong>record ufficiale stagionale</strong>, cioè il miglior singolo tentativo ottenuto in una giornata di gara o in un recupero assegnato.</li>
+                <li>Solo se coincidono tutti i criteri sopra indicati i giocatori chiudono la stagione <strong>ex aequo</strong> per la classifica campionato.</li>
+              </ul>
+            </div>
+            <div style="border:1px solid var(--secondary);border-radius:var(--radius);padding:1rem;background:rgba(255,204,0,0.04)">
+              <div style="font-size:0.7rem;font-family:'Orbitron',monospace;letter-spacing:0.18em;text-transform:uppercase;color:var(--secondary);margin-bottom:0.5rem">🎯 Cecchino della Stagione</div>
+              <ul class="rules-list" style="margin:0">
+                <li>Vince chi ha ottenuto il <strong>punteggio più alto in un singolo tentativo ufficiale</strong> durante la stagione.</li>
+                <li>Per <strong>tentativo ufficiale</strong> si intende esclusivamente un tentativo registrato in una giornata di gara o in un recupero assegnato; l'allenamento libero non contribuisce alla classifica cecchini.</li>
+                <li><strong>Spareggio 1°</strong>: <strong>media tiro stagionale esatta</strong>.</li>
+                <li><strong>Spareggio 2°</strong>: <strong>secondo miglior tentativo ufficiale</strong> della stagione, considerando tutti i tentativi ufficiali del giocatore e non solo il best di giornata.</li>
+                <li><strong>Spareggio 3°</strong>: totale <strong>punti tiro</strong> stagionali.</li>
+                <li>Solo se coincidono tutti i criteri sopra indicati i giocatori chiudono la classifica cecchini <strong>ex aequo</strong>.</li>
+                <li>Punteggio massimo raggiungibile: <strong>50/50</strong> (5 bullseye).</li>
+              </ul>
+            </div>
+          </div>
+
+          <ul class="rules-list" style="margin-top:0.5rem">
+            <li>Ogni stagione dura <strong>3 mesi</strong>. Al termine le classifiche vengono azzerate.</li>
+            <li>Un giocatore può vincere entrambi i titoli nella stessa stagione.</li>
+          </ul>
+        </div>
+
+        <!-- 5. Fair Play -->
+        <div class="rules-section">
+          <h2>5. Fair Play</h2>
+          <ul class="rules-list">
+            <li>Il punteggio di ogni tentativo è registrato da un <strong>arbitro neutrale</strong> (un/una collega).</li>
+            <li>Le contestazioni vanno sollevate immediatamente, prima del tentativo successivo.</li>
+            <li>Il rispetto degli avversari è obbligatorio. Un po' di trash talk è tollerato, l'eccesso no.</li>
+          </ul>
+        </div>
+
+        <!-- 6. Attrezzatura -->
+        <div class="rules-section">
+          <h2>6. Attrezzatura</h2>
+          <ul class="rules-list">
+            <li>È disponibile per tutti un Nerf standard conforme alle regole ufficiali della CSL.</li>
+            <li>È possibile utilizzare il proprio Nerf personale, purché non faccia utilizzo di batterie e purché sia costruito in modo da poter sparare con una sola mano.</li>
+            <li>I dardi Nerf ufficiali sono forniti dall'organizzazione per garantire uniformità.</li>
+            <li>La configurazione della pedana è fissata a inizio stagione.</li>
+          </ul>
+        </div>
+
+        <!-- 7. Giornate di recupero -->
+        <div class="rules-section">
+          <h2>7. Giornate di recupero</h2>
+          <ul class="rules-list">
+            <li>In caso di assenza giustificata, è possibile recuperare un massimo di quattro giornate di gara entro la fine della stagione.</li>
+            <li>I tre tentativi della singola giornata di recupero devono essere effettuati nello stesso giorno.</li>
+            <li>Il recupero va concordato con l'organizzazione e deve essere effettuato in presenza di un arbitro neutrale.</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="data/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

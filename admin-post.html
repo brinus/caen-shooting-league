@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor Post — CAEN Shooting League</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="csl_logo.png">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo"><img src="csl_logo.png" alt="CSL" class="nav-logo-img" width="32" height="32"><span>CSL</span></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="classifica.html">Classifica</a></li>
+        <li><a href="stats.html">Statistiche</a></li>
+        <li><a href="sisal.html">SISAL</a></li>
+        <li><a href="posts.html">Post</a></li>
+        <li><a href="regolamento.html">Regolamento</a></li>
+      </ul>
+      <div id="nav-auth-placeholder"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div id="post-editor-guard" class="page-error" hidden>
+        Accesso negato. Solo gli admin possono scrivere post.
+        <br><a href="index.html">← Torna alla home</a>
+      </div>
+
+      <div id="post-editor-content" hidden>
+
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem">
+          <div>
+            <h1 id="editor-title-heading">Nuovo Post</h1>
+            <p>Scrivi in Markdown — l'anteprima si aggiorna in tempo reale</p>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <a href="admin.html#posts" class="btn-secondary">← Admin</a>
+            <button class="btn-primary" id="btn-save-post">Pubblica</button>
+          </div>
+        </div>
+
+        <form id="form-post" novalidate>
+          <div class="card" style="padding:1.5rem;margin-bottom:1.5rem">
+            <div class="form-row">
+              <div class="form-group" style="flex:2">
+                <label>Titolo</label>
+                <input type="text" class="form-input" id="post-titolo" required placeholder="Titolo del post">
+              </div>
+              <div class="form-group">
+                <label>Data</label>
+                <input type="date" class="form-input" id="post-data" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Slug <small class="text-muted">(URL-friendly, auto-generato)</small></label>
+                <input type="text" class="form-input" id="post-slug" placeholder="es. titolo-del-post">
+              </div>
+              <div class="form-group">
+                <label>Autore</label>
+                <input type="text" class="form-input" id="post-autore" placeholder="es. M">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Tag <small class="text-muted">(separati da virgola)</small></label>
+              <input type="text" class="form-input" id="post-tags" placeholder="es. risultati, annuncio">
+            </div>
+            <div class="form-group">
+              <label>Excerpt <small class="text-muted">(~150 caratteri)</small></label>
+              <textarea class="form-input" id="post-excerpt" rows="2"
+                        placeholder="Breve descrizione mostrata nella card del post"></textarea>
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="post-published" checked>
+                &nbsp;Pubblicato
+              </label>
+            </div>
+          </div>
+
+          <!-- Editor + Preview split -->
+          <div class="post-editor-split">
+            <div class="post-editor-pane">
+              <div class="post-editor-pane-label">Markdown</div>
+              <textarea class="form-input post-editor-textarea" id="post-content"
+                        placeholder="# Titolo&#10;&#10;Scrivi qui il contenuto in Markdown…"></textarea>
+            </div>
+            <div class="post-editor-pane">
+              <div class="post-editor-pane-label">Anteprima</div>
+              <div class="post-content post-editor-preview" id="post-preview"></div>
+            </div>
+          </div>
+
+          <!-- Poll editor -->
+          <div class="card" style="padding:1.5rem;margin-top:1.5rem" id="poll-card">
+            <div class="poll-editor-hdr">
+              <h3 style="margin:0;font-size:1rem">📊 Sondaggio</h3>
+              <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer">
+                <input type="checkbox" id="poll-enabled">
+                Includi nel post
+              </label>
+            </div>
+
+            <div id="poll-editor" hidden style="margin-top:1rem;display:flex;flex-direction:column;gap:0.85rem">
+              <div class="form-group" style="margin:0">
+                <label>Domanda</label>
+                <input type="text" class="form-input" id="poll-question"
+                       placeholder="es. Chi vincerà la prossima giornata?" maxlength="300">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Chiude il <small class="text-muted">(opzionale)</small></label>
+                <input type="datetime-local" class="form-input" id="poll-closes-at" style="max-width:240px">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Scelte <small class="text-muted">(min. 2)</small></label>
+                <div id="poll-choices-editor" style="display:flex;flex-direction:column;gap:0.45rem;margin-bottom:0.5rem"></div>
+                <button type="button" id="btn-add-poll-choice"
+                        class="btn-secondary" style="font-size:0.82rem;padding:0.35rem 0.85rem">
+                  + Aggiungi scelta
+                </button>
+              </div>
+              <div>
+                <button type="button" id="btn-delete-poll"
+                        class="btn-poll-danger" hidden>
+                  🗑 Rimuovi sondaggio dal post
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-error"   id="post-error"   hidden style="margin-top:1rem"></div>
+          <div class="form-success" id="post-success" hidden style="margin-top:1rem"></div>
+
+          <div style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;justify-content:flex-end">
+            <button type="button" class="btn-secondary" id="btn-delete-post" hidden style="color:var(--error)">Elimina post</button>
+            <button type="submit" class="btn-primary" id="btn-save-post-form">Salva</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>CAEN Shooting League &mdash; 5 colpi. 1 bersaglio. Solo i migliori sopravvivono.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="data/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let editingPostId = null
+    let _pollId            = null   // UUID poll esistente, null se nuovo
+    let _deletedChoiceIds  = []     // IDs da eliminare al salvataggio
+    let _choiceCounter     = 0
+
+    // ── Poll editor helpers ───────────────────────────────────────
+    function _pEsc(s) { return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+    function initPollEditor() {
+      document.getElementById('poll-enabled').addEventListener('change', function () {
+        document.getElementById('poll-editor').hidden = !this.checked
+      })
+      document.getElementById('btn-add-poll-choice').addEventListener('click', () => addChoiceRow(null, ''))
+      document.getElementById('btn-delete-poll').addEventListener('click', deletePoll)
+      addChoiceRow(null, '')
+      addChoiceRow(null, '')
+    }
+
+    function addChoiceRow(dbId, text) {
+      const idx = ++_choiceCounter
+      const row = document.createElement('div')
+      row.className = 'poll-choice-row'
+      row.setAttribute('data-db-id', dbId || '')
+      row.innerHTML = '<input type="text" class="form-input poll-choice-input" value="'
+        + _pEsc(text || '') + '" placeholder="Opzione ' + idx + '" maxlength="200">'
+        + '<button type="button" class="btn-poll-del-choice" title="Rimuovi">✕</button>'
+      row.querySelector('.btn-poll-del-choice').addEventListener('click', function () {
+        const id = row.getAttribute('data-db-id')
+        if (id) _deletedChoiceIds.push(id)
+        row.remove()
+      })
+      document.getElementById('poll-choices-editor').appendChild(row)
+    }
+
+    async function loadPollForEdit(postId) {
+      const { data } = await CSLAuth.client
+        .from('polls')
+        .select('id, question, closes_at, poll_choices(id, text, sort_order)')
+        .eq('post_id', postId)
+        .maybeSingle()
+      if (!data) return
+      _pollId = data.id
+      document.getElementById('poll-enabled').checked = true
+      document.getElementById('poll-editor').hidden   = false
+      document.getElementById('btn-delete-poll').hidden = false
+      document.getElementById('poll-question').value  = data.question || ''
+      if (data.closes_at)
+        document.getElementById('poll-closes-at').value = data.closes_at.slice(0, 16)
+      // Sostituisce le 2 righe di default con le scelte esistenti
+      document.getElementById('poll-choices-editor').innerHTML = ''
+      const sorted = [...(data.poll_choices || [])].sort((a, b) => a.sort_order - b.sort_order)
+      sorted.forEach(c => addChoiceRow(c.id, c.text))
+    }
+
+    async function savePoll(postId) {
+      if (!document.getElementById('poll-enabled').checked) return
+      const question   = document.getElementById('poll-question').value.trim()
+      const closesRaw  = document.getElementById('poll-closes-at').value
+      const closesAt   = closesRaw ? new Date(closesRaw).toISOString() : null
+      const errEl      = document.getElementById('post-error')
+
+      if (!question) {
+        errEl.textContent = 'Il sondaggio richiede una domanda.'; errEl.hidden = false; return
+      }
+      const rows = [...document.getElementById('poll-choices-editor').querySelectorAll('.poll-choice-row')]
+      const active = rows
+        .map((r, i) => ({ dbId: r.getAttribute('data-db-id') || null, text: r.querySelector('.poll-choice-input').value.trim(), ord: i }))
+        .filter(c => c.text)
+      if (active.length < 2) {
+        errEl.textContent = 'Il sondaggio richiede almeno 2 scelte.'; errEl.hidden = false; return
+      }
+
+      if (_pollId) {
+        await CSLAuth.client.from('polls').update({ question, closes_at: closesAt }).eq('id', _pollId)
+        for (const id of _deletedChoiceIds)
+          await CSLAuth.client.from('poll_choices').delete().eq('id', id)
+        _deletedChoiceIds = []
+        for (const c of active) {
+          if (c.dbId)
+            await CSLAuth.client.from('poll_choices').update({ text: c.text, sort_order: c.ord }).eq('id', c.dbId)
+          else
+            await CSLAuth.client.from('poll_choices').insert({ poll_id: _pollId, text: c.text, sort_order: c.ord })
+        }
+      } else {
+        const { data: np, error } = await CSLAuth.client
+          .from('polls').insert({ post_id: postId, question, closes_at: closesAt }).select('id').single()
+        if (!error && np) {
+          _pollId = np.id
+          await CSLAuth.client.from('poll_choices').insert(
+            active.map(c => ({ poll_id: np.id, text: c.text, sort_order: c.ord }))
+          )
+          document.getElementById('btn-delete-poll').hidden = false
+        }
+      }
+    }
+
+    async function deletePoll() {
+      if (!_pollId) {
+        document.getElementById('poll-enabled').checked = false
+        document.getElementById('poll-editor').hidden = true
+        return
+      }
+      if (!confirm('Eliminare il sondaggio? Tutti i voti saranno persi.')) return
+      const { error } = await CSLAuth.client.from('polls').delete().eq('id', _pollId)
+      if (!error) {
+        _pollId = null; _deletedChoiceIds = []; _choiceCounter = 0
+        document.getElementById('poll-enabled').checked   = false
+        document.getElementById('poll-editor').hidden     = true
+        document.getElementById('btn-delete-poll').hidden = true
+        document.getElementById('poll-question').value   = ''
+        document.getElementById('poll-closes-at').value  = ''
+        document.getElementById('poll-choices-editor').innerHTML = ''
+        addChoiceRow(null, ''); addChoiceRow(null, '')
+      }
+    }
+
+    document.addEventListener('csl:auth-ready', async function () {
+      if (!CSLAuth.isAdmin()) {
+        document.getElementById('post-editor-guard').hidden = false
+        return
+      }
+      document.getElementById('post-editor-content').hidden = false
+      document.getElementById('post-data').value = new Date().toISOString().split('T')[0]
+      const profile = CSLAuth.getProfile()
+      if (profile) document.getElementById('post-autore').value = profile.display_name || profile.username
+
+      initPollEditor()
+
+      const params = new URLSearchParams(window.location.search)
+      const postId = params.get('id')
+      if (postId) {
+        await loadPost(postId)
+        await loadPollForEdit(postId)
+      }
+    })
+
+    // Auto-genera slug dal titolo
+    document.getElementById('post-titolo').addEventListener('input', function () {
+      if (editingPostId) return  // non sovrascrivere slug in modifica
+      document.getElementById('post-slug').value = slugify(this.value)
+    })
+
+    // Preview live
+    document.getElementById('post-content').addEventListener('input', function () {
+      updatePreview()
+    })
+
+    function updatePreview() {
+      const content = document.getElementById('post-content').value
+      const preview = document.getElementById('post-preview')
+      if (window.marked) {
+        preview.innerHTML = marked.parse(content)
+      } else {
+        preview.textContent = content
+      }
+    }
+
+    function slugify(str) {
+      return str.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim().replace(/\s+/g, '-')
+        .replace(/-+/g, '-').slice(0, 80)
+    }
+
+    async function loadPost(id) {
+      const { data, error } = await CSLAuth.client
+        .from('posts').select('*').eq('id', id).single()
+      if (error || !data) {
+        showError('post-error', 'Post non trovato.')
+        return
+      }
+      editingPostId = id
+      document.getElementById('editor-title-heading').textContent = 'Modifica Post'
+      document.getElementById('btn-save-post-form').textContent = 'Aggiorna'
+      document.getElementById('btn-delete-post').hidden = false
+
+      document.getElementById('post-titolo').value  = data.titolo || ''
+      document.getElementById('post-slug').value    = data.slug   || ''
+      document.getElementById('post-data').value    = data.data   || ''
+      document.getElementById('post-autore').value  = data.autore || ''
+      document.getElementById('post-tags').value    = (data.tags || []).join(', ')
+      document.getElementById('post-excerpt').value = data.excerpt || ''
+      document.getElementById('post-content').value = data.content || ''
+      document.getElementById('post-published').checked = data.published !== false
+      updatePreview()
+    }
+
+    document.getElementById('form-post').addEventListener('submit', async function (e) {
+      e.preventDefault()
+      hideMessages()
+
+      const titolo   = document.getElementById('post-titolo').value.trim()
+      const slug     = document.getElementById('post-slug').value.trim() || slugify(titolo)
+      const data     = document.getElementById('post-data').value
+      const autore   = document.getElementById('post-autore').value.trim()
+      const tagsRaw  = document.getElementById('post-tags').value
+      const excerpt  = document.getElementById('post-excerpt').value.trim()
+      const content  = document.getElementById('post-content').value
+      const published = document.getElementById('post-published').checked
+
+      if (!titolo || !slug || !data) {
+        showError('post-error', 'Titolo, slug e data sono obbligatori.')
+        return
+      }
+
+      const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean)
+      const profile = CSLAuth.getProfile()
+
+      const payload = {
+        titolo, slug, data, autore, tags, excerpt, content, published,
+        updated_at: new Date().toISOString(),
+      }
+
+      let error
+      if (editingPostId) {
+        ;({ error } = await CSLAuth.client
+          .from('posts').update(payload).eq('id', editingPostId))
+      } else {
+        payload.created_by = profile?.id
+        const { data: newPost, error: insertError } = await CSLAuth.client
+          .from('posts').insert(payload).select('id').single()
+        error = insertError
+        if (newPost) {
+          editingPostId = newPost.id
+          const url = new URL(window.location)
+          url.searchParams.set('id', newPost.id)
+          window.history.replaceState({}, '', url)
+        }
+      }
+
+      if (error) {
+        showError('post-error', error.message)
+      } else {
+        await savePoll(editingPostId)
+        if (!document.getElementById('post-error').hidden) return  // poll validation failed
+        showSuccess('post-success', editingPostId ? 'Post aggiornato!' : 'Post pubblicato!')
+        if (!new URLSearchParams(window.location.search).get('id')) {
+          setTimeout(() => window.location.href = 'admin.html', 1200)
+        }
+      }
+    })
+
+    document.getElementById('btn-delete-post').addEventListener('click', async function () {
+      if (!editingPostId) return
+      if (!confirm('Eliminare questo post? L\'azione non può essere annullata.')) return
+      const { error } = await CSLAuth.client.from('posts').delete().eq('id', editingPostId)
+      if (error) {
+        showError('post-error', error.message)
+      } else {
+        window.location.href = 'admin.html'
+      }
+    })
+
+    function showError(id, msg) {
+      const el = document.getElementById(id)
+      el.textContent = msg
+      el.hidden = false
+    }
+    function showSuccess(id, msg) {
+      const el = document.getElementById(id)
+      el.textContent = msg
+      el.hidden = false
+    }
+    function hideMessages() {
+      document.getElementById('post-error').hidden = true
+      document.getElementById('post-success').hidden = true
+    }
+  </script>
+</body>
+</html>

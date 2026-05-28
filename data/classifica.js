@@ -1,5 +1,5 @@
 // AUTO-GENERATO da scripts/aggiorna.py — non modificare manualmente
-// Ultimo aggiornamento: 2026-05-28 11:00
+// Ultimo aggiornamento: 2026-05-28 11:16
 
 CSL.stagioni = [
   {
@@ -27,8 +27,7 @@ CSL.stagioni = [
       { posizione: 13, nome: "Andrea Picchi", iniziali: "AP", partite: 7, punti_campionato: 3, punti_tiro: 67, media_tiro: 9.6, media_tiro_spareggio: 9.571, record: 15, secondo_record: 13, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 14, nome: "Francesco Rogo", iniziali: "FR", partite: 2, punti_campionato: 2, punti_tiro: 23, media_tiro: 11.5, media_tiro_spareggio: 11.5, record: 15, secondo_record: 14, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 15, nome: "Paolo Masini", iniziali: "PM", partite: 2, punti_campionato: 0, punti_tiro: 17, media_tiro: 8.5, media_tiro_spareggio: 8.5, record: 10, secondo_record: 7, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
-      { posizione: 16, nome: "Giovanni Cerretani", iniziali: "GC", partite: 1, punti_campionato: 0, punti_tiro: 3, media_tiro: 3.0, media_tiro_spareggio: 3.0, record: 3, secondo_record: 0, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
-      { posizione: 17, nome: "[object PointerEvent]", iniziali: "[P", partite: 1, punti_campionato: 0, punti_tiro: 0, media_tiro: 0.0, media_tiro_spareggio: 0.0, record: 0, secondo_record: 0, vittorie: 0, recuperi_usati: 1, recuperi_max: 4 }
+      { posizione: 16, nome: "Giovanni Cerretani", iniziali: "GC", partite: 1, punti_campionato: 0, punti_tiro: 3, media_tiro: 3.0, media_tiro_spareggio: 3.0, record: 3, secondo_record: 0, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 }
     ],
     giornate: [
       {
@@ -162,8 +161,7 @@ CSL.stagioni = [
           { posizione: 10, nome: "Antonio Nicolosi", iniziali: "AN", t1: 10, t2: 1, t3: 1, punteggio: 10, media_tre_tentativi: 4.0, secondo_miglior_tentativo: 1, punti_campionato: 1, recupero: false, data_effettiva: null },
           { posizione: 11, nome: "Andrea Della Maggiora", iniziali: "AD", t1: 8, t2: 7, t3: 5, punteggio: 8, media_tre_tentativi: 6.667, secondo_miglior_tentativo: 7, punti_campionato: 0, recupero: false, data_effettiva: null },
           { posizione: 12, nome: "Daniele Ninci", iniziali: "DN", t1: 6, t2: 6, t3: 0, punteggio: 6, media_tre_tentativi: 4.0, secondo_miglior_tentativo: 6, punti_campionato: 0, recupero: false, data_effettiva: null },
-          { posizione: 13, nome: "Andrea Picchi", iniziali: "AP", t1: 0, t2: 1, t3: 3, punteggio: 3, media_tre_tentativi: 1.333, secondo_miglior_tentativo: 1, punti_campionato: 0, recupero: false, data_effettiva: null },
-          { posizione: 14, nome: "[object PointerEvent]", iniziali: "[P", t1: -1, t2: -1, t3: -1, punteggio: 0, media_tre_tentativi: 0.0, secondo_miglior_tentativo: 0, punti_campionato: 0, recupero: true, data_effettiva: "2026-05-28" }
+          { posizione: 13, nome: "Andrea Picchi", iniziali: "AP", t1: 0, t2: 1, t3: 3, punteggio: 3, media_tre_tentativi: 1.333, secondo_miglior_tentativo: 1, punti_campionato: 0, recupero: false, data_effettiva: null }
         ]
       }
     ]

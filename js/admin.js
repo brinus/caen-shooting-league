@@ -705,12 +705,41 @@ async function loadGiornateList() {
 
   const rows = Object.values(byDate).sort((a, b) => b.data.localeCompare(a.data)).slice(0, 30)
   listEl.innerHTML = rows.map(function (g) {
-    return `<div class="admin-list-row">
+    return `<div class="admin-list-row" data-stagione="${escHtml(g.stagione_id)}" data-data="${escHtml(g.data)}">
       <span class="admin-list-date">${formatDate(g.data)}</span>
-      <span class="text-muted">${g.stagione_id}</span>
+      <span class="text-muted">${escHtml(g.stagione_id)}</span>
       <span>${g.players.length} giocatori</span>
+      <span class="admin-list-actions" style="margin-left:auto">
+        <button type="button" class="btn-icon btn-delete-giornata" title="Elimina giornata">✕</button>
+      </span>
     </div>`
   }).join('')
+
+  // attach delete handlers
+  listEl.querySelectorAll('.btn-delete-giornata').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      const row = btn.closest('.admin-list-row')
+      if (!row) return
+      const stagioneId = row.dataset.stagione
+      const dataVal = row.dataset.data
+      if (!stagioneId || !dataVal) return
+      hideMsg('giornata-error')
+      hideMsg('giornata-success')
+      if (!confirm('Eliminare tutti i risultati registrati per ' + formatDate(dataVal) + '?')) return
+      const { error } = await CSLAuth.client
+        .from('risultati')
+        .delete()
+        .eq('stagione_id', stagioneId)
+        .eq('data', dataVal)
+
+      if (error) {
+        showMsg('giornata-error', 'Errore cancellando la giornata: ' + error.message, true)
+      } else {
+        showMsg('giornata-success', '✓ Giornata cancellata: ' + formatDate(dataVal), false)
+        await loadGiornateList()
+      }
+    })
+  })
 }
 
 // ── TAB: Post ──────────────────────────────────────────────────

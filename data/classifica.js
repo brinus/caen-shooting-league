@@ -1,5 +1,5 @@
 // AUTO-GENERATO da scripts/aggiorna.py — non modificare manualmente
-// Ultimo aggiornamento: 2026-05-29 09:14
+// Ultimo aggiornamento: 2026-05-29 11:09
 
 CSL.stagioni = [
   {
@@ -22,7 +22,7 @@ CSL.stagioni = [
       { posizione: 8, nome: "Emanuele Bertolucci", iniziali: "EB", partite: 4, punti_campionato: 14, punti_tiro: 68, media_tiro: 17.0, media_tiro_spareggio: 17.0, record: 24, secondo_record: 20, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 9, nome: "Antonio Nicolosi", iniziali: "AN", partite: 7, punti_campionato: 13, punti_tiro: 119, media_tiro: 17.0, media_tiro_spareggio: 17.0, record: 29, secondo_record: 27, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 10, nome: "Andrea Romboli", iniziali: "AR", partite: 2, punti_campionato: 12, punti_tiro: 40, media_tiro: 20.0, media_tiro_spareggio: 20.0, record: 26, secondo_record: 14, vittorie: 1, recuperi_usati: 0, recuperi_max: 4 },
-      { posizione: 11, nome: "Chiara Tomaiuolo", iniziali: "CT", partite: 5, punti_campionato: 11, punti_tiro: 80, media_tiro: 16.0, media_tiro_spareggio: 16.0, record: 18, secondo_record: 18, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
+      { posizione: 11, nome: "Chiara Tomaiuolo", iniziali: "CT", partite: 6, punti_campionato: 11, punti_tiro: 89, media_tiro: 14.8, media_tiro_spareggio: 14.833, record: 18, secondo_record: 18, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 12, nome: "Andrea Strappato", iniziali: "AS", partite: 6, punti_campionato: 9, punti_tiro: 89, media_tiro: 14.8, media_tiro_spareggio: 14.833, record: 21, secondo_record: 17, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 13, nome: "Andrea Picchi", iniziali: "AP", partite: 7, punti_campionato: 3, punti_tiro: 67, media_tiro: 9.6, media_tiro_spareggio: 9.571, record: 15, secondo_record: 13, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
       { posizione: 14, nome: "Francesco Rogo", iniziali: "FR", partite: 2, punti_campionato: 2, punti_tiro: 23, media_tiro: 11.5, media_tiro_spareggio: 11.5, record: 15, secondo_record: 14, vittorie: 0, recuperi_usati: 0, recuperi_max: 4 },
@@ -61,7 +61,8 @@ CSL.stagioni = [
           { posizione: 7, nome: "Matteo Brini", iniziali: "MB", t1: 13, t2: 7, t3: 19, punteggio: 19, media_tre_tentativi: 13.0, secondo_miglior_tentativo: 13, punti_campionato: 2, recupero: false, data_effettiva: null },
           { posizione: 8, nome: "Tommaso Banchini", iniziali: "TB", t1: 14, t2: 18, t3: 7, punteggio: 18, media_tre_tentativi: 13.0, secondo_miglior_tentativo: 14, punti_campionato: 1, recupero: false, data_effettiva: null },
           { posizione: 9, nome: "Andrea Strappato", iniziali: "AS", t1: 13, t2: -1, t3: -1, punteggio: 13, media_tre_tentativi: 4.333, secondo_miglior_tentativo: 0, punti_campionato: 1, recupero: false, data_effettiva: null },
-          { posizione: 10, nome: "Andrea Picchi", iniziali: "AP", t1: 10, t2: 0, t3: 1, punteggio: 10, media_tre_tentativi: 3.667, secondo_miglior_tentativo: 1, punti_campionato: 1, recupero: false, data_effettiva: null }
+          { posizione: 10, nome: "Andrea Picchi", iniziali: "AP", t1: 10, t2: 0, t3: 1, punteggio: 10, media_tre_tentativi: 3.667, secondo_miglior_tentativo: 1, punti_campionato: 1, recupero: false, data_effettiva: null },
+          { posizione: 11, nome: "Chiara Tomaiuolo", iniziali: "CT", t1: 0, t2: 9, t3: 8, punteggio: 9, media_tre_tentativi: 5.667, secondo_miglior_tentativo: 8, punti_campionato: 0, recupero: false, data_effettiva: null }
         ]
       },
       {

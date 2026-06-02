@@ -1,5 +1,5 @@
 // AUTO-GENERATO da scripts/aggiorna.py — non modificare manualmente
-// Ultimo aggiornamento: 2026-06-02 07:43
+// Ultimo aggiornamento: 2026-06-02 09:31
 
 CSL.sisal = [
   {

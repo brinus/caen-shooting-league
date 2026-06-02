@@ -1,5 +1,5 @@
 // AUTO-GENERATO da scripts/aggiorna.py — non modificare manualmente
-// Ultimo aggiornamento: 2026-06-01 23:34
+// Ultimo aggiornamento: 2026-06-02 00:54
 
 CSL.sisal = [
   {
@@ -318,9 +318,9 @@ CSL.sisal = [
       }
     ],
     next_matchday: {
-      numero: 9,
-      data: "2026-06-01",
-      giorno: "Lunedì",
+      numero: 10,
+      data: "2026-06-03",
+      giorno: "Mercoledì",
       players: [
         {
           nome: "Andrea Della Maggiora",

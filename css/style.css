@@ -1124,28 +1124,29 @@ option { background: #0d1228; }
 
 .rules-list {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: block; /* ensure each list item stacks vertically */
+  margin: 0;
+  padding: 0;
 }
 
 .rules-list li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  display: block; /* single column text inside the box */
   padding: 0.7rem 1rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 0.88rem;
   color: var(--text);
+  line-height: 1.4;
 }
 
 .rules-list li::before {
   content: '▸';
   color: var(--primary);
-  flex-shrink: 0;
-  margin-top: 0.05rem;
+  display: inline-block;
+  width: 1.1rem;
+  margin-right: 0.6rem;
+  vertical-align: top;
 }
 
 .titles-grid {
@@ -1248,6 +1249,20 @@ option { background: #0d1228; }
 .camp-pts-2  { color: var(--secondary); background: rgba(255,204,0,0.1); }
 .camp-pts-1  { color: #9fb3ff; background: rgba(159,179,255,0.1); }
 .camp-pts-0  { color: var(--text-muted); background: rgba(255,255,255,0.03); }
+
+/* Ensure championship points badges lay out on a single horizontal line
+   and wrap automatically when the line ends. Keeps badges compact. */
+.rules-section .camp-pts-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rules-section .camp-pts-row .camp-pts {
+  flex: 0 0 auto; /* keep badges their intrinsic width */
+  white-space: nowrap; /* don't break badge text */
+}
 
 /* ── Recupero ───────────────────────────────────────────────── */
 

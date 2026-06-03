@@ -69,7 +69,7 @@
       <div class="season-select-wrapper" style="margin-bottom:1.5rem;align-items:center">
         <label for="sisal-season-select">Stagione:</label>
         <select id="sisal-season-select"></select>
-        <span class="note" style="color:var(--text-muted);font-size:0.8rem">Mercati principali: titolo, podio, best over e media finale over 18. (Quote calcolate live)</span>
+        <span class="note" style="color:var(--text-muted);font-size:0.8rem">Mercati disponibili: vincente, podio, over 30/25/20 e speciali generati nel file quote.</span>
       </div>
 
       <section>
@@ -112,123 +112,78 @@
             </table>
           </div>
           <div class="sisal-specials-grid" id="sisal-next-specials"></div>
-                <style>
-                  /* Maintenance overlay — styled to match main site theme */
-                  .maintenance-overlay {
-                    position: fixed;
-                    left: 0;
-                    right: 0;
-                    top: 58px; /* leave navigation accessible */
-                    bottom: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: linear-gradient(180deg, rgba(7,11,26,0.72), rgba(13,18,40,0.9));
-                    backdrop-filter: blur(6px);
-                    color: var(--text);
-                    z-index: 90; /* keep below nav (nav z-index:100) so links remain clickable */
-                    text-align: center;
-                    padding: 2rem;
-                    font-family: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
-                  }
-                  .maintenance-overlay__card {
-                    width: min(92%, 860px);
-                    background: linear-gradient(180deg, var(--bg-card-2), rgba(255,255,255,0.02));
-                    border: 1px solid var(--border);
-                    padding: 1.5rem 2rem;
-                    border-radius: var(--radius);
-                    box-shadow: var(--shadow);
-                    text-align: left;
-                  }
-                  .maintenance-overlay__card h2 {
-                    margin: 0 0 0.4rem 0;
-                    font-size: 1.25rem;
-                    color: var(--primary);
-                    font-family: 'Orbitron', monospace;
-                  }
-                  .maintenance-overlay__card p { margin: 0 0 0.6rem 0; color: var(--text-muted); }
-                  .maintenance-overlay__card .muted { color: var(--text-muted); }
-                  .maintenance-overlay__card .admin-hint { margin-top: 0.5rem; color: var(--text); font-size: 0.95rem; }
-                  .maintenance-overlay__card .admin-actions { margin-top: 1rem; display:flex; gap:0.5rem; }
-                  .maintenance-overlay__card .btn { padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); color:var(--text); cursor:pointer; }
-                  .maintenance-overlay__card .btn--primary { background: linear-gradient(180deg, var(--primary), var(--primary-dark)); color: #111; border-color: var(--border-bright); box-shadow: 0 6px 20px var(--primary-glow); }
-                  .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-
-                  /* When maintenance active, hide betting UI */
-                  html.maintenance-active #bet-widget,
-                  html.maintenance-active #bet-modal-overlay {
-                    display: none !important;
-                    pointer-events: none !important;
-                    opacity: 0 !important;
-                  }
-                </style>
-        </div>
-      </section>
-                <div id="sisal-maintenance-overlay" class="maintenance-overlay" role="dialog" aria-modal="true">
-                  <div class="maintenance-overlay__card">
-                    <h2>Manutenzione — Lavagna quote temporaneamente disabilitata</h2>
-                    <p class="muted">La sezione scommesse è in manutenzione. Tornerà disponibile a breve.</p>
-                    <p class="admin-hint">Sei amministratore e vuoi esplorare la pagina? Effettua il login su Supabase o usa il pulsante qui sotto per verificare lo stato admin.</p>
-                    <div class="admin-actions">
-                      <button id="maintenance-admin-check" class="btn">Verifica admin e mostra</button>
-                    </div>
-                  </div>
-                </div>
-
-      <section class="sisal-section sisal-section--campionato sisal-reveal">
-        <div class="sisal-section-header-band">
-          <div class="sisal-section-header-left">
-            <span class="sisal-section-icon">🏆</span>
-            <div>
-              <div class="sisal-section-kicker">Scommesse di Stagione</div>
-              <div class="sisal-section-name">Campionato</div>
-            </div>
-          </div>
-        </div>
-        <div class="sisal-section-body">
-          <p class="sisal-section-desc">Titolo · Podio · Best over · Best over+5 · Media ≥18 — i mercati aperti per tutta la stagione. Quote più basse = il mercato è più convinto.</p>
-          <div class="table-wrapper" style="margin-bottom:1.5rem">
-            <table>
-              <thead>
-                <tr>
-                  <th>Giocatore</th>
-                  <th>Pos.</th>
-                  <th>Titolo</th>
-                  <th>Podio</th>
-                  <th>Best over</th>
-                  <th>Best over +5</th>
-                  <th>Media 18+</th>
-                  <th>Segnale</th>
-                </tr>
-              </thead>
-              <tbody id="sisal-player-tbody"></tbody>
-            </table>
-          </div>
-          <div class="sisal-section-subsection-label">Mercati Speciali di Stagione</div>
-          <div class="sisal-specials-grid" id="sisal-specials"></div>
         </div>
       </section>
 
-      <section class="sisal-section sisal-reveal" id="sisal-charts-section">
+      <section class="sisal-section sisal-reveal">
         <div class="sisal-section-header-band">
           <div class="sisal-section-header-left">
-            <span class="sisal-section-icon">📊</span>
+            <span class="sisal-section-icon">🔎</span>
             <div>
-              <div class="sisal-section-kicker">Analisi &amp; Previsioni</div>
-              <div class="sisal-section-name">Il motore delle quote</div>
+              <div class="sisal-section-kicker">Esplora quote</div>
+              <div class="sisal-section-name">Posizione esatta e classifiche più probabili</div>
             </div>
           </div>
         </div>
         <div class="sisal-section-body">
           <div id="sisal-charts-container"></div>
-          <div class="sisal-methodology-card" style="margin-top:1.5rem">
-            <div class="sisal-marquee-label">Metodo</div>
-            <h2 style="font-size:1.1rem;color:var(--text);margin-bottom:0.25rem">Come vengono fuori queste assurdità</h2>
-            <ul class="sisal-methodology" id="sisal-methodology"></ul>
-          </div>
         </div>
       </section>
 
+      <style>
+        /* Maintenance overlay — styled to match main site theme */
+        .maintenance-overlay {
+          position: fixed;
+          left: 0;
+          right: 0;
+          top: 58px; /* leave navigation accessible */
+          bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(180deg, rgba(7,11,26,0.72), rgba(13,18,40,0.9));
+          backdrop-filter: blur(6px);
+          color: var(--text);
+          z-index: 90; /* keep below nav (nav z-index:100) so links remain clickable */
+          text-align: center;
+          padding: 2rem;
+          font-family: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
+        }
+        .maintenance-overlay__card {
+          width: min(92%, 860px);
+          background: linear-gradient(180deg, var(--bg-card-2), rgba(255,255,255,0.02));
+          border: 1px solid var(--border);
+          padding: 1.5rem 2rem;
+          border-radius: var(--radius);
+          box-shadow: var(--shadow);
+          text-align: left;
+        }
+        .maintenance-overlay__card h2 {
+          margin: 0 0 0.4rem 0;
+          font-size: 1.25rem;
+          color: var(--primary);
+          font-family: 'Orbitron', monospace;
+        }
+        .maintenance-overlay__card p { margin: 0 0 0.6rem 0; color: var(--text-muted); }
+        .maintenance-overlay__card .muted { color: var(--text-muted); }
+        .maintenance-overlay__card .admin-hint { margin-top: 0.5rem; color: var(--text); font-size: 0.95rem; }
+        .maintenance-overlay__card .admin-actions { margin-top: 1rem; display:flex; gap:0.5rem; }
+        .maintenance-overlay__card .btn { padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); color:var(--text); cursor:pointer; }
+        .maintenance-overlay__card .btn--primary { background: linear-gradient(180deg, var(--primary), var(--primary-dark)); color: #111; border-color: var(--border-bright); box-shadow: 0 6px 20px var(--primary-glow); }
+        .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+      </style>
+
+      <div id="sisal-maintenance-overlay" class="maintenance-overlay" role="dialog" aria-modal="true">
+        <div class="maintenance-overlay__card">
+          <h2>Manutenzione — Lavagna quote temporaneamente disabilitata</h2>
+          <p class="muted">La sezione scommesse è in manutenzione. Tornerà disponibile a breve.</p>
+          <p class="admin-hint">Sei amministratore e vuoi esplorare la pagina? Effettua il login su Supabase o usa il pulsante qui sotto per verificare lo stato admin.</p>
+          <div class="admin-actions">
+            <button id="maintenance-admin-check" class="btn">Verifica admin e mostra</button>
+          </div>
+        </div>
+      </div>
 
     </div>
   </main>
@@ -241,26 +196,15 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/ranking.js"></script>
   <script src="data/data.js"></script>
-  <script src="data/sisal.js"></script>
   <script>
     (function(){
       var overlay = document.getElementById('sisal-maintenance-overlay');
       function updateOverlay(){
         try{
           if(!overlay) return;
-          var isAdmin = false;
-          try { isAdmin = !!(window.CSLAuth && typeof CSLAuth.isAdmin === 'function' && CSLAuth.isAdmin()); } catch(e) { isAdmin = false; }
-          if(isAdmin){
-            overlay.style.display = 'none';
-            document.documentElement.style.overflow = '';
-            document.body.style.overflow = '';
-            document.documentElement.classList.remove('maintenance-active');
-          } else {
-            overlay.style.display = 'flex';
-            document.documentElement.style.overflow = 'hidden';
-            document.body.style.overflow = 'hidden';
-            document.documentElement.classList.add('maintenance-active');
-          }
+          overlay.style.display = 'none';
+          overlay.hidden = true;
+          document.documentElement.classList.remove('maintenance-active');
         } catch(e) { console.warn('maintenance overlay check failed', e); }
       }
       updateOverlay();
@@ -286,7 +230,6 @@
       } catch (e) { /* ignore */ }
     })();
   </script>
-  <script type="module" src="js/modules/loader-sisal-modules.js"></script>
   <script src="js/app.js"></script>
 
   <!-- ── Bet widget + modal ── -->
@@ -309,39 +252,14 @@
 
       <!-- Tab navigation -->
       <div class="bet-tabs" role="tablist">
-        <button class="bet-tab-btn active" data-tab="stagione" role="tab">📅 Fine Stagione</button>
-        <button class="bet-tab-btn" data-tab="giornata" role="tab">⚡ Prossima G.</button>
+        <button class="bet-tab-btn active" data-tab="giornata" role="tab">⚡ Prossima G.</button>
         <button class="bet-tab-btn" data-tab="speciali" role="tab">✨ Speciali</button>
       </div>
 
-      <!-- ── Tab: Fine Stagione ── -->
-      <div class="bet-tab-pane" id="bet-tab-stagione">
-        <div class="bet-season-row">
-          <label style="font-size:0.75rem;color:var(--text-muted)">Stagione</label>
-          <select id="bet-select-season" class="form-input" style="max-width:200px;padding:0.3rem 0.6rem;font-size:0.85rem"></select>
-        </div>
-        <div class="table-wrapper bet-board-wrap">
-          <table class="bet-board-table">
-            <thead>
-                <tr>
-                <th>Giocatore</th>
-                <th title="Vince il campionato">🏆<span class="bet-th-label">Titolo</span></th>
-                <th title="Podio (top 3)">🥉<span class="bet-th-label">Podio</span></th>
-                    <th title="Top 5">⭐<span class="bet-th-label">Top 5</span></th>
-                <th title="Best over stagionale">🎯<span class="bet-th-label">Best over</span></th>
-                <th title="Best over stagionale +5">🎯<span class="bet-th-label">Best over+5</span></th>
-                <th title="Media finale ≥18">📊<span class="bet-th-label">Avg 18</span></th>
-              </tr>
-            </thead>
-            <tbody id="bet-stagione-tbody"></tbody>
-          </table>
-        </div>
-          <!-- Exact ranking composer (stagione) -->
-          <div id="bet-exact-composer-stagione" class="bet-exact-composer" style="margin-top:0.8rem"></div>
-        </div>
+      <select id="bet-select-season" class="form-input" hidden></select>
 
       <!-- ── Tab: Prossima Giornata ── -->
-      <div class="bet-tab-pane" id="bet-tab-giornata" hidden>
+      <div class="bet-tab-pane" id="bet-tab-giornata">
         <div class="bet-giornata-info" id="bet-giornata-info"></div>
         <div class="table-wrapper bet-board-wrap">
           <table class="bet-board-table">
@@ -358,8 +276,6 @@
             <tbody id="bet-giornata-tbody"></tbody>
           </table>
         </div>
-          <!-- Exact ranking composer (giornata) -->
-          <div id="bet-exact-composer-giornata" class="bet-exact-composer" style="margin-top:0.8rem"></div>
       </div>
 
       <!-- ── Tab: Speciali ── -->
@@ -382,8 +298,6 @@
         </div>
         <!-- Breakdown quota (singola o multipla) -->
         <div id="bet-breakdown" class="bet-breakdown"></div>
-        <!-- Correlation grid (pairwise) -->
-        <div id="bet-corr-grid" class="bet-corr-grid" style="margin-top:0.6rem;display:none"></div>
       </div>
 
       <div class="form-error"  id="bet-error"   hidden></div>
@@ -401,14 +315,14 @@
       /* ── State ── */
       var _wallet     = 0
       var _selections = []   // array di { bet_type, player_name, quota, market_label, season_id, giornata_date, giornata_num }
-      var _selPanel   = null // 'stagione' | 'giornata' | 'speciali'
+      var _selPanel   = null // 'giornata' | 'speciali'
       var _seasonId   = null
 
       /* ── Bonus multipla (per numero di selezioni) ── */
       var PARLAY_BONUS = [1, 1, 1.05, 1.10, 1.18, 1.28, 1.40, 1.55]
       function getBonus(n) { return PARLAY_BONUS[Math.min(n, 7)] || 1.55 }
       function getPanelLabel(p) {
-        return { stagione:'📅 Fine Stagione', giornata:'⚡ Prossima Giornata', speciali:'✨ Speciali' }[p] || p
+        return { giornata:'⚡ Prossima Giornata', speciali:'✨ Speciali' }[p] || p
       }
 
       /* ── DOM refs ── */
@@ -436,6 +350,14 @@
           var end   = new Date(dStr + 'T20:00:00');
           return now >= start && now < end;
         } catch (e) { return false }
+      }
+
+      function getCurrentBettingBoard() {
+        return (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0] || null;
+      }
+
+      function isBettingLockedNow() {
+        return isBettingBlockedForBoard(getCurrentBettingBoard());
       }
 
       /* ── Board cell factory ── */
@@ -502,36 +424,22 @@
             + '</tr>'
         }).join('')
         attachBoardClicks(tbody, 'giornata')
-        // init exact-rank composer for giornata
-        try { renderExactComposer(board, 'bet-exact-composer-giornata', 'giornata'); } catch(e) { console.error('composer giornata fail', e); }
       }
 
       /* ── Tab: Speciali ── */
       function populateSpecialiTab(board) {
         var listEl = document.getElementById('bet-speciali-list')
         if (!listEl) return
-        var items = []
-        if (board && board.next_matchday) {
-          ;(board.next_matchday.highlights || []).forEach(function(h) {
-            items.push({ label:h.label, sub:h.market, player:h.player, quota:h.quota,
-                         giornata_date:board.next_matchday.data, giornata_num:board.next_matchday.numero })
-          })
-          ;(board.next_matchday.specials || []).forEach(function(s) {
-            items.push({ label:s.label, sub:s.note||'', player:'—', quota:s.quota,
-                         giornata_date:board.next_matchday.data, giornata_num:board.next_matchday.numero })
-          })
-        }
-        if (board) {
-          ;(board.highlights || []).forEach(function(h) {
-            items.push({ label:h.label, sub:h.market, player:h.player, quota:h.quota,
-                         giornata_date:null, giornata_num:null })
-          })
-        }
-        // Remove any exact-score items (server or static) — these markets are deprecated
-        items = items.filter(function(item) {
-          var lbl = (item.label || '') + ' ' + (item.sub || '') + ' ' + (item.market || '');
-          return !/\bEsatto\b/i.test(lbl);
-        });
+        var items = board ? (board.specials || []).map(function(s) {
+          return {
+            label: s.label,
+            sub: s.note || '',
+            player: '—',
+            quota: s.quota,
+            giornata_date: board.next_matchday ? board.next_matchday.data : null,
+            giornata_num: board.next_matchday ? board.next_matchday.numero : null,
+          }
+        }) : []
         if (!items.length) {
           listEl.innerHTML = '<p class="text-muted">Nessun mercato speciale disponibile.</p>'
           return
@@ -541,9 +449,7 @@
           var bd  = { bet_type:'speciale', player_name:item.player||'—', quota:item.quota,
                       market_label:lbl, season_id:_seasonId,
                       giornata_date:item.giornata_date||null, giornata_num:item.giornata_num||null }
-          var tag = item.giornata_num
-            ? '<span class="bet-speciale-tag">⚡ G' + item.giornata_num + '</span>'
-            : '<span class="bet-speciale-tag bet-speciale-tag--season">📅 Stagione</span>'
+          var tag = '<span class="bet-speciale-tag">✨ Speciale</span>'
           return '<div class="bet-speciale-card" data-bet=\'' + JSON.stringify(bd).replace(/'/g,'&#39;') + '\'>'
             + '<div class="bet-speciale-top">' + tag
             + '<span class="bet-q bet-q--lg">' + fmtQ(item.quota) + '</span></div>'
@@ -558,78 +464,8 @@
         })
       }
 
-      /* ── Exact ranking composer (shared) ── */
-      function renderExactComposer(board, containerId, scope) {
-        var container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = '';
-        if (!board || !board.players || !board.players.length) {
-          container.innerHTML = '<div class="text-muted" style="padding:0.5rem">Nessuna lavagna disponibile per il compositore.</div>';
-          return;
-        }
-        var players = board.players.slice();
-        var sims = (board.mc_summary && board.mc_summary.sims) || 0;
-
-        var header = document.createElement('div'); header.className = 'row';
-        var lbl = document.createElement('div'); lbl.style.color = 'var(--text-muted)'; lbl.style.marginRight = '0.5rem'; lbl.textContent = 'Classifica esatta:';
-        var selectK = document.createElement('select'); [3,4,5,6].forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent='Top '+n; selectK.appendChild(o); }); selectK.value='5';
-        header.appendChild(lbl); header.appendChild(selectK); container.appendChild(header);
-
-        var rowsWrap = document.createElement('div'); rowsWrap.style.marginTop = '0.5rem'; container.appendChild(rowsWrap);
-        var actions = document.createElement('div'); actions.className = 'composer-actions';
-        var btnAdd = document.createElement('button'); btnAdd.className = 'bet-composer-add btn-primary'; btnAdd.textContent = 'Aggiungi alla schedina';
-        var probView = document.createElement('div'); probView.style.marginLeft = 'auto'; probView.style.color='var(--text-muted)'; probView.textContent = '';
-        actions.appendChild(btnAdd); actions.appendChild(probView); container.appendChild(actions);
-
-        function buildRows(k) {
-          rowsWrap.innerHTML = '';
-          for (var i=0;i<k;i++) {
-            (function(pos){
-              var row = document.createElement('div'); row.className='row';
-              var plbl = document.createElement('div'); plbl.className='pos-label'; plbl.textContent = (pos+1)+'.';
-              var sel = document.createElement('select'); sel.dataset.pos = pos; sel.style.minWidth='220px';
-              var emptyOpt = document.createElement('option'); emptyOpt.value=''; emptyOpt.textContent='— Seleziona giocatore —'; sel.appendChild(emptyOpt);
-              players.forEach(function(p, idx){ var o=document.createElement('option'); o.value=idx; o.textContent=p.nome; sel.appendChild(o); });
-              row.appendChild(plbl); row.appendChild(sel); rowsWrap.appendChild(row);
-            })(i)
-          }
-        }
-
-        function computeProb() {
-          var sels = Array.prototype.map.call(rowsWrap.querySelectorAll('select'), function(s){ return s.value!==''?Number(s.value):null });
-          if (sels.some(function(x){ return x===null })) { probView.textContent = 'Seleziona tutti i giocatori per vedere la quota.'; return null }
-          var prob = 1;
-          if (board.mc_summary && board.mc_summary.posMatrix && sims>0) {
-            for (var i=0;i<sels.length;i++) {
-              var pi = sels[i];
-              var cnt = (board.mc_summary.posMatrix[pi] && board.mc_summary.posMatrix[pi][i]) || 0;
-              var p = cnt / sims;
-              prob *= Math.max(1e-8, p);
-            }
-          } else {
-            for (var j=0;j<sels.length;j++) {
-              var q = (board.players[sels[j]] && (board.players[sels[j]].quote_titolo || board.players[sels[j]].quote_vittoria || 10)) || 10;
-              prob *= Math.max(1e-6, 1 / Math.max(q,0.01));
-            }
-          }
-          var odds = prob > 0 ? (1/prob) : null;
-          probView.textContent = odds ? ('Prob. ≈ ' + (Math.round(prob*1000)/10) + '% — Quota appross. @' + Number(odds.toFixed(2))) : '—';
-          return {prob:prob, odds:odds, sels: sels};
-        }
-
-        selectK.addEventListener('change', function(){ buildRows(Number(selectK.value)); probView.textContent=''; });
-        rowsWrap.addEventListener('change', function(){ computeProb(); });
-        btnAdd.addEventListener('click', function(){
-          var res = computeProb(); if (!res || !res.sels) { errBox.textContent='Completa la composizione prima di aggiungere.'; errBox.hidden=false; setTimeout(function(){errBox.hidden=true},2500); return }
-          var orderNames = res.sels.map(function(si){ return board.players[si].nome });
-          var label = 'Classifica esatta — ' + orderNames.map(function(n,i){ return (i+1)+'. '+n }).join(' · ');
-          var quota = res.odds || 9999;
-          var bd = { bet_type: (scope==='stagione'?'stagione_exact':'giornata_exact'), player_name: orderNames.join('|'), quota: quota, market_label: label, season_id: board.season_id, giornata_date: (scope==='giornata' && board.next_matchday?board.next_matchday.data:null), giornata_num: (scope==='giornata' && board.next_matchday?board.next_matchday.numero:null) };
-          toggleSelection(bd, scope);
-        });
-
-        buildRows(Number(selectK.value));
-      }
+      /* ── Exact ranking composer rimosso ── */
+      function renderExactComposer() {}
 
       /* Monte Carlo estimator for giornata parlay joint probability
          Uses board.next_matchday.expected_score + media_tiro heuristics to sample scores
@@ -866,10 +702,9 @@
       /* ── Coppie di mercati incompatibili per lo stesso giocatore ── */
       var CONFLICTING_PAIRS = [
         ['giornata_win',    'giornata_podio'],   // vince ⇒ podio
+        ['giornata_over_30','giornata_over_25'],  // >30 ⇒ >25
+        ['giornata_over_30','giornata_over_20'],  // >30 ⇒ >20
         ['giornata_over_25','giornata_over_20'],  // >25 ⇒ >20
-        ['titolo',          'podio'],             // titolo ⇒ podio
-        ['titolo',          'top5'],              // titolo ⇒ top5
-        ['podio',           'top5'],              // podio  ⇒ top5
       ]
 
       function getConflictMessage(newBd, selections) {
@@ -895,6 +730,12 @@
 
       /* ── Toggle selezione nella schedina ── */
       function toggleSelection(bd, panelName) {
+        if (isBettingLockedNow()) {
+          errBox.textContent = '⛔ Dalle 12:00 della giornata di gara non si accettano più scommesse.'
+          errBox.hidden = false
+          setTimeout(function(){ errBox.hidden = true }, 3500)
+          return
+        }
         if (window.SlipStore && typeof window.SlipStore.toggle === 'function'){
           var res = window.SlipStore.toggle(bd, panelName, getConflictMessage);
           if (res && res.error){
@@ -1074,23 +915,16 @@
         bkdn.innerHTML = html
 
         /* ---- Confirm button ---- */
-        btnConfirm.disabled = false
-        btnConfirm.textContent = _selections.length === 1
-          ? 'Conferma scommessa'
-          : 'Conferma multipla (' + _selections.length + ' selezioni)'
-
-        // Render correlation grid for giornata parlays
-        var corrEl = document.getElementById('bet-corr-grid');
-        if (_selPanel === 'giornata' && _selections.length > 1) {
-          try {
-            corrEl.style.display = '';
-            var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
-            computeAndRenderCorrelationGrid(board, _selections, 2000, corrEl);
-          } catch (e) { console.error('corr grid failed', e); corrEl.style.display='none' }
+        if (isBettingLockedNow()) {
+          btnConfirm.disabled = true
+          btnConfirm.textContent = 'Scommesse chiuse dalle 12:00'
         } else {
-          corrEl.style.display = 'none';
-          corrEl.innerHTML = '';
+          btnConfirm.disabled = false
+          btnConfirm.textContent = _selections.length === 1
+            ? 'Conferma scommessa'
+            : 'Conferma multipla (' + _selections.length + ' selezioni)'
         }
+
       }
 
       // subscribe to SlipStore updates if available (keeps local _selections in sync)
@@ -1147,7 +981,6 @@
         _seasonId = boards[boards.length - 1].season_id
         selSeason.value = _seasonId
         var defaultBoard = boards.find(function(b){ return b.season_id === _seasonId }) || boards[boards.length - 1]
-        populateStagioneTab(_seasonId)
         populateGiornataTab(defaultBoard)
         populateSpecialiTab(defaultBoard)
       }
@@ -1159,8 +992,6 @@
 
       /* ── Re-init when live boards are ready (from app.js initSisal) ── */
       document.addEventListener('sisal:boards-ready', function() {
-        // clear any cached parlay samples when boards update
-        try { (CSL.sisal || []).forEach(function(b){ if (b && b._parlayCache) delete b._parlayCache }); } catch(e){}
         _initBetModalTabs()
         clearSlip()
       })
@@ -1168,7 +999,6 @@
       selSeason.addEventListener('change', function() {
         _seasonId = selSeason.value
         var board = (CSL.sisal || []).find(function(b){ return b.season_id === _seasonId })
-        populateStagioneTab(_seasonId)
         populateGiornataTab(board)
         populateSpecialiTab(board)
         clearSlip()
@@ -1227,6 +1057,11 @@
       btnConfirm.addEventListener('click', async function() {
         errBox.hidden = true; sucBox.hidden = true
         if (!_selections.length) return
+        if (isBettingLockedNow()) {
+          errBox.textContent = '⛔ Dalle 12:00 della giornata di gara non si accettano più scommesse.'
+          errBox.hidden = false
+          return
+        }
         var amt = parseInt(inputAmt.value) || 0
         if (amt < 10)     { errBox.textContent = 'Importo minimo 10 Bossoli.'; errBox.hidden = false; return }
         if (amt > _wallet){ errBox.textContent = 'Saldo insufficiente (' + fmtC(_wallet) + ' Bossoli).'; errBox.hidden = false; return }
@@ -1235,26 +1070,6 @@
         var bonus  = getBonus(_selections.length)
         var finalQ = _selections.length > 1 ? baseQ * bonus : baseQ
         var nSel   = _selections.length
-
-        // If this is a giornata multipla, estimate joint probability via Monte Carlo
-        if (nSel > 1 && _selPanel === 'giornata') {
-          try {
-            btnConfirm.disabled = true; btnConfirm.textContent = 'Calcolo quota multipla…'
-            var board = (CSL.sisal || []).find(function(b){ return b.season_id === (_seasonId || selSeason.value) }) || (CSL.sisal || [])[0];
-            var parlayProb = await estimateNextDayParlayProb(board, _selections, 2000);
-            if (parlayProb && parlayProb > 0) {
-              var mcBaseQ = 1 / parlayProb;
-              var mcFinalQ = mcBaseQ * bonus;
-              // override baseQ/finalQ to the MC-derived values
-              baseQ = Math.round(mcBaseQ * 10000) / 10000;
-              finalQ = Math.round(mcFinalQ * 10000) / 10000;
-            }
-          } catch (e) {
-            console.error('MC parlay estimate failed', e);
-          } finally {
-            // restore button text/state later after RPC
-          }
-        }
 
         btnConfirm.disabled = true; btnConfirm.textContent = 'Elaborazione…'
 

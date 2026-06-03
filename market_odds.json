@@ -1,0 +1,1199 @@
+{
+  "meta": {
+    "iterations": 2000000,
+    "updated_at": "2026-06-03T09:41:56.066233Z"
+  },
+  "markets": {
+    "Andrea Picchi": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.11563853084407467,
+      "prob_over25": 0.0906037818865434,
+      "prob_over30": 0.08091207263782087,
+      "prob_vittoria": 0.04274871753847385,
+      "prob_podio": 0.08334549963501095,
+      "positional_prob": {
+        "1": 0.04274358846173074,
+        "2": 0.026363045543168526,
+        "3": 0.014258861170824377,
+        "4": 0.009296105584162375,
+        "5": 0.008465730140478928,
+        "6": 0.009560065990101485,
+        "7": 0.012832075188721691,
+        "8": 0.018935159726041095,
+        "9": 0.03062790581412788,
+        "10": 0.04756786482027696
+      },
+      "odds_over20": 6.05,
+      "odds_over25": 7.73,
+      "odds_over30": 8.65,
+      "odds_vittoria": 16.37,
+      "odds_podio": 8.4,
+      "positional_odds": {
+        "1": 16.38,
+        "2": 26.55,
+        "3": 49.09,
+        "4": 75.3,
+        "5": 82.69,
+        "6": 73.22,
+        "7": 54.55,
+        "8": 36.97,
+        "9": 22.85,
+        "10": 14.72
+      },
+      "expected_best": 13.8570015,
+      "expected_avg": 7.52017474999973,
+      "prob_vittoria_ci": [
+        0.04246835783164823,
+        0.04302907724529947
+      ]
+    },
+    "Francesco Pepe": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.5640550783476496,
+      "prob_over25": 0.09070027899163025,
+      "prob_over30": 0.08082157535273941,
+      "prob_vittoria": 0.049488515344539664,
+      "prob_podio": 0.15074647760567184,
+      "positional_prob": {
+        "1": 0.049482577613357996,
+        "2": 0.04050242463630455,
+        "3": 0.06077338399240114,
+        "4": 0.09728290756386541,
+        "5": 0.12167074938759184,
+        "6": 0.11990351447282907,
+        "7": 0.10240063990401439,
+        "8": 0.08537819327100934,
+        "9": 0.07193321001849723,
+        "10": 0.06264210368444734
+      },
+      "odds_over20": 1.24,
+      "odds_over25": 7.72,
+      "odds_over30": 8.66,
+      "odds_vittoria": 14.14,
+      "odds_podio": 4.64,
+      "positional_odds": {
+        "1": 14.15,
+        "2": 17.28,
+        "3": 11.52,
+        "4": 7.2,
+        "5": 5.75,
+        "6": 5.84,
+        "7": 6.84,
+        "8": 8.2,
+        "9": 9.73,
+        "10": 11.17
+      },
+      "expected_best": 21.108926,
+      "expected_avg": 14.680195500000297,
+      "prob_vittoria_ci": [
+        0.049187927115007406,
+        0.04978910357407192
+      ]
+    },
+    "Gianluca Becuzzi": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.4903052908412748,
+      "prob_over25": 0.29886603401897943,
+      "prob_over30": 0.08062508124756257,
+      "prob_vittoria": 0.05828875133745988,
+      "prob_podio": 0.21035268941931742,
+      "positional_prob": {
+        "1": 0.05828175773633955,
+        "2": 0.06754486826975954,
+        "3": 0.08453082037694346,
+        "4": 0.09439384092386142,
+        "5": 0.0933205019247113,
+        "6": 0.08591661250812378,
+        "7": 0.07482527620856871,
+        "8": 0.06286706993950908,
+        "9": 0.051912213168024794,
+        "10": 0.04487626855971604
+      },
+      "odds_over20": 1.43,
+      "odds_over25": 2.34,
+      "odds_over30": 8.68,
+      "odds_vittoria": 12.01,
+      "odds_podio": 3.33,
+      "positional_odds": {
+        "1": 12.01,
+        "2": 10.36,
+        "3": 8.28,
+        "4": 7.42,
+        "5": 7.5,
+        "6": 8.15,
+        "7": 9.36,
+        "8": 11.13,
+        "9": 13.48,
+        "10": 15.6
+      },
+      "expected_best": 20.982527,
+      "expected_avg": 13.538832333333412,
+      "prob_vittoria_ci": [
+        0.05796404383104248,
+        0.05861345884387728
+      ]
+    },
+    "Alberto Niccolai": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.8270031899043029,
+      "prob_over25": 0.38969630911072667,
+      "prob_over30": 0.29027979160625184,
+      "prob_vittoria": 0.0925482235532934,
+      "prob_podio": 0.3762507124786256,
+      "positional_prob": {
+        "1": 0.09253711943208519,
+        "2": 0.13068489726541016,
+        "3": 0.15301354796780484,
+        "4": 0.15495675648652701,
+        "5": 0.14086886966954956,
+        "6": 0.11245913113033044,
+        "7": 0.07918762185672149,
+        "8": 0.049450582412638104,
+        "9": 0.029699045143228516,
+        "10": 0.0187261910713393
+      },
+      "odds_over20": 1.01,
+      "odds_over25": 1.8,
+      "odds_over30": 2.41,
+      "odds_vittoria": 7.56,
+      "odds_podio": 1.86,
+      "positional_odds": {
+        "1": 7.56,
+        "2": 5.36,
+        "3": 4.57,
+        "4": 4.52,
+        "5": 4.97,
+        "6": 6.22,
+        "7": 8.84,
+        "8": 14.16,
+        "9": 23.57,
+        "10": 37.38
+      },
+      "expected_best": 25.402276,
+      "expected_avg": 18.674566583332872,
+      "prob_vittoria_ci": [
+        0.09214658361231254,
+        0.09294986349427425
+      ]
+    },
+    "Chiara Tomaiuolo": {
+      "attempts_on_record": 18,
+      "miss_rate": 0.05,
+      "prob_over20": 0.12525574232773018,
+      "prob_over25": 0.09494865154045379,
+      "prob_over30": 0.08308950731478056,
+      "prob_vittoria": 0.046248612541623754,
+      "prob_podio": 0.08908782736517905,
+      "positional_prob": {
+        "1": 0.04624306354046893,
+        "2": 0.026976453531970205,
+        "3": 0.01588761685747138,
+        "4": 0.015267209918512225,
+        "5": 0.026736489526571015,
+        "6": 0.052757586362045694,
+        "7": 0.08833974903764436,
+        "8": 0.11949107633854922,
+        "9": 0.1306539019147128,
+        "10": 0.11888316752487128
+      },
+      "odds_over20": 5.59,
+      "odds_over25": 7.37,
+      "odds_over30": 8.42,
+      "odds_vittoria": 15.14,
+      "odds_podio": 7.86,
+      "positional_odds": {
+        "1": 15.14,
+        "2": 25.95,
+        "3": 44.06,
+        "4": 45.85,
+        "5": 26.18,
+        "6": 13.27,
+        "7": 7.92,
+        "8": 5.86,
+        "9": 5.36,
+        "10": 5.89
+      },
+      "expected_best": 18.033438,
+      "expected_avg": 11.761256083340674,
+      "prob_vittoria_ci": [
+        0.045957535455216164,
+        0.046539689628031344
+      ]
+    },
+    "Matteo Brini": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.4098472045838625,
+      "prob_over25": 0.19947101586952393,
+      "prob_over30": 0.19038028859134226,
+      "prob_vittoria": 0.0835279941601752,
+      "prob_podio": 0.2032079037628871,
+      "positional_prob": {
+        "1": 0.08351797230415438,
+        "2": 0.0702824576313553,
+        "3": 0.04941308803679448,
+        "4": 0.054279358096285556,
+        "5": 0.08085187221916712,
+        "6": 0.10677598360245961,
+        "7": 0.1173104034394841,
+        "8": 0.10682597610358448,
+        "9": 0.08486277058441234,
+        "10": 0.06456681497775332
+      },
+      "odds_over20": 1.71,
+      "odds_over25": 3.51,
+      "odds_over30": 3.68,
+      "odds_vittoria": 8.38,
+      "odds_podio": 3.44,
+      "positional_odds": {
+        "1": 8.38,
+        "2": 9.96,
+        "3": 14.17,
+        "4": 12.9,
+        "5": 8.66,
+        "6": 6.56,
+        "7": 5.97,
+        "8": 6.55,
+        "9": 8.25,
+        "10": 10.84
+      },
+      "expected_best": 22.071047,
+      "expected_avg": 14.9288619166667,
+      "prob_vittoria_ci": [
+        0.08314453713247842,
+        0.08391145118787198
+      ]
+    },
+    "Emanuele Bertolucci": {
+      "attempts_on_record": 8,
+      "miss_rate": 0.35714285714285715,
+      "prob_over20": 0.4101226963191104,
+      "prob_over25": 0.09282621521354359,
+      "prob_over30": 0.07173134805955822,
+      "prob_vittoria": 0.04288671339859804,
+      "prob_podio": 0.1308520744377669,
+      "positional_prob": {
+        "1": 0.042881567764835274,
+        "2": 0.03827225916112583,
+        "3": 0.049712543118532224,
+        "4": 0.06484227365895116,
+        "5": 0.07029845523171524,
+        "6": 0.06594410838374244,
+        "7": 0.05390491426286057,
+        "8": 0.0409488576713493,
+        "9": 0.033047542868569715,
+        "10": 0.036436034594810776
+      },
+      "odds_over20": 1.71,
+      "odds_over25": 7.54,
+      "odds_over30": 9.76,
+      "odds_vittoria": 16.32,
+      "odds_podio": 5.35,
+      "positional_odds": {
+        "1": 16.32,
+        "2": 18.29,
+        "3": 14.08,
+        "4": 10.8,
+        "5": 9.96,
+        "6": 10.62,
+        "7": 12.99,
+        "8": 17.09,
+        "9": 21.18,
+        "10": 19.21
+      },
+      "expected_best": 16.587251,
+      "expected_avg": 12.267498583333104,
+      "prob_vittoria_ci": [
+        0.042605921787394106,
+        0.04316750500980198
+      ]
+    },
+    "Tommaso Banchini": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.22295931122066337,
+      "prob_over25": 0.09073127806165815,
+      "prob_over30": 0.08088357349279522,
+      "prob_vittoria": 0.045796126116216515,
+      "prob_podio": 0.0888073357799266,
+      "positional_prob": {
+        "1": 0.0457906314052892,
+        "2": 0.026177573363995402,
+        "3": 0.0168584712293156,
+        "4": 0.021889716542518624,
+        "5": 0.04032995050742389,
+        "6": 0.06564415337699345,
+        "7": 0.08686597010448434,
+        "8": 0.09834674798780181,
+        "9": 0.10286657001449784,
+        "10": 0.10389941508773684
+      },
+      "odds_over20": 3.14,
+      "odds_over25": 7.72,
+      "odds_over30": 8.65,
+      "odds_vittoria": 15.29,
+      "odds_podio": 7.88,
+      "positional_odds": {
+        "1": 15.29,
+        "2": 26.74,
+        "3": 41.52,
+        "4": 31.98,
+        "5": 17.36,
+        "6": 10.66,
+        "7": 8.06,
+        "8": 7.12,
+        "9": 6.8,
+        "10": 6.74
+      },
+      "expected_best": 18.061092,
+      "expected_avg": 12.280968250000255,
+      "prob_vittoria_ci": [
+        0.04550640774659738,
+        0.04608584448583565
+      ]
+    },
+    "Antonio Nicolosi": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.32015839524814255,
+      "prob_over25": 0.2989125326240213,
+      "prob_over30": 0.08088607341779747,
+      "prob_vittoria": 0.05884073477795666,
+      "prob_podio": 0.20436836894893154,
+      "positional_prob": {
+        "1": 0.058833674948757686,
+        "2": 0.06975603659451082,
+        "3": 0.07578413238014298,
+        "4": 0.06309053641953707,
+        "5": 0.047469379593061044,
+        "6": 0.04472679098135281,
+        "7": 0.05016947457881318,
+        "8": 0.05442233664950258,
+        "9": 0.05421836724491326,
+        "10": 0.055251712243163525
+      },
+      "odds_over20": 2.19,
+      "odds_over25": 2.34,
+      "odds_over30": 8.65,
+      "odds_vittoria": 11.9,
+      "odds_podio": 3.43,
+      "positional_odds": {
+        "1": 11.9,
+        "2": 10.03,
+        "3": 9.24,
+        "4": 11.1,
+        "5": 14.75,
+        "6": 15.65,
+        "7": 13.95,
+        "8": 12.86,
+        "9": 12.91,
+        "10": 12.67
+      },
+      "expected_best": 19.442735,
+      "expected_avg": 11.309631250000002,
+      "prob_vittoria_ci": [
+        0.05851458906205201,
+        0.05916688049386132
+      ]
+    },
+    "Francesco Rogo": {
+      "attempts_on_record": 6,
+      "miss_rate": 0.125,
+      "prob_over20": 0.23263552093437198,
+      "prob_over25": 0.14282271531854043,
+      "prob_over30": 0.10630681079567612,
+      "prob_vittoria": 0.0554773356799296,
+      "prob_podio": 0.1272056838294851,
+      "positional_prob": {
+        "1": 0.055470679398090285,
+        "2": 0.040213467979803026,
+        "3": 0.031536269559566066,
+        "4": 0.02909013647952807,
+        "5": 0.03127680847872819,
+        "6": 0.03582612608108784,
+        "7": 0.045043743438484225,
+        "8": 0.06203869419587062,
+        "9": 0.0858131280307954,
+        "10": 0.10782632605109234
+      },
+      "odds_over20": 3.01,
+      "odds_over25": 4.9,
+      "odds_over30": 6.58,
+      "odds_vittoria": 12.62,
+      "odds_podio": 5.5,
+      "positional_odds": {
+        "1": 12.62,
+        "2": 17.41,
+        "3": 22.2,
+        "4": 24.06,
+        "5": 22.38,
+        "6": 19.54,
+        "7": 15.54,
+        "8": 11.28,
+        "9": 8.16,
+        "10": 6.49
+      },
+      "expected_best": 17.8895955,
+      "expected_avg": 11.744489499993456,
+      "prob_vittoria_ci": [
+        0.055160083172579644,
+        0.05579458818727956
+      ]
+    },
+    "Andrea Romboli": {
+      "attempts_on_record": 5,
+      "miss_rate": 0.25,
+      "prob_over20": 0.4095802125936222,
+      "prob_over25": 0.33367248982530523,
+      "prob_over30": 0.09692509224723259,
+      "prob_vittoria": 0.058974230773076806,
+      "prob_podio": 0.20774226773196805,
+      "positional_prob": {
+        "1": 0.05896715492676099,
+        "2": 0.0665925111233315,
+        "3": 0.08218767184922261,
+        "4": 0.08077988301754736,
+        "5": 0.06316852472129181,
+        "6": 0.04511623256511524,
+        "7": 0.037074438834174876,
+        "8": 0.037547367894815775,
+        "9": 0.04530070489426586,
+        "10": 0.05642653601959706
+      },
+      "odds_over20": 1.71,
+      "odds_over25": 2.1,
+      "odds_over30": 7.22,
+      "odds_vittoria": 11.87,
+      "odds_podio": 3.37,
+      "positional_odds": {
+        "1": 11.87,
+        "2": 10.51,
+        "3": 8.52,
+        "4": 8.67,
+        "5": 11.08,
+        "6": 15.52,
+        "7": 18.88,
+        "8": 18.64,
+        "9": 15.45,
+        "10": 12.41
+      },
+      "expected_best": 18.8399295,
+      "expected_avg": 12.571392166666694,
+      "prob_vittoria_ci": [
+        0.05864773844988669,
+        0.059300723096266925
+      ]
+    },
+    "Daniele Ninci": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.7403622891313261,
+      "prob_over25": 0.3897163085107447,
+      "prob_over30": 0.08085807425777226,
+      "prob_vittoria": 0.07180184594462166,
+      "prob_podio": 0.32987610371688847,
+      "positional_prob": {
+        "1": 0.0717932310153477,
+        "2": 0.10802029695545669,
+        "3": 0.15005299205119232,
+        "4": 0.15682797580362945,
+        "5": 0.13036744488326749,
+        "6": 0.09613907913812927,
+        "7": 0.06969654551817227,
+        "8": 0.05400589911513273,
+        "9": 0.044414337849322603,
+        "10": 0.03637054441833725
+      },
+      "odds_over20": 1.01,
+      "odds_over25": 1.8,
+      "odds_over30": 8.66,
+      "odds_vittoria": 9.75,
+      "odds_podio": 2.12,
+      "positional_odds": {
+        "1": 9.75,
+        "2": 6.48,
+        "3": 4.67,
+        "4": 4.46,
+        "5": 5.37,
+        "6": 7.28,
+        "7": 10.04,
+        "8": 12.96,
+        "9": 15.76,
+        "10": 19.25
+      },
+      "expected_best": 24.395073,
+      "expected_avg": 16.861821416666672,
+      "prob_vittoria_ci": [
+        0.07144405509575778,
+        0.07215963679348554
+      ]
+    },
+    "Andrea Della Maggiora": {
+      "attempts_on_record": 21,
+      "miss_rate": 0.043478260869565216,
+      "prob_over20": 0.6297646070617882,
+      "prob_over25": 0.5479460616181514,
+      "prob_over30": 0.4660540183794486,
+      "prob_vittoria": 0.15627631171064868,
+      "prob_podio": 0.47414827555173344,
+      "positional_prob": {
+        "1": 0.15625756136579513,
+        "2": 0.18819077138429235,
+        "3": 0.1296730490426436,
+        "4": 0.0657916312553117,
+        "5": 0.03636554516822477,
+        "6": 0.03169574563815428,
+        "7": 0.03620506923961406,
+        "8": 0.04221416787481878,
+        "9": 0.04801179823026546,
+        "10": 0.05049192621106834
+      },
+      "odds_over20": 1.11,
+      "odds_over25": 1.28,
+      "odds_over30": 1.5,
+      "odds_vittoria": 4.48,
+      "odds_podio": 1.48,
+      "positional_odds": {
+        "1": 4.48,
+        "2": 3.72,
+        "3": 5.4,
+        "4": 10.64,
+        "5": 19.25,
+        "6": 22.08,
+        "7": 19.33,
+        "8": 16.58,
+        "9": 14.58,
+        "10": 13.86
+      },
+      "expected_best": 25.404615,
+      "expected_avg": 15.730836583334707,
+      "prob_vittoria_ci": [
+        0.15577305708985548,
+        0.15677956633144188
+      ]
+    },
+    "Andrea Strappato": {
+      "attempts_on_record": 16,
+      "miss_rate": 0.15,
+      "prob_over20": 0.23875183744487666,
+      "prob_over25": 0.08894883153505395,
+      "prob_over30": 0.07654220373388798,
+      "prob_vittoria": 0.043553693389198324,
+      "prob_podio": 0.09015979520614381,
+      "positional_prob": {
+        "1": 0.04354846772984052,
+        "2": 0.026230065490176473,
+        "3": 0.0204004399340099,
+        "4": 0.026789981502774583,
+        "5": 0.03958806179073139,
+        "6": 0.05369794530820377,
+        "7": 0.06900214967754836,
+        "8": 0.08788781682747587,
+        "9": 0.10547717842323652,
+        "10": 0.11146378043293505
+      },
+      "odds_over20": 2.93,
+      "odds_over25": 7.87,
+      "odds_over30": 9.15,
+      "odds_vittoria": 16.07,
+      "odds_podio": 7.76,
+      "positional_odds": {
+        "1": 16.07,
+        "2": 26.69,
+        "3": 34.31,
+        "4": 26.13,
+        "5": 17.68,
+        "6": 13.04,
+        "7": 10.14,
+        "8": 7.96,
+        "9": 6.64,
+        "10": 6.28
+      },
+      "expected_best": 17.439487,
+      "expected_avg": 11.91686716666713,
+      "prob_vittoria_ci": [
+        0.04327082535946793,
+        0.043836561418928714
+      ]
+    },
+    "Giovanni Cerretani": {
+      "attempts_on_record": 3,
+      "miss_rate": 0.2,
+      "prob_over20": 0.2993760187194384,
+      "prob_over25": 0.17220583382498525,
+      "prob_over30": 0.11969590912272632,
+      "prob_vittoria": 0.059533713988580345,
+      "prob_podio": 0.14987150385488435,
+      "positional_prob": {
+        "1": 0.05952657101434786,
+        "2": 0.048256761485777136,
+        "3": 0.042100184972254165,
+        "4": 0.04084937259411088,
+        "5": 0.042629105634154875,
+        "6": 0.04522321651752237,
+        "7": 0.04709693545968105,
+        "8": 0.04828925661150828,
+        "9": 0.04857421386791981,
+        "10": 0.049541068839674046
+      },
+      "odds_over20": 2.34,
+      "odds_over25": 4.06,
+      "odds_over30": 5.85,
+      "odds_vittoria": 11.76,
+      "odds_podio": 4.67,
+      "positional_odds": {
+        "1": 11.76,
+        "2": 14.51,
+        "3": 16.63,
+        "4": 17.14,
+        "5": 16.42,
+        "6": 15.48,
+        "7": 14.86,
+        "8": 14.5,
+        "9": 14.41,
+        "10": 14.13
+      },
+      "expected_best": 16.4892665,
+      "expected_avg": 9.498750749999749,
+      "prob_vittoria_ci": [
+        0.05920577415070709,
+        0.0598616538264536
+      ]
+    },
+    "Paolo Masini": {
+      "attempts_on_record": 2,
+      "miss_rate": 0.625,
+      "prob_over20": 0.17079087627371178,
+      "prob_over25": 0.09406917792466225,
+      "prob_over30": 0.06334659960201194,
+      "prob_vittoria": 0.03421847344579663,
+      "prob_podio": 0.08412747617571473,
+      "positional_prob": {
+        "1": 0.034214367844823276,
+        "2": 0.02602609608558716,
+        "3": 0.023906913962905563,
+        "4": 0.024662300654901766,
+        "5": 0.026682497625356197,
+        "6": 0.028703694445833126,
+        "7": 0.03013497975303705,
+        "8": 0.03144078388241764,
+        "9": 0.03267709843523472,
+        "10": 0.035120231965205216
+      },
+      "odds_over20": 4.1,
+      "odds_over25": 7.44,
+      "odds_over30": 11.05,
+      "odds_vittoria": 20.46,
+      "odds_podio": 8.32,
+      "positional_odds": {
+        "1": 20.46,
+        "2": 26.9,
+        "3": 29.28,
+        "4": 28.38,
+        "5": 26.23,
+        "6": 24.39,
+        "7": 23.23,
+        "8": 22.26,
+        "9": 21.42,
+        "10": 19.93
+      },
+      "expected_best": 11.1713125,
+      "expected_avg": 9.690515916666635,
+      "prob_vittoria_ci": [
+        0.033966525491775125,
+        0.03447042139981813
+      ]
+    }
+  },
+  "top_rankings": [
+    {
+      "ranking": [
+        "Francesco Rogo",
+        "Andrea Della Maggiora",
+        "Gianluca Becuzzi",
+        "Daniele Ninci",
+        "Francesco Pepe",
+        "Alberto Niccolai",
+        "Matteo Brini",
+        "Antonio Nicolosi",
+        "Chiara Tomaiuolo",
+        "Andrea Romboli"
+      ],
+      "ranking_prob": 2e-06,
+      "positions": [
+        {
+          "pos": 1,
+          "player": "Francesco Rogo",
+          "player_pos_prob": 0.055470679398090285
+        },
+        {
+          "pos": 2,
+          "player": "Andrea Della Maggiora",
+          "player_pos_prob": 0.18819077138429235
+        },
+        {
+          "pos": 3,
+          "player": "Gianluca Becuzzi",
+          "player_pos_prob": 0.08453082037694346
+        },
+        {
+          "pos": 4,
+          "player": "Daniele Ninci",
+          "player_pos_prob": 0.15682797580362945
+        },
+        {
+          "pos": 5,
+          "player": "Francesco Pepe",
+          "player_pos_prob": 0.12167074938759184
+        },
+        {
+          "pos": 6,
+          "player": "Alberto Niccolai",
+          "player_pos_prob": 0.11245913113033044
+        },
+        {
+          "pos": 7,
+          "player": "Matteo Brini",
+          "player_pos_prob": 0.1173104034394841
+        },
+        {
+          "pos": 8,
+          "player": "Antonio Nicolosi",
+          "player_pos_prob": 0.05442233664950258
+        },
+        {
+          "pos": 9,
+          "player": "Chiara Tomaiuolo",
+          "player_pos_prob": 0.1306539019147128
+        },
+        {
+          "pos": 10,
+          "player": "Andrea Romboli",
+          "player_pos_prob": 0.05642653601959706
+        }
+      ]
+    },
+    {
+      "ranking": [
+        "Tommaso Banchini",
+        "Andrea Della Maggiora",
+        "Gianluca Becuzzi",
+        "Daniele Ninci",
+        "Alberto Niccolai",
+        "Francesco Pepe",
+        "Matteo Brini",
+        "Chiara Tomaiuolo",
+        "Andrea Strappato",
+        "Francesco Rogo"
+      ],
+      "ranking_prob": 2e-06,
+      "positions": [
+        {
+          "pos": 1,
+          "player": "Tommaso Banchini",
+          "player_pos_prob": 0.0457906314052892
+        },
+        {
+          "pos": 2,
+          "player": "Andrea Della Maggiora",
+          "player_pos_prob": 0.18819077138429235
+        },
+        {
+          "pos": 3,
+          "player": "Gianluca Becuzzi",
+          "player_pos_prob": 0.08453082037694346
+        },
+        {
+          "pos": 4,
+          "player": "Daniele Ninci",
+          "player_pos_prob": 0.15682797580362945
+        },
+        {
+          "pos": 5,
+          "player": "Alberto Niccolai",
+          "player_pos_prob": 0.14086886966954956
+        },
+        {
+          "pos": 6,
+          "player": "Francesco Pepe",
+          "player_pos_prob": 0.11990351447282907
+        },
+        {
+          "pos": 7,
+          "player": "Matteo Brini",
+          "player_pos_prob": 0.1173104034394841
+        },
+        {
+          "pos": 8,
+          "player": "Chiara Tomaiuolo",
+          "player_pos_prob": 0.11949107633854922
+        },
+        {
+          "pos": 9,
+          "player": "Andrea Strappato",
+          "player_pos_prob": 0.10547717842323652
+        },
+        {
+          "pos": 10,
+          "player": "Francesco Rogo",
+          "player_pos_prob": 0.10782632605109234
+        }
+      ]
+    },
+    {
+      "ranking": [
+        "Andrea Della Maggiora",
+        "Andrea Romboli",
+        "Daniele Ninci",
+        "Gianluca Becuzzi",
+        "Alberto Niccolai",
+        "Francesco Pepe",
+        "Matteo Brini",
+        "Chiara Tomaiuolo",
+        "Andrea Strappato",
+        "Francesco Rogo"
+      ],
+      "ranking_prob": 2e-06,
+      "positions": [
+        {
+          "pos": 1,
+          "player": "Andrea Della Maggiora",
+          "player_pos_prob": 0.15625756136579513
+        },
+        {
+          "pos": 2,
+          "player": "Andrea Romboli",
+          "player_pos_prob": 0.0665925111233315
+        },
+        {
+          "pos": 3,
+          "player": "Daniele Ninci",
+          "player_pos_prob": 0.15005299205119232
+        },
+        {
+          "pos": 4,
+          "player": "Gianluca Becuzzi",
+          "player_pos_prob": 0.09439384092386142
+        },
+        {
+          "pos": 5,
+          "player": "Alberto Niccolai",
+          "player_pos_prob": 0.14086886966954956
+        },
+        {
+          "pos": 6,
+          "player": "Francesco Pepe",
+          "player_pos_prob": 0.11990351447282907
+        },
+        {
+          "pos": 7,
+          "player": "Matteo Brini",
+          "player_pos_prob": 0.1173104034394841
+        },
+        {
+          "pos": 8,
+          "player": "Chiara Tomaiuolo",
+          "player_pos_prob": 0.11949107633854922
+        },
+        {
+          "pos": 9,
+          "player": "Andrea Strappato",
+          "player_pos_prob": 0.10547717842323652
+        },
+        {
+          "pos": 10,
+          "player": "Francesco Rogo",
+          "player_pos_prob": 0.10782632605109234
+        }
+      ]
+    },
+    {
+      "ranking": [
+        "Andrea Della Maggiora",
+        "Daniele Ninci",
+        "Alberto Niccolai",
+        "Francesco Pepe",
+        "Gianluca Becuzzi",
+        "Matteo Brini",
+        "Tommaso Banchini",
+        "Chiara Tomaiuolo",
+        "Andrea Strappato",
+        "Francesco Rogo"
+      ],
+      "ranking_prob": 2e-06,
+      "positions": [
+        {
+          "pos": 1,
+          "player": "Andrea Della Maggiora",
+          "player_pos_prob": 0.15625756136579513
+        },
+        {
+          "pos": 2,
+          "player": "Daniele Ninci",
+          "player_pos_prob": 0.10802029695545669
+        },
+        {
+          "pos": 3,
+          "player": "Alberto Niccolai",
+          "player_pos_prob": 0.15301354796780484
+        },
+        {
+          "pos": 4,
+          "player": "Francesco Pepe",
+          "player_pos_prob": 0.09728290756386541
+        },
+        {
+          "pos": 5,
+          "player": "Gianluca Becuzzi",
+          "player_pos_prob": 0.0933205019247113
+        },
+        {
+          "pos": 6,
+          "player": "Matteo Brini",
+          "player_pos_prob": 0.10677598360245961
+        },
+        {
+          "pos": 7,
+          "player": "Tommaso Banchini",
+          "player_pos_prob": 0.08686597010448434
+        },
+        {
+          "pos": 8,
+          "player": "Chiara Tomaiuolo",
+          "player_pos_prob": 0.11949107633854922
+        },
+        {
+          "pos": 9,
+          "player": "Andrea Strappato",
+          "player_pos_prob": 0.10547717842323652
+        },
+        {
+          "pos": 10,
+          "player": "Francesco Rogo",
+          "player_pos_prob": 0.10782632605109234
+        }
+      ]
+    },
+    {
+      "ranking": [
+        "Andrea Della Maggiora",
+        "Daniele Ninci",
+        "Andrea Romboli",
+        "Gianluca Becuzzi",
+        "Francesco Pepe",
+        "Alberto Niccolai",
+        "Matteo Brini",
+        "Antonio Nicolosi",
+        "Chiara Tomaiuolo",
+        "Andrea Strappato"
+      ],
+      "ranking_prob": 2e-06,
+      "positions": [
+        {
+          "pos": 1,
+          "player": "Andrea Della Maggiora",
+          "player_pos_prob": 0.15625756136579513
+        },
+        {
+          "pos": 2,
+          "player": "Daniele Ninci",
+          "player_pos_prob": 0.10802029695545669
+        },
+        {
+          "pos": 3,
+          "player": "Andrea Romboli",
+          "player_pos_prob": 0.08218767184922261
+        },
+        {
+          "pos": 4,
+          "player": "Gianluca Becuzzi",
+          "player_pos_prob": 0.09439384092386142
+        },
+        {
+          "pos": 5,
+          "player": "Francesco Pepe",
+          "player_pos_prob": 0.12167074938759184
+        },
+        {
+          "pos": 6,
+          "player": "Alberto Niccolai",
+          "player_pos_prob": 0.11245913113033044
+        },
+        {
+          "pos": 7,
+          "player": "Matteo Brini",
+          "player_pos_prob": 0.1173104034394841
+        },
+        {
+          "pos": 8,
+          "player": "Antonio Nicolosi",
+          "player_pos_prob": 0.05442233664950258
+        },
+        {
+          "pos": 9,
+          "player": "Chiara Tomaiuolo",
+          "player_pos_prob": 0.1306539019147128
+        },
+        {
+          "pos": 10,
+          "player": "Andrea Strappato",
+          "player_pos_prob": 0.11146378043293505
+        }
+      ]
+    }
+  ],
+  "signals": {
+    "Andrea Picchi": {
+      "signal": "stabile",
+      "confidence": 64
+    },
+    "Francesco Pepe": {
+      "signal": "stabile",
+      "confidence": 64
+    },
+    "Gianluca Becuzzi": {
+      "signal": "stabile",
+      "confidence": 64
+    },
+    "Alberto Niccolai": {
+      "signal": "caldo",
+      "confidence": 64
+    },
+    "Chiara Tomaiuolo": {
+      "signal": "stabile",
+      "confidence": 61
+    },
+    "Matteo Brini": {
+      "signal": "stabile",
+      "confidence": 64
+    },
+    "Emanuele Bertolucci": {
+      "signal": "stabile",
+      "confidence": 31
+    },
+    "Tommaso Banchini": {
+      "signal": "stabile",
+      "confidence": 64
+    },
+    "Antonio Nicolosi": {
+      "signal": "stabile",
+      "confidence": 64
+    },
+    "Francesco Rogo": {
+      "signal": "stabile",
+      "confidence": 37
+    },
+    "Andrea Romboli": {
+      "signal": "stabile",
+      "confidence": 29
+    },
+    "Daniele Ninci": {
+      "signal": "stabile",
+      "confidence": 64
+    },
+    "Andrea Della Maggiora": {
+      "signal": "caldo",
+      "confidence": 64
+    },
+    "Andrea Strappato": {
+      "signal": "stabile",
+      "confidence": 52
+    },
+    "Giovanni Cerretani": {
+      "signal": "stabile",
+      "confidence": 24
+    },
+    "Paolo Masini": {
+      "signal": "freddo",
+      "confidence": 9
+    }
+  },
+  "market_indicators": {
+    "Andrea Picchi": {
+      "expected_score": 13.86,
+      "temperature": "stabile"
+    },
+    "Francesco Pepe": {
+      "expected_score": 21.11,
+      "temperature": "stabile"
+    },
+    "Gianluca Becuzzi": {
+      "expected_score": 20.98,
+      "temperature": "stabile"
+    },
+    "Alberto Niccolai": {
+      "expected_score": 25.4,
+      "temperature": "caldo"
+    },
+    "Chiara Tomaiuolo": {
+      "expected_score": 18.03,
+      "temperature": "stabile"
+    },
+    "Matteo Brini": {
+      "expected_score": 22.07,
+      "temperature": "stabile"
+    },
+    "Emanuele Bertolucci": {
+      "expected_score": 16.59,
+      "temperature": "stabile"
+    },
+    "Tommaso Banchini": {
+      "expected_score": 18.06,
+      "temperature": "stabile"
+    },
+    "Antonio Nicolosi": {
+      "expected_score": 19.44,
+      "temperature": "stabile"
+    },
+    "Francesco Rogo": {
+      "expected_score": 17.89,
+      "temperature": "stabile"
+    },
+    "Andrea Romboli": {
+      "expected_score": 18.84,
+      "temperature": "stabile"
+    },
+    "Daniele Ninci": {
+      "expected_score": 24.4,
+      "temperature": "stabile"
+    },
+    "Andrea Della Maggiora": {
+      "expected_score": 25.4,
+      "temperature": "caldo"
+    },
+    "Andrea Strappato": {
+      "expected_score": 17.44,
+      "temperature": "stabile"
+    },
+    "Giovanni Cerretani": {
+      "expected_score": 16.49,
+      "temperature": "stabile"
+    },
+    "Paolo Masini": {
+      "expected_score": 11.17,
+      "temperature": "freddo"
+    }
+  },
+  "special_bets": {
+    "outsider_on_podio": {
+      "probability": 1.0,
+      "odds": 1.01
+    },
+    "nuovo_cecchino": {
+      "probability": 0.692948,
+      "odds": 1.01
+    },
+    "nessuno_sotto_10": {
+      "probability": 0.0701855,
+      "odds": 9.97
+    },
+    "record_personale_battuto": {
+      "probability": 0.9819505,
+      "odds": 1.01
+    }
+  }
+}

@@ -228,7 +228,6 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/ranking.js"></script>
   <script src="data/data.js"></script>
-  <script src="data/sisal.js"></script>
   <script src="js/app.js"></script>
   <script>
     /* ────────────────────────────────────────────────────────────
@@ -439,21 +438,21 @@
       }
 
       // SISAL
-      if (window.CSL && CSL.sisal && CSL.sisal.length) {
-        var board = CSL.sisal.find(function(b){ return b.season_id === _seasonId })
-          || CSL.sisal[CSL.sisal.length-1]
-        if (board) {
+      if (typeof ensureSisalBoards === 'function') {
+        ensureSisalBoards().then(function() {
+          var boards = (window.CSL && CSL.sisal) ? CSL.sisal : []
+          var board = boards.find(function(b){ return b.season_id === _seasonId }) || boards[boards.length-1]
+          if (!board) return
           var sp = board.players.find(function(p){ return p.nome.toLowerCase()===playerName.toLowerCase() })
-          if (sp) {
-            var sisalSectionId = 'profile-sisal-section' + (sfx ? sfx : '')
-            var sisalSection = document.getElementById(sisalSectionId)
-            var contentId = 'profile-sisal-content' + (sfx ? sfx : '')
-            if (sisalSection) {
-              sisalSection.hidden = false
-              renderSisalProfile(sp, board, document.getElementById(contentId))
-            }
+          if (!sp) return
+          var sisalSectionId = 'profile-sisal-section' + (sfx ? sfx : '')
+          var sisalSection = document.getElementById(sisalSectionId)
+          var contentId = 'profile-sisal-content' + (sfx ? sfx : '')
+          if (sisalSection) {
+            sisalSection.hidden = false
+            renderSisalProfile(sp, board, document.getElementById(contentId))
           }
-        }
+        }).catch(function(){})
       }
     }
 
@@ -463,12 +462,12 @@
       var trendClass = p.trend==='Caldo' ? 'sisal-chip--hot' : p.trend==='Freddo' ? 'sisal-chip--cold' : 'sisal-chip--steady'
       var trendIcon  = p.trend==='Caldo' ? '🔥' : p.trend==='Freddo' ? '🧊' : '→'
       var quotes = [
-        { label:'Titolo',    val:p.quote_titolo,  icon:'🏆', featured:true  },
-        { label:'Podio',     val:p.quote_podio,   icon:'🥉', featured:false },
-        { label:'Top 5',     val:p.quote_top5,    icon:'⭐', featured:false },
-        { label:'Best ≥30',  val:p.quote_best_30, icon:'🎯', featured:false },
-        { label:'Media ≥18', val:p.quote_avg_18,  icon:'📊', featured:false },
-      ]
+        { label:'Vincente',  val:p.quote_vittoria, icon:'🥇', featured:true  },
+        { label:'Podio',     val:p.quote_podio,    icon:'🥉', featured:false },
+        { label:'Over 30',   val:p.quote_over_30,  icon:'🎯', featured:false },
+        { label:'Over 25',   val:p.quote_over_25,  icon:'🎯', featured:false },
+        { label:'Over 20',   val:p.quote_over_20,  icon:'📊', featured:false },
+      ].filter(function(q) { return q.val != null })
       container.innerHTML =
         '<div class="profile-sisal-meta">'
         +'<span class="sisal-chip '+trendClass+'">'+trendIcon+' '+_esc(p.trend)+'</span>'
@@ -476,7 +475,7 @@
         +'<span class="sisal-confidence-bar" style="width:100px"><span class="sisal-confidence-fill" style="width:'+p.confidence+'%"></span></span>'
         +'<span class="profile-sisal-conf-label">conf. '+p.confidence+'%</span>'
         +'</span>'
-        +'<span class="profile-sisal-giornate">G'+board.giornate_giocate+'/'+board.giornate_totali+' giocate</span>'
+        +'<span class="profile-sisal-giornate">linea '+(p.expected_score || 0).toFixed(1)+'</span>'
         +'</div>'
         +'<div class="profile-sisal-quotes">'
         +quotes.map(function(q) {
@@ -487,7 +486,7 @@
         }).join('')
         +'</div>'
         +(p.note ? '<div class="profile-sisal-note">&#8220;'+_esc(p.note)+'&#8221;</div>' : '')
-        +'<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — '+_esc(board.season_label)+'</p>'
+        +'<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — fonte: market_odds.json · '+_esc(board.season_label)+'</p>'
     }
 
     // ── Wallet dashboard ─────────────────────────────────────────

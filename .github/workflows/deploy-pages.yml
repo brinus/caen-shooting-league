@@ -41,7 +41,7 @@ jobs:
       - name: Prepare public folder
         run: |
           mkdir -p public
-          cp -r index.html classifica.html stats.html sisal.html posts.html post.html regolamento.html login.html profilo.html admin.html admin-post.html css js data risultati csl_logo.png market_odds.json public/ || true
+          cp -r index.html classifica.html stats.html sisal.html posts.html post.html regolamento.html login.html profilo.html admin.html admin-post.html css js data risultati csl_logo.png market_odds.json public/
 
       - name: Deploy to GitHub Pages (gh-pages branch)
         uses: peaceiris/actions-gh-pages@v3

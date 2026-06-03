@@ -189,6 +189,16 @@ function escapeHtml(value) {
 var _marketOddsDataCache = null;
 var _marketOddsBoardsCache = null;
 var _marketOddsLoadPromise = null;
+// ISO timestamp string from market_odds.json meta.updated_at (if available)
+var _marketOddsUpdatedAt = null;
+
+function _formatMarketUpdatedAt(iso) {
+  try {
+    if (!iso) return null
+    var d = new Date(iso)
+    return d.toLocaleString('it-IT', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch (e) { return iso }
+}
 
 function ensureSisalBoards() {
   if (_marketOddsBoardsCache && _marketOddsBoardsCache.length) {
@@ -206,6 +216,7 @@ function ensureSisalBoards() {
     })
     .then(function(data) {
       _marketOddsDataCache = data;
+      _marketOddsUpdatedAt = (data && data.meta && data.meta.updated_at) ? data.meta.updated_at : null;
       var season = getCurrentSeason();
       var board = _buildMarketOddsBoard(data, season ? season.id : null);
       _marketOddsBoardsCache = board ? [board] : [];
@@ -287,6 +298,8 @@ function _buildMarketOddsBoard(oddsData, seasonId) {
       positional_prob: market.positional_prob || {},
       positional_odds: market.positional_odds || {},
       note: 'Quote derivate direttamente da market_odds.json.',
+      // make player note friendlier and avoid mentioning raw file format
+      note: 'Quote indicative ricavate dall’export ufficiale delle quote.' ,
     };
   }).sort(function(a, b) {
     var ap = a.posizione_attuale == null ? 999 : a.posizione_attuale;
@@ -299,12 +312,19 @@ function _buildMarketOddsBoard(oddsData, seasonId) {
     return (a.quote_vittoria || 999) - (b.quote_vittoria || 999) || a.nome.localeCompare(b.nome, 'it');
   }).slice(0, 3).map(function(player, index) {
     var labels = ['Favorito titolo', 'Favorito podio', 'Value bet'];
+    // Friendly, varied blurbs for highlight cards (avoid generic 'json' text)
+    var blurbs = [
+      'Il favorito: la quota che tutti guardano quando si sogna in grande.',
+      'Podio in vista: un nome da tenere sott’occhio per la top 3.',
+      'Value bet: aspettati emozioni (e qualche sorpresa).'
+    ];
+    var blurb = (blurbs[index] || 'Quota indicativa, gioca responsabilmente.');
     return {
       label: labels[index] || ('Top ' + (index + 1)),
       market: index === 0 ? 'Vincente stagione' : index === 1 ? 'Podio stagione' : 'Mercato quota',
       player: player.nome,
       quota: index === 1 ? player.quote_podio : player.quote_vittoria,
-      blurb: 'Quota letta da market_odds.json.',
+      blurb: blurb,
     };
   });
 
@@ -696,7 +716,22 @@ function initHome() {
         }
       } catch (e) { /* ignore */ }
 
-      try { renderSisalTicker('home', season.id); } catch (e) { /* noop */ }
+        try {
+          renderSisalTicker('home', season.id);
+          var homeMetaEl = document.getElementById('home-sisal-meta');
+          try {
+            var homeBoard = board;
+            if (homeMetaEl) {
+              if (homeBoard && homeBoard._isLive) {
+                homeMetaEl.textContent = 'Quote calcolate in tempo reale';
+              } else if (window._marketOddsUpdatedAt) {
+                homeMetaEl.textContent = 'Quote aggiornate a ' + _formatMarketUpdatedAt(window._marketOddsUpdatedAt);
+              } else {
+                homeMetaEl.textContent = 'Fonte: market_odds.json';
+              }
+            }
+          } catch (e) { /* ignore formatting errors */ }
+        } catch (e) { /* noop */ }
     }).catch(function() {
       try { renderSisalTicker('home', season.id); } catch (e) { /* noop */ }
     });
@@ -3144,9 +3179,7 @@ function renderSisalBoard(seasonId) {
     return;
   }
 
-  var progressPct = board.giornate_totali
-    ? Math.round((board.giornate_giocate / board.giornate_totali) * 100)
-    : 0;
+  var progressPct = 0;
 
   var titleEl         = document.getElementById('sisal-season-title');
   var summaryEl       = document.getElementById('sisal-season-summary');
@@ -3166,14 +3199,77 @@ function renderSisalBoard(seasonId) {
 
   if (titleEl) titleEl.textContent = board.season_label;
   if (summaryEl) {
+    // Validate giornate values: prefer to compute remaining using the current matchday (today),
+    // falling back to counts derived from published results when today's matchday is not found.
+    var played = Number(board.giornate_giocate) || 0;
+    var total = Number(board.giornate_totali);
+    if (!isFinite(total) || total <= 0) {
+      total = played;
+    }
+
+    // Attempt to determine current matchday by looking up season data for today's date
+    var remaining = total - played;
+    try {
+      var season = null;
+      if (CSL.stagioni && CSL.stagioni.length) {
+        season = (board && board.season_id)
+          ? CSL.stagioni.find(function(s){ return s.id === board.season_id; })
+          : getCurrentSeason();
+        if (!season) season = CSL.stagioni[CSL.stagioni.length - 1];
+      }
+
+      if (season && Array.isArray(season.giornate) && season.giornate.length) {
+        var today = new Date();
+        var ty = today.getFullYear();
+        var tm = today.getMonth() + 1;
+        var td = today.getDate();
+        var todayG = season.giornate.find(function(g) {
+          if (!g || !g.data) return false;
+          var parts = String(g.data).split('-').map(function(x){ return Number(x); });
+          if (parts.length >= 3) {
+            return parts[0] === ty && parts[1] === tm && parts[2] === td;
+          }
+          try {
+            var gd = new Date(g.data);
+            return gd.getFullYear() === ty && (gd.getMonth() + 1) === tm && gd.getDate() === td;
+          } catch (ex) {
+            return false;
+          }
+        });
+
+        if (todayG && typeof todayG.numero !== 'undefined' && todayG.numero !== null) {
+          var currentNum = Number(todayG.numero) || 0;
+          played = currentNum;
+          remaining = total - currentNum;
+        } else {
+          remaining = total - played;
+        }
+      }
+    } catch (e) {
+      console.warn('Error while computing sisal remaining days', e);
+      remaining = total - played;
+    }
+
+    if (remaining < 0) {
+      console.warn('Inconsistent giornate counts in SISAL board', { season_id: board.season_id, giornate_giocate: board.giornate_giocate, giornate_totali: board.giornate_totali, computed_played: played, computed_remaining: remaining });
+      remaining = 0;
+      total = played;
+    }
+
     var liveSpan = board._isLive
       ? '<span style="color:var(--sisal-green)">⚡ quote live calcolate</span>'
-      : '<span>Fonte: market_odds.json</span>';
+      : (window._marketOddsUpdatedAt ? '<span>Quote aggiornate a ' + _formatMarketUpdatedAt(window._marketOddsUpdatedAt) + '</span>' : '<span>Fonte: market_odds.json</span>');
+
+    summaryEl.dataset.valid = (played >= 0 && remaining >= 0 && (played + remaining) === total) ? 'true' : 'false';
     summaryEl.innerHTML =
-      '<span>' + board.giornate_giocate + ' giornate · ' + (board.giornate_totali - board.giornate_giocate) + ' rimanenti</span>' +
-      '<span>' + board.players.length + ' profili quotati</span>' +
+      '<span>' + played + ' giornate · ' + remaining + ' rimanenti</span>' +
+      '<span>' + (board.players ? board.players.length : 0) + ' profili quotati</span>' +
       liveSpan;
   }
+  // Recompute progress percent based on computed played/total
+  try {
+    progressPct = total ? Math.round((played / total) * 100) : 0;
+  } catch (e) { progressPct = 0; }
   if (progressLabelEl) progressLabelEl.textContent = progressPct + '% di stagione';
   if (progressFillEl)  progressFillEl.style.width  = progressPct + '%';
 
@@ -3225,7 +3321,11 @@ function renderSisalBoard(seasonId) {
         if (board._isLive) {
           nextCopyEl.textContent = 'Quote calcolate in tempo reale dal motore CSL SISAL. Aggiornate automaticamente a ogni caricamento.';
         } else {
-          nextCopyEl.textContent = 'Quote lette direttamente dall export market_odds.json per la prossima giornata disponibile.';
+          if (window._marketOddsUpdatedAt) {
+            nextCopyEl.textContent = 'Quote aggiornate a ' + _formatMarketUpdatedAt(window._marketOddsUpdatedAt) + ' (fonte: market_odds.json) per la prossima giornata disponibile.';
+          } else {
+            nextCopyEl.textContent = 'Quote lette direttamente dall export market_odds.json per la prossima giornata disponibile.';
+          }
         }
       }
       if (nextTagEl) {
@@ -3282,10 +3382,28 @@ function renderSisalBoard(seasonId) {
       }).join('');
 
       nextSpecialsEl.innerHTML = (next.specials || []).map(function(item) {
+        // friendly descriptions for known special bets
+        var specialDescriptions = {
+          'outsider_on_podio': 'Scommessa che un outsider sorprenda e finisca sul podio — ottima per chi cerca valore.',
+          'nuovo_cecchino': 'Scommessa su chi si distinguerà nella giornata con un colpo decisivo ("nuovo cecchino").',
+          'nessuno_sotto_10': 'Nessun giocatore scenderà sotto la soglia di 10 punti nella giornata.',
+          'record_personale_battuto': 'Almeno un giocatore batterà il proprio record personale durante la giornata.',
+          // fallback keyed by label (lowercase, spaces)
+          'outsider on podio': 'Scommessa che un outsider sorprenda e finisca sul podio — ottima per chi cerca valore.',
+          'nuovo cecchino': 'Scommessa su chi si distinguerà nella giornata con un colpo decisivo ("nuovo cecchino").',
+          'nessuno sotto 10': 'Nessun giocatore scenderà sotto la soglia di 10 punti nella giornata.',
+          'record personale battuto': 'Almeno un giocatore batterà il proprio record personale durante la giornata.'
+        };
+        var desc = item.note && String(item.note).trim() ? item.note : null;
+        if (!desc) {
+          if (item.key && specialDescriptions[item.key]) desc = specialDescriptions[item.key];
+          else if (item.label && specialDescriptions[String(item.label).toLowerCase()]) desc = specialDescriptions[String(item.label).toLowerCase()];
+          else desc = 'Scommessa speciale: controlla il regolamento per i dettagli.';
+        }
         return '<article class="sisal-special-card">' +
           '<div class="sisal-special-label">' + escapeHtml(item.label) + '</div>' +
           '<div class="sisal-special-quote ' + getSisalQuoteClass(item.quota) + '">' + formatQuote(item.quota) + '</div>' +
-          '<p class="sisal-special-copy">' + escapeHtml(item.note) + '</p>' +
+          '<p class="sisal-special-copy">' + escapeHtml(desc) + '</p>' +
         '</article>';
       }).join('');
     }
@@ -3330,10 +3448,26 @@ function renderSisalBoard(seasonId) {
 
   if (specialsEl) {
     specialsEl.innerHTML = (board.specials || []).map(function(item) {
+      var specialDescriptions = {
+        'outsider_on_podio': 'Scommessa che un outsider sorprenda e finisca sul podio — ottima per chi cerca valore.',
+        'nuovo_cecchino': 'Scommessa su chi si distinguerà nella giornata con un colpo decisivo ("nuovo cecchino").',
+        'nessuno_sotto_10': 'Nessun giocatore scenderà sotto la soglia di 10 punti nella giornata.',
+        'record_personale_battuto': 'Almeno un giocatore batterà il proprio record personale durante la giornata.',
+        'outsider on podio': 'Scommessa che un outsider sorprenda e finisca sul podio — ottima per chi cerca valore.',
+        'nuovo cecchino': 'Scommessa su chi si distinguerà nella giornata con un colpo decisivo ("nuovo cecchino").',
+        'nessuno sotto 10': 'Nessun giocatore scenderà sotto la soglia di 10 punti nella giornata.',
+        'record personale battuto': 'Almeno un giocatore batterà il proprio record personale durante la giornata.'
+      };
+      var desc = item.note && String(item.note).trim() ? item.note : null;
+      if (!desc) {
+        if (item.key && specialDescriptions[item.key]) desc = specialDescriptions[item.key];
+        else if (item.label && specialDescriptions[String(item.label).toLowerCase()]) desc = specialDescriptions[String(item.label).toLowerCase()];
+        else desc = 'Scommessa speciale: controlla il regolamento per i dettagli.';
+      }
       return '<article class="sisal-special-card">' +
         '<div class="sisal-special-label">' + escapeHtml(item.label) + '</div>' +
         '<div class="sisal-special-quote ' + getSisalQuoteClass(item.quota) + '">' + formatQuote(item.quota) + '</div>' +
-        '<p class="sisal-special-copy">' + escapeHtml(item.note) + '</p>' +
+        '<p class="sisal-special-copy">' + escapeHtml(desc) + '</p>' +
       '</article>';
     }).join('');
   }

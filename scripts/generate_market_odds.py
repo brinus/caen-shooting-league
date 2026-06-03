@@ -202,7 +202,7 @@ def sample_attempt_from_model(model: Dict, rng=random, ability: float = 0.0) -> 
         return SCORE_MAX + len(tail_probs)
 
 
-def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, mode: str = 'auto', seed: int = None, chunk_size: int = 5000, show_progress: bool = False, hist_max_per_player: Dict = None, global_record: int = 0) -> Tuple[Dict, Counter, Dict]:
+def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, mode: str = 'auto', seed: int = None, chunk_size: int = 5000, show_progress: bool = False, hist_max_per_player: Dict = None, global_record: int = 0, collect_hist: bool = False) -> Tuple[Dict, Counter, Dict, Dict]:
     """Simulatore principale. Restituisce la struttura compatibile con l'output precedente.
 
     Modes:
@@ -218,6 +218,7 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
     names = list(players_models.keys())
     n_players = len(names)
     stats = {n: {'wins': 0, 'podio': 0, 'over20': 0, 'over25': 0, 'over30': 0, 'pos_counts': Counter(), 'sum_best': 0.0, 'sum_avg': 0.0} for n in names}
+    hist_counts = {n: Counter() for n in names} if collect_hist else None
     top_counts = Counter()
     # special event counters
     special_counts = {
@@ -309,6 +310,12 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
                     name = names[idx]
                     stats[name]['sum_best'] += float(bests[idx])
                     stats[name]['sum_avg'] += float(avgs[idx])
+                    # collect histogram of bests if requested
+                    if collect_hist:
+                        bv = int(bests[idx])
+                        if bv < 0:
+                            bv = 0
+                        hist_counts[names[idx]][bv] += 1
                 # record top-k ordering
                 top_tuple = tuple(names[idx] for idx in order[:max_pos])
                 top_counts[top_tuple] += 1
@@ -327,7 +334,7 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
                 if hist_max_per_player is not None:
                     seasonal_sorted = sorted(hist_max_per_player.items(), key=lambda kv: kv[1], reverse=True)
                     seasonal_top10 = set([kv[0] for kv in seasonal_sorted[:10]])
-                    top3 = set(order[:3])
+                    top3 = set(names[idx] for idx in order[:3])
                     if any(p not in seasonal_top10 for p in top3):
                         special_counts['outsider_on_podio'] += 1
                 # nuovo cecchino: any best > global_record
@@ -390,6 +397,12 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
             for name in names:
                 stats[name]['sum_best'] += float(results[name][0])
                 stats[name]['sum_avg'] += float(results[name][1])
+                # collect histogram of bests if requested
+                if collect_hist:
+                    bv = int(results[name][0])
+                    if bv < 0:
+                        bv = 0
+                    hist_counts[name][bv] += 1
             # special events per iteration
             # outsider on podium: any of top3 not in season top10
             if hist_max_per_player is not None:
@@ -446,7 +459,10 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
         out[name]['expected_best'] = s['sum_best'] / iterations if iterations > 0 else 0.0
         out[name]['expected_avg'] = s['sum_avg'] / iterations if iterations > 0 else 0.0
 
+    if collect_hist:
+        return out, top_counts, special_counts, hist_counts
     return out, top_counts, special_counts
+
 
 
 def main():
@@ -463,6 +479,7 @@ def main():
     p.add_argument('--chunk-size', type=int, default=5000, help='Chunk size for fast mode (minimizza memoria)')
     p.add_argument('--smooth-count', type=float, default=30.0, help='Pseudo-count per-event per-player for final smoothing (default:30)')
     p.add_argument('--vig', type=float, default=0.05, help='Bookmaker margin to reduce displayed odds (fraction, e.g. 0.05)')
+    p.add_argument('--debug-plots', action='store_true', default=False, help='Generate debug plots (optional)')
     args = p.parse_args()
 
     ris_dir = Path(args.risultati)
@@ -488,7 +505,11 @@ def main():
     global_record = max(global_scores) if global_scores else 0
 
     # Always show progress
-    out, top_counts, special_counts = simulate(players_models, iterations=args.iters, max_pos=args.max_pos, mode=args.mode, seed=args.seed, chunk_size=args.chunk_size, show_progress=True, hist_max_per_player=hist_max_per_player, global_record=global_record)
+    # collect per-player best-score histograms when debug plots requested
+    if args.debug_plots:
+        out, top_counts, special_counts, hist_counts = simulate(players_models, iterations=args.iters, max_pos=args.max_pos, mode=args.mode, seed=args.seed, chunk_size=args.chunk_size, show_progress=True, hist_max_per_player=hist_max_per_player, global_record=global_record, collect_hist=True)
+    else:
+        out, top_counts, special_counts = simulate(players_models, iterations=args.iters, max_pos=args.max_pos, mode=args.mode, seed=args.seed, chunk_size=args.chunk_size, show_progress=True, hist_max_per_player=hist_max_per_player, global_record=global_record)
 
     # Apply smoothing and vig, then clip odds
     max_odds = args.max_odds
@@ -643,6 +664,89 @@ def main():
         json.dump({'meta': meta, 'markets': out, 'top_rankings': top_rankings, 'signals': signals, 'market_indicators': market_indicators, 'special_bets': special_bets}, f, ensure_ascii=False, indent=2)
 
     print('Output scritto in', out_path)
+
+    # Optional debug plots
+    if args.debug_plots:
+        try:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+
+            # Win probabilities (top N)
+            top_n = 20
+            players_sorted = sorted(out.items(), key=lambda kv: kv[1].get('prob_vittoria', 0.0), reverse=True)
+            names = [kv[0] for kv in players_sorted[:top_n]]
+            probs = [kv[1].get('prob_vittoria', 0.0) for kv in players_sorted[:top_n]]
+            if names:
+                plt.figure(figsize=(10, max(4, len(names) * 0.3)))
+                y = list(range(len(names)))
+                plt.barh(y, probs[::-1], color='C0')
+                plt.yticks(y, names[::-1])
+                plt.xlabel('Probabilità di vittoria')
+                plt.title('Probabilità di vittoria (top %d)' % len(names))
+                plt.tight_layout()
+                png1 = out_path.with_name(out_path.stem + '-win-probs.png')
+                plt.savefig(str(png1), dpi=150)
+                plt.close()
+
+            # Special bets probabilities
+            keys = list(special_bets.keys())
+            vals = [special_bets[k].get('probability', 0.0) for k in keys]
+            if keys:
+                plt.figure(figsize=(8, 4))
+                plt.bar(range(len(keys)), vals, color='C1')
+                plt.xticks(range(len(keys)), keys, rotation=45, ha='right')
+                plt.ylabel('Probabilità')
+                plt.title('Probabilità scommesse speciali')
+                plt.tight_layout()
+                png2 = out_path.with_name(out_path.stem + '-specials.png')
+                plt.savefig(str(png2), dpi=150)
+                plt.close()
+
+            # Per-player histogram of best scores across simulations (top players)
+            try:
+                if 'hist_counts' in locals() and hist_counts:
+                    # choose top players by win prob
+                    top_hist_n = min(6, len(players_sorted))
+                    top_players = [kv[0] for kv in players_sorted[:top_hist_n]]
+                    # determine bin range (include tail if present)
+                    max_tail = 0
+                    try:
+                        max_tail = max((players_models[n].get('tail_len', 0) for n in players_models.keys()), default=0)
+                    except Exception:
+                        max_tail = 0
+                    bin_max = SCORE_MAX + max_tail
+                    # combined multi-panel
+                    rows = len(top_players)
+                    fig_h = max(3, rows * 1.5)
+                    fig, axes = plt.subplots(rows, 1, figsize=(10, fig_h), sharex=True)
+                    if rows == 1:
+                        axes = [axes]
+                    for ax, pname in zip(axes, top_players):
+                        cnt = hist_counts.get(pname, {})
+                        bins = list(range(0, bin_max + 1))
+                        counts = [cnt.get(b, 0) for b in bins]
+                        # normalize to probability
+                        total = sum(counts) if sum(counts) > 0 else 1
+                        probs_hist = [c / total for c in counts]
+                        ax.bar(bins, probs_hist, color='C2')
+                        ax.set_ylabel(pname)
+                        ax.set_xlim(0, bin_max)
+                    axes[-1].set_xlabel('Punteggio (best per simulazione)')
+                    plt.suptitle('Distribuzione dei punteggi migliori per simulazione (top players)')
+                    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+                    png3 = out_path.with_name(out_path.stem + '-best-hists.png')
+                    plt.savefig(str(png3), dpi=150)
+                    plt.close()
+                else:
+                    png3 = None
+            except Exception as e:
+                png3 = None
+                print('Errore generazione istogrammi per player:', e)
+
+            print('Debug plots salvati:', png1 if names else '(none)', png2 if keys else '(none)', png3 if 'png3' in locals() and png3 else '(none)')
+        except Exception as e:
+            print('Impossibile generare i debug plot (matplotlib potrebbe mancare):', e)
 
 
 if __name__ == '__main__':

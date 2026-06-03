@@ -486,7 +486,9 @@
         }).join('')
         +'</div>'
         +(p.note ? '<div class="profile-sisal-note">&#8220;'+_esc(p.note)+'&#8221;</div>' : '')
-        +'<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — fonte: market_odds.json · '+_esc(board.season_label)+'</p>'
+        +'<p class="profile-sisal-disclaimer">Quote indicative a scopo ludico — '
+        + (window._marketOddsUpdatedAt ? ('Quote aggiornate a ' + (new Date(window._marketOddsUpdatedAt)).toLocaleString('it-IT') + ' · fonte: market_odds.json') : 'fonte: market_odds.json')
+        + ' · ' + _esc(board.season_label) + '</p>'
     }
 
     // ── Wallet dashboard ─────────────────────────────────────────

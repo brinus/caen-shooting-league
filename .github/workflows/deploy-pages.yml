@@ -36,7 +36,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          python scripts/generate_market_odds.py --out market_odds.json --iters 2000000 --vig 0.30
+          python scripts/generate_market_odds.py --out market_odds.json --iters 200000 --vig 0.30
+          test -f market_odds.json
 
       - name: Prepare public folder
         run: |

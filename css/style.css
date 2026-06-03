@@ -3872,6 +3872,10 @@ textarea.form-input  { resize: vertical; min-height: 80px; }
 }
 .bet-cell.selected .bet-q { color: var(--primary); }
 
+/* Compact position selector in bet modal */
+.bet-pos-select { appearance: none; -moz-appearance: none; -webkit-appearance: none; cursor: pointer; }
+.bet-pos-select.selected { outline: 2px solid rgba(255,102,0,0.18); box-shadow: 0 6px 18px rgba(255,102,0,0.04); }
+
 /* ── Giornata badge ── */
 .bet-giornata-info { margin-bottom: 0.5rem; }
 .bet-giornata-badge {

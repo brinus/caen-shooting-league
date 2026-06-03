@@ -1,5 +1,5 @@
 // AUTO-GENERATO da scripts/aggiorna.py — non modificare manualmente
-// Ultimo aggiornamento: 2026-06-03 00:59
+// Ultimo aggiornamento: 2026-06-03 02:01
 
 CSL.stagioni = [
   {

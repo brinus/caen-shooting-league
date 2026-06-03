@@ -161,13 +161,13 @@
                 <form id="form-change-password">
                   <div class="form-group" style="margin-bottom:1rem">
                     <label>Nuova password</label>
-                    <input type="password" class="form-input" id="pw-new"
-                           placeholder="Minimo 8 caratteri" minlength="8" required>
+                          <input type="password" class="form-input" id="pw-new"
+                            placeholder="Minimo 8 caratteri" minlength="8" required autocomplete="new-password">
                   </div>
                   <div class="form-group" style="margin-bottom:1.25rem">
                     <label>Conferma nuova password</label>
-                    <input type="password" class="form-input" id="pw-confirm"
-                           placeholder="Ripeti la nuova password" required>
+                          <input type="password" class="form-input" id="pw-confirm"
+                            placeholder="Ripeti la nuova password" required autocomplete="new-password">
                   </div>
                   <div class="form-error"   id="pw-error"   hidden></div>
                   <div class="form-success" id="pw-success" hidden></div>
@@ -1008,7 +1008,7 @@
     // ── Bootstrap principale ──────────────────────────────────────
     var _seasonId = null
 
-    document.addEventListener('csl:auth-ready', async function() {
+    async function loadProfile() {
       var params       = new URLSearchParams(window.location.search)
       var playerParam  = params.get('giocatore')
       var targetPlayer = null
@@ -1118,7 +1118,15 @@
 
         renderStats(targetPlayer, playerData, giornatePersonali, '-other', false)
       }
-    })
+    }
+
+    // Run on auth-ready or immediately if session/profile already present
+    document.addEventListener('csl:auth-ready', loadProfile)
+    try {
+      if (window.CSLAuth && (CSLAuth.isLoggedIn() || CSLAuth.getSession())) {
+        loadProfile()
+      }
+    } catch (e) { /* ignore */ }
   </script>
 </body>
 </html>

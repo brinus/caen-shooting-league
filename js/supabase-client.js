@@ -5,7 +5,35 @@
 const SUPABASE_URL      = 'https://uerwrizwqdacnboasznc.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlcndyaXp3cWRhY25ib2Fzem5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NjQ0NzUsImV4cCI6MjA5NDM0MDQ3NX0.fx1R_H_RFWH9-HaMpLb-8sobHcGBE4v_gUvr8E_dBrM'
 
-const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+// Safe storage wrapper: prefer `localStorage` but fall back to an in-memory store
+// when the browser blocks access (Tracking Prevention / ITP). This prevents
+// errors when the Supabase client tries to persist sessions.
+const _supa_storage = (function(){
+  const fallback = (function(){
+    const mem = {}
+    return {
+      getItem(k){ return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null },
+      setItem(k,v){ mem[k] = String(v) },
+      removeItem(k){ delete mem[k] }
+    }
+  })()
+  try {
+    const ls = window.localStorage
+    const TEST_KEY = '__supa_storage_test__'
+    ls.setItem(TEST_KEY, TEST_KEY)
+    ls.removeItem(TEST_KEY)
+    return ls
+  } catch (e) {
+    return fallback
+  }
+})()
+
+const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    storage: _supa_storage,
+  }
+})
 
 // ── Stato sessione ─────────────────────────────────────────────
 

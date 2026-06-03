@@ -1005,14 +1005,23 @@
       })
 
       /* ── Auth + wallet ── */
-      document.addEventListener('csl:auth-ready', async function() {
-        if (!CSLAuth.isLoggedIn()) return
-        widget.hidden = false
-        var w = await CSLAuth.getWallet()
-        _wallet = w.total
-        document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
-        document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
-      })
+      async function _updateBetWidgetFromWallet() {
+        try {
+          if (!window.CSLAuth || !CSLAuth.isLoggedIn()) return
+          widget.hidden = false
+          var w = await CSLAuth.getWallet()
+          _wallet = w.total
+          document.getElementById('bet-widget-amount').textContent = fmtC(_wallet)
+          document.getElementById('bet-modal-balance').textContent  = fmtC(_wallet)
+        } catch (e) { console.warn('Unable to update bet widget wallet', e) }
+      }
+
+      document.addEventListener('csl:auth-ready', _updateBetWidgetFromWallet)
+      try {
+        if (window.CSLAuth && (CSLAuth.isLoggedIn() || CSLAuth.getSession())) {
+          _updateBetWidgetFromWallet()
+        }
+      } catch (e) { /* ignore */ }
 
       /* ── Modal open / close ── */
       btnOpen.addEventListener('click', function() {

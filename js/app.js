@@ -1702,8 +1702,13 @@ function initStats() {
     }
   }
 
+  // Ensure sisal boards (market_odds.json) are loaded before first render so ticker has data
   select.addEventListener('change', renderPlayers);
-  renderPlayers();
+  try {
+    ensureSisalBoards().then(function() { renderPlayers(); }).catch(function() { renderPlayers(); });
+  } catch (e) {
+    renderPlayers();
+  }
 }
 
 function renderStatsSummary(players, seasons) {

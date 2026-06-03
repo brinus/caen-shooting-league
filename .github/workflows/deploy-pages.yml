@@ -41,7 +41,11 @@ jobs:
       - name: Prepare public folder
         run: |
           mkdir -p public
-          cp -r index.html classifica.html stats.html sisal.html posts.html post.html regolamento.html login.html profilo.html admin.html admin-post.html css js data risultati csl_logo.png market_odds.json public/
+          # ensure there's at least one dotfile so publisher cp globs don't fail
+          touch public/.placeholder
+          cp -r index.html classifica.html stats.html sisal.html posts.html post.html regolamento.html login.html profilo.html admin.html admin-post.html css js data risultati csl_logo.png public/
+          # copy the generated JSON explicitly
+          cp -f market_odds.json public/
 
       - name: Deploy to GitHub Pages (gh-pages branch)
         uses: peaceiris/actions-gh-pages@v3

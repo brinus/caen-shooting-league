@@ -36,8 +36,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          python scripts/generate_market_odds.py --out market_odds.json --iters 200000 --vig 0.30
-          test -f market_odds.json
+          python scripts/generate_market_odds.py --out market_odds.json --iters 20000 --vig 0.30
 
       - name: Prepare public folder
         run: |
@@ -47,6 +46,7 @@ jobs:
           cp -r index.html classifica.html stats.html sisal.html posts.html post.html regolamento.html login.html profilo.html admin.html admin-post.html css js data risultati csl_logo.png public/
           # copy the generated JSON explicitly
           cp -f market_odds.json public/
+          ls -la public/
 
       - name: Deploy to GitHub Pages (gh-pages branch)
         uses: peaceiris/actions-gh-pages@v3

@@ -346,7 +346,7 @@
           if (!board || !board.next_matchday || !board.next_matchday.data) return false;
           var dStr = board.next_matchday.data;
           var now = new Date();
-          var start = new Date(dStr + 'T12:00:00');
+          var start = new Date(dStr + 'T12:50:00');
           var end   = new Date(dStr + 'T20:00:00');
           return now >= start && now < end;
         } catch (e) { return false }
@@ -731,7 +731,7 @@
       /* ── Toggle selezione nella schedina ── */
       function toggleSelection(bd, panelName) {
         if (isBettingLockedNow()) {
-          errBox.textContent = '⛔ Dalle 12:00 della giornata di gara non si accettano più scommesse.'
+          errBox.textContent = '⛔ Dalle 12:50 della giornata di gara non si accettano più scommesse.'
           errBox.hidden = false
           setTimeout(function(){ errBox.hidden = true }, 3500)
           return
@@ -917,7 +917,7 @@
         /* ---- Confirm button ---- */
         if (isBettingLockedNow()) {
           btnConfirm.disabled = true
-          btnConfirm.textContent = 'Scommesse chiuse dalle 12:00'
+          btnConfirm.textContent = 'Scommesse chiuse dalle 12:50'
         } else {
           btnConfirm.disabled = false
           btnConfirm.textContent = _selections.length === 1
@@ -1058,7 +1058,7 @@
         errBox.hidden = true; sucBox.hidden = true
         if (!_selections.length) return
         if (isBettingLockedNow()) {
-          errBox.textContent = '⛔ Dalle 12:00 della giornata di gara non si accettano più scommesse.'
+          errBox.textContent = '⛔ Dalle 12:50 della giornata di gara non si accettano più scommesse.'
           errBox.hidden = false
           return
         }

@@ -409,6 +409,21 @@
       }
     })
 
+    // Top-level "Pubblica" button should submit the form as well
+    (function attachTopPublishButton() {
+      const pub = document.getElementById('btn-save-post')
+      const form = document.getElementById('form-post')
+      if (!pub || !form) return
+      pub.addEventListener('click', function () {
+        if (typeof form.requestSubmit === 'function') form.requestSubmit()
+        else {
+          // fallback: click the actual submit button
+          const submitBtn = document.getElementById('btn-save-post-form')
+          if (submitBtn) submitBtn.click()
+        }
+      })
+    })()
+
     document.getElementById('btn-delete-post').addEventListener('click', async function () {
       if (!editingPostId) return
       if (!confirm('Eliminare questo post? L\'azione non può essere annullata.')) return

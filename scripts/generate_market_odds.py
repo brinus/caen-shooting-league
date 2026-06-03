@@ -63,32 +63,75 @@ def load_results(risultati_dir: Path) -> Tuple[Dict, List[int]]:
                         global_scores.append(v)
     return players, global_scores
 
-
-def global_histogram(global_scores: List[int], max_score: int = None) -> List[float]:
-    """Return empirical histogram over 0..max_score (inclusive).
-
-    If max_score is None the module-level SCORE_MAX is used. This allows
-    building a single extended discrete distribution (Option A) instead of
-    an ad-hoc tail component.
+def build_tail_model(scores: List[int], threshold: int, max_score: int) -> List[float]:
     """
+    Modello semplice della coda:
+    - sopra threshold usa decadimento esponenziale discreto
+    - garantisce continuità con la massa empirica
+    """
+    tail_scores = [s for s in scores if s > threshold]
+    if not tail_scores:
+        return []
+
+    # stima decadimento
+    tail_start_mass = len([s for s in scores if s > threshold]) / max(1, len(scores))
+
+    # support tail
+    tail_len = max_score - threshold
+    if tail_len <= 0:
+        return []
+
+    # parametro esponenziale empirico
+    avg_excess = sum(s - threshold for s in tail_scores) / len(tail_scores)
+    lam = 1.0 / max(1e-6, avg_excess)
+
+    probs = []
+    for i in range(1, tail_len + 1):
+        p = math.exp(-lam * i)
+        probs.append(p)
+
+    # normalize tail
+    s = sum(probs)
+    probs = [p / s * tail_start_mass for p in probs]
+    return probs
+
+def global_histogram(global_scores: List[int], max_score: int = None, threshold: int = None) -> List[float]:
     if max_score is None:
         max_score = SCORE_MAX
-    rng = range(SCORE_MIN, max_score + 1)
-    length = max_score - SCORE_MIN + 1
-    counts = [0.0] * length
-    for s in global_scores:
-        if s < SCORE_MIN:
-            continue
-        if s > max_score:
-            # values beyond max_score are aggregated into the top bin
-            counts[-1] += 1.0
-        else:
-            counts[s - SCORE_MIN] += 1.0
-    total = sum(counts)
-    if total <= 0:
-        return [1.0 / length] * length
-    return [c / total for c in counts]
 
+    if threshold is None:
+        # soglia automatica robusta
+        sorted_scores = sorted(global_scores)
+        if sorted_scores:
+            threshold = int(sorted_scores[int(len(sorted_scores) * 0.95)])
+        else:
+            threshold = SCORE_MAX
+
+    body_range = range(SCORE_MIN, threshold + 1)
+    body_counts = [0.0] * (threshold - SCORE_MIN + 1)
+
+    tail_scores = []
+
+    for s in global_scores:
+        if s <= threshold:
+            body_counts[s - SCORE_MIN] += 1.0
+        elif s <= max_score:
+            tail_scores.append(s)
+
+    total = sum(body_counts) + len(tail_scores)
+    if total <= 0:
+        return [1.0 / (max_score - SCORE_MIN + 1)] * (max_score - SCORE_MIN + 1)
+
+    body_probs = [c / total for c in body_counts]
+
+    tail_probs = build_tail_model(global_scores, threshold, max_score)
+
+    # merge body + tail
+    full = body_probs + tail_probs
+
+    # safety normalization
+    s = sum(full)
+    return [x / s for x in full]
 
 def build_player_models(players: Dict, global_scores: List[int], max_score: int = None, alpha_prior: float = 20.0, alpha_miss: float = 1.0) -> Dict:
     """Costruisce per ogni giocatore un modello discreto:
@@ -120,6 +163,7 @@ def build_player_models(players: Dict, global_scores: List[int], max_score: int 
             max_score = SCORE_MAX
 
     g_hist = global_histogram(global_scores, max_score=max_score)
+    threshold = int(len(g_hist) * 0.95) + SCORE_MIN
     # We'll use adaptive shrinkage: prior mass reduces with number of observations
     models = {}
     support_len = len(g_hist)
@@ -130,11 +174,11 @@ def build_player_models(players: Dict, global_scores: List[int], max_score: int 
                 continue
             if s < SCORE_MIN:
                 continue
-            if s > max_score:
-                # aggregate extreme observed values into the top bin
-                counts[-1] += 1.0
-            else:
+            if s <= threshold:
                 counts[s - SCORE_MIN] += 1.0
+            else:
+                tail_index = min(s - threshold - 1, support_len - (threshold - SCORE_MIN) - 1)
+                counts[threshold - SCORE_MIN + tail_index] += 1.0
         obs_total = sum(counts)
 
         # adaptive prior: fewer obs -> stronger prior
@@ -463,17 +507,17 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
 def main():
     p = argparse.ArgumentParser(description='Genera quote di mercato per la prossima giornata (improved)')
     p.add_argument('--risultati', default='risultati', help='Cartella con CSV risultati')
-    p.add_argument('--iters', type=int, default=2000000, help='Numero di simulazioni (default: 2000000)')
+    p.add_argument('--iters', type=int, default=5000000, help='Numero di simulazioni (default: 5000000)')
     p.add_argument('--out', default='market_odds.json', help='File JSON di output')
     p.add_argument('--max-pos', type=int, default=10, help='Massima posizione da riportare (default:10)')
     p.add_argument('--seed', type=int, default=None, help='Seed per RNG (opzionale)')
-    p.add_argument('--max-odds', type=float, default=200.0, help='Clip massimo per le quote (default:200)')
+    p.add_argument('--max-odds', type=float, default=100.0, help='Clip massimo per le quote (default:100)')
     p.add_argument('--mode', choices=['auto', 'fast', 'accurate'], default='fast', help='Modalità di simulazione (fast usa numpy quando disponibile)')
     p.add_argument('--alpha-prior', type=float, default=10.0, help='Prior total mass for Dirichlet smoothing of score histogram')
     p.add_argument('--alpha-miss', type=float, default=1.0, help='Laplace smoothing for miss probability')
     p.add_argument('--chunk-size', type=int, default=5000, help='Chunk size for fast mode (minimizza memoria)')
     p.add_argument('--smooth-count', type=float, default=30.0, help='Pseudo-count per-event per-player for final smoothing (default:30)')
-    p.add_argument('--vig', type=float, default=0.05, help='Bookmaker margin to reduce displayed odds (fraction, e.g. 0.05)')
+    p.add_argument('--vig', type=float, default=0.3, help='Bookmaker margin to reduce displayed odds (fraction, e.g. 0.3)')
     p.add_argument('--debug-plots', action='store_true', default=False, help='Generate debug plots (optional)')
     args = p.parse_args()
 

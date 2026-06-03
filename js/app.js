@@ -7,16 +7,163 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function formatShortDate(dateStr) {
+  try {
+    var d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  } catch (e) { return dateStr; }
+}
+
 function daysUntil(dateStr) {
-  const end = new Date(dateStr + 'T23:59:59');
-  const now = new Date();
-  return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+  // Return number of full days from today to dateStr using local dates
+  // 0 = today, 1 = tomorrow, negative if in the past
+  try {
+    var target = new Date(dateStr + 'T00:00:00');
+    var today = new Date(); today.setHours(0,0,0,0);
+    var diff = target.getTime() - today.getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  } catch (e) {
+    return NaN;
+  }
 }
 
 function getCurrentSeason() {
   return CSL.stagioni.find(function(s) { return s.status === 'attiva'; })
       || CSL.stagioni.find(function(s) { return s.status === 'next'; })
       || CSL.stagioni[CSL.stagioni.length - 1];
+}
+
+function compareCampionatoPlayers(a, b) {
+  // Primary: punti_campionato (desc)
+  var pa = a.punti_campionato || 0;
+  var pb = b.punti_campionato || 0;
+  if (pa !== pb) return pb - pa;
+
+  // Secondary: media_tiro_spareggio (desc)
+  var ma = a.media_tiro_spareggio || 0;
+  var mb = b.media_tiro_spareggio || 0;
+  if (ma !== mb) return mb - ma;
+
+  // Tertiary: punti_tiro (desc)
+  var ta = a.punti_tiro || 0;
+  var tb = b.punti_tiro || 0;
+  if (ta !== tb) return tb - ta;
+
+  // Next: record (desc)
+  var ra = a.record || 0;
+  var rb = b.record || 0;
+  if (ra !== rb) return rb - ra;
+
+  // Finally, alphabetical by name (asc)
+  var na = String(a.nome || '').toLowerCase();
+  var nb = String(b.nome || '').toLowerCase();
+  if (na < nb) return -1;
+  if (na > nb) return 1;
+  return 0;
+}
+
+function formatTieAverage(v) {
+  if (v === null || v === undefined) return '—';
+  var n = Number(v);
+  if (!isFinite(n)) return '—';
+  if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+  return n.toFixed(1);
+}
+
+function getSeasonAverage(p) {
+  if (!p) return 0;
+  if (p.media_tiro !== undefined && p.media_tiro !== null) return Number(p.media_tiro) || 0;
+  if (p.media_tre_tentativi !== undefined && p.media_tre_tentativi !== null) return Number(p.media_tre_tentativi) || 0;
+  // fallback to average of available averages
+  if (p.avg !== undefined && p.avg !== null) return Number(p.avg) || 0;
+  return 0;
+}
+
+function getSecondRecord(p) {
+  if (!p) return 0;
+  return (p.secondo_record || p.second_record || 0) || 0;
+}
+
+function compareCecchiniPlayers(a, b) {
+  var ra = a.record || 0;
+  var rb = b.record || 0;
+  if (ra !== rb) return rb - ra;
+
+  var cmp = (getSeasonAverage(b) - getSeasonAverage(a));
+  if (cmp !== 0) return cmp;
+
+  var sa = getSecondRecord(a);
+  var sb = getSecondRecord(b);
+  if (sa !== sb) return sb - sa;
+
+  var ta = a.punti_tiro || 0;
+  var tb = b.punti_tiro || 0;
+  if (ta !== tb) return tb - ta;
+
+  return compareCampionatoPlayers(a, b);
+}
+
+function sameCecchiniRank(a, b) {
+  return compareCecchiniPlayers(a, b) === 0;
+}
+
+function rankEmoji(pos) {
+  if (!pos || pos <= 0) return '';
+  if (pos === 1) return '🥇';
+  if (pos === 2) return '🥈';
+  if (pos === 3) return '🥉';
+  return String(pos);
+}
+
+function renderSisalTicker(type, seasonId) {
+  try {
+    var boards = CSL.sisal || [];
+    var board = null;
+    if (seasonId) board = boards.find(function(b) { return b.season_id === seasonId; });
+    if (!board) board = boards[0] || null;
+
+    var targetId = null;
+    if (type === 'home') targetId = 'home-sisal-ticker';
+    else if (type === 'stats') targetId = 'stats-sisal-ticker';
+    else if (type === 'sisal') {
+      // sisal page uses a different renderer
+      if (board) _renderSisalTicker(board);
+      return;
+    }
+
+    if (!targetId) return;
+    var el = document.getElementById(targetId);
+    if (!el) return;
+
+    var items = [];
+    if (board && board.next_matchday && board.next_matchday.highlights) {
+      board.next_matchday.highlights.forEach(function(item) {
+        items.push({ market: item.market.toUpperCase(), name: item.player, quota: item.quota });
+      });
+    }
+    if (board && board.next_matchday && board.next_matchday.players) {
+      board.next_matchday.players.slice(0,6).forEach(function(p) {
+        items.push({ market: 'G' + board.next_matchday.numero + ' WIN', name: p.nome.split(' ')[0], quota: p.quote_vittoria });
+        items.push({ market: 'G' + board.next_matchday.numero + ' O25',  name: p.nome.split(' ')[0], quota: p.quote_over_25 });
+      });
+    }
+
+    if (!items.length) {
+      el.innerHTML = '<span class="sisal-ticker-item">Nessuna quota disponibile.</span>';
+      return;
+    }
+
+    // Create repeated content for seamless scroll
+    var full = items.concat(items);
+    el.innerHTML = full.map(function(item) {
+      var qClass = getSisalQuoteClass(item.quota);
+      return '<span class="sisal-ticker-item">' +
+        '<span class="sisal-ticker-item-market">' + escapeHtml(item.market) + '</span>' +
+        '<span class="sisal-ticker-item-name">' + escapeHtml(item.name) + '</span>' +
+        '<span class="sisal-ticker-item-q ' + qClass + '">@' + formatQuote(item.quota) + '</span>' +
+      '</span>';
+    }).join('');
+  } catch (e) { console.error('renderSisalTicker failed', e); }
 }
 
 function today() {
@@ -463,6 +610,97 @@ function renderRecentPosts(posts) {  var container = document.getElementById('re
       '<div class="post-read-more">Leggi →</div>' +
       '</a>';
   }).join('');
+}
+
+function initHome() {
+  var season = getCurrentSeason();
+  if (!season) return;
+
+  var nameEl = document.getElementById('season-name');
+  var datesEl = document.getElementById('season-dates');
+  var badgeEl = document.getElementById('season-status-badge');
+  var countdownEl = document.getElementById('season-countdown');
+
+  if (nameEl) nameEl.textContent = season.nome + ' ' + (season.anno || '');
+  if (datesEl) datesEl.textContent = (season.inizio ? formatDate(season.inizio) : '—') + ' · ' + (season.fine ? formatDate(season.fine) : '—');
+  if (badgeEl) badgeEl.textContent = season.status === 'attiva' ? 'Attiva' : (season.status === 'next' ? 'In arrivo' : (season.status || ''));
+
+  try {
+    var next = _findSisalNextMatchday(season);
+    if (countdownEl) {
+      if (next && next.data) {
+        var d = daysUntil(next.data);
+        countdownEl.textContent = d > 0 ? (d + ' giorni · G' + (next.numero || '?')) : 'Oggi';
+      } else if (season.fine) {
+        var dd = daysUntil(season.fine);
+        countdownEl.textContent = dd > 0 ? (dd + ' giorni alla fine') : '';
+      }
+    }
+  } catch (e) { /* ignore */ }
+
+  // Stats
+  var players = season.classifica ? season.classifica.length : 0;
+  var matches = season.giornate ? season.giornate.length : 0;
+  var record = 0;
+  if (season.classifica && season.classifica.length) {
+    record = Math.max.apply(null, season.classifica.map(function(p){ return p.record || 0; }));
+  }
+  var el = document.getElementById('stat-giocatori'); if (el) el.textContent = players || '—';
+  el = document.getElementById('stat-partite'); if (el) el.textContent = matches || '—';
+  el = document.getElementById('stat-record'); if (el) el.textContent = record ? (record + ' pt') : '—';
+
+  // Render champions, podium and recent posts
+  try { renderChampions(season); } catch (e) { console.error('renderChampions failed', e); }
+  try { renderPodium((season.classifica || []).slice(0,3)); } catch (e) { console.error('renderPodium failed', e); }
+  try { renderRecentPosts(CSL.posts || []); } catch (e) { console.error('renderRecentPosts failed', e); }
+
+  // SISAL: ensure boards loaded then populate ticker and (prefer) board next_matchday for countdown
+  try {
+    ensureSisalBoards().then(function(boards) {
+      // If board has next_matchday prefer it for countdown
+      var board = (CSL.sisal || []).find(function(b) { return b.season_id === season.id; }) || (boards && boards[0]);
+      try {
+        var nm = board && board.next_matchday ? board.next_matchday : null;
+        var nextDate = nm && nm.data ? nm.data : null;
+        // If next_matchday exists but is not in the future, recompute from season data
+        var useNext = false;
+        if (nextDate) {
+          try {
+            var nd = new Date(nextDate + 'T00:00:00');
+            var todayDate = new Date(); todayDate.setHours(0,0,0,0);
+            if (nd >= todayDate) useNext = true;
+          } catch (e) { useNext = false; }
+        }
+
+        if (!useNext) {
+          try {
+            var computed = _findSisalNextMatchday(season);
+            if (computed && computed.data) {
+              nm = computed;
+              nextDate = computed.data;
+              useNext = true;
+            }
+          } catch (e) { /* ignore */ }
+        }
+
+        if (countdownEl) {
+          if (useNext && nextDate) {
+            var d = daysUntil(nextDate);
+            var whenLabel = d <= 0 ? 'Oggi' : (d === 1 ? 'Domani' : (d + ' giorni'));
+            var dateLabel = formatShortDate(nextDate);
+            countdownEl.textContent = whenLabel + ' · G' + (nm.numero || '?') + ' · ' + dateLabel;
+          } else if (season.fine) {
+            var dd = daysUntil(season.fine);
+            countdownEl.textContent = dd > 0 ? (dd === 1 ? '1 giorno alla fine' : (dd + ' giorni alla fine')) : '';
+          }
+        }
+      } catch (e) { /* ignore */ }
+
+      try { renderSisalTicker('home', season.id); } catch (e) { /* noop */ }
+    }).catch(function() {
+      try { renderSisalTicker('home', season.id); } catch (e) { /* noop */ }
+    });
+  } catch (e) { try { renderSisalTicker('home', season.id); } catch (e) {} }
 }
 
 // ── Classifica Page ────────────────────────────────────────────

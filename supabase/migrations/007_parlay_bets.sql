@@ -73,12 +73,12 @@ BEGIN
     RETURN json_build_object('error', 'Una multipla richiede almeno 2 selezioni');
   END IF;
 
-  -- Per schedine su giornata: blocco piazzamento tra 12:00 e 20:00 del giorno indicato
+  -- Per schedine su giornata: blocco piazzamento tra 12:50 e 20:00 del giorno indicato
   IF p_giornata_date IS NOT NULL THEN
-    v_cut_start := (p_giornata_date::timestamp AT TIME ZONE 'localtime') + INTERVAL '12 hours';
+    v_cut_start := (p_giornata_date::timestamp AT TIME ZONE 'localtime') + INTERVAL '12 hours 50 minutes';
     v_cut_end   := (p_giornata_date::timestamp AT TIME ZONE 'localtime') + INTERVAL '20 hours';
     IF v_now >= v_cut_start AND v_now < v_cut_end THEN
-      RETURN json_build_object('error', 'Giornata iniziata, non si accettano più scommesse dalle 12:00 alle 20:00');
+      RETURN json_build_object('error', 'Giornata iniziata, non si accettano più scommesse dalle 12:50 alle 20:00');
     END IF;
     IF EXISTS (SELECT 1 FROM public.risultati WHERE data = p_giornata_date) THEN
       RETURN json_build_object('error', 'Risultato già registrato per questa giornata: non si accettano scommesse');

@@ -57,12 +57,12 @@ BEGIN
   END IF;
 
   -- Se la scommessa è relativa a una giornata, blocca piazzamento se siamo
-  -- nell'intervallo [giornata 12:00, giornata 20:00[ (nuova regola regolamento).
+  -- nell'intervallo [giornata 12:50, giornata 20:00[ (nuova regola regolamento).
   IF p_giornata_date IS NOT NULL THEN
-    v_cut_start := (p_giornata_date::timestamp AT TIME ZONE 'localtime') + INTERVAL '12 hours';
+    v_cut_start := (p_giornata_date::timestamp AT TIME ZONE 'localtime') + INTERVAL '12 hours 50 minutes';
     v_cut_end   := (p_giornata_date::timestamp AT TIME ZONE 'localtime') + INTERVAL '20 hours';
     IF v_now >= v_cut_start AND v_now < v_cut_end THEN
-      RETURN json_build_object('error', 'Giornata iniziata, non si accettano più scommesse dalle 12:00 alle 20:00');
+      RETURN json_build_object('error', 'Giornata iniziata, non si accettano più scommesse dalle 12:50 alle 20:00');
     END IF;
     -- Se è già stato registrato un risultato per quella giornata, blocca
     IF EXISTS (SELECT 1 FROM public.risultati WHERE data = p_giornata_date) THEN

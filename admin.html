@@ -153,21 +153,28 @@
           <div class="admin-section card">
             <h2>Modifica Regolamento</h2>
             <p class="text-muted" style="margin-bottom:1rem">
-              Il testo viene salvato come HTML diretto nel campo <code>content</code> della tabella <code>regolamento</code>.
-              Puoi incollare HTML formattato o modificare il testo esistente.
+              Modifica il regolamento in Markdown; al salvataggio verrà convertito in HTML.
+              Il contenuto salvato è HTML e sarà mostrato pubblicamente in [regolamento.html].
             </p>
-            <div class="form-group">
-              <label>Contenuto HTML</label>
-              <textarea class="form-input form-textarea-large" id="regolamento-content"
-                        placeholder="Incolla qui il contenuto HTML del regolamento…"></textarea>
+            <div class="post-editor-split">
+              <div class="post-editor-pane">
+                <div class="post-editor-pane-label">Markdown</div>
+                <textarea class="form-input post-editor-textarea" id="regolamento-content"
+                          placeholder="# Titolo del regolamento\n\nScrivi qui il regolamento in Markdown…"></textarea>
+              </div>
+              <div class="post-editor-pane">
+                <div class="post-editor-pane-label">Anteprima</div>
+                <div id="regolamento-preview" class="rules-content post-editor-preview" style="display:none;margin-top:0"></div>
+              </div>
             </div>
             <div class="form-error"   id="regolamento-error"   hidden></div>
             <div class="form-success" id="regolamento-success" hidden></div>
             <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap">
               <button class="btn-primary"   id="btn-save-regolamento">Salva regolamento</button>
               <button class="btn-secondary" id="btn-preview-regolamento">Anteprima</button>
+              <a class="btn-secondary" id="btn-open-regolamento" href="regolamento.html" target="_blank">Apri regolamento pubblico</a>
             </div>
-            <div id="regolamento-preview" class="rules-content" style="margin-top:1.5rem;display:none"></div>
+            
           </div>
         </div>
 
@@ -341,6 +348,7 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/ranking.js"></script>
   <script src="data/data.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/admin.js"></script>
 </body>

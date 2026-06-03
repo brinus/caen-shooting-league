@@ -785,26 +785,44 @@ async function loadRegolamentoTab() {
   const { data, error } = await CSLAuth.client
     .from('regolamento').select('content').eq('id', 1).single()
 
+  const preview = document.getElementById('regolamento-preview')
   if (!error && data) {
-    document.getElementById('regolamento-content').value = data.content || ''
+    // Always show the current stored regolamento in preview so admins can see it immediately.
+    preview.innerHTML = data.content || ''
+    preview.style.display = 'block'
+    // If stored content looks like Markdown (no leading HTML tag), fill the editor with it.
+    const raw = data.content || ''
+    const looksLikeHtml = raw.trim().startsWith('<')
+    document.getElementById('regolamento-content').value = looksLikeHtml ? '' : raw
+    // Ensure preview button label reflects current state
+    const previewBtn = document.getElementById('btn-preview-regolamento')
+    if (previewBtn) previewBtn.textContent = 'Nascondi anteprima'
   }
 
   document.getElementById('btn-save-regolamento').addEventListener('click', async function () {
     hideMsg('regolamento-error')
     hideMsg('regolamento-success')
-    const content = document.getElementById('regolamento-content').value
+    const md = document.getElementById('regolamento-content').value || ''
+    // Convert Markdown -> HTML for storage and public display
+    const html = (window.marked && md.trim()) ? marked.parse(md) : (md || preview.innerHTML || '')
     const { error: saveErr } = await CSLAuth.client
       .from('regolamento')
-      .upsert({ id: 1, content, updated_by: CSLAuth.getProfile()?.id })
+      .upsert({ id: 1, content: html, updated_by: CSLAuth.getProfile()?.id })
 
     if (saveErr) showMsg('regolamento-error', saveErr.message, true)
-    else showMsg('regolamento-success', '✓ Regolamento aggiornato.', false)
+    else {
+      // update preview and show success
+      preview.innerHTML = html
+      preview.style.display = 'block'
+      showMsg('regolamento-success', '✓ Regolamento aggiornato.', false)
+    }
   })
 
   document.getElementById('btn-preview-regolamento').addEventListener('click', function () {
-    const content = document.getElementById('regolamento-content').value
-    const preview = document.getElementById('regolamento-preview')
-    preview.innerHTML = content
+    const md = document.getElementById('regolamento-content').value || ''
+    if (md && window.marked) {
+      preview.innerHTML = marked.parse(md)
+    }
     preview.style.display = preview.style.display === 'none' ? 'block' : 'none'
     this.textContent = preview.style.display === 'none' ? 'Anteprima' : 'Nascondi anteprima'
   })

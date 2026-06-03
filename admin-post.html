@@ -273,7 +273,8 @@
       }
     }
 
-    document.addEventListener('csl:auth-ready', async function () {
+    async function _onCslAuthReady() {
+      if (!CSLAuth || typeof CSLAuth.isAdmin !== 'function') return
       if (!CSLAuth.isAdmin()) {
         document.getElementById('post-editor-guard').hidden = false
         return
@@ -291,7 +292,15 @@
         await loadPost(postId)
         await loadPollForEdit(postId)
       }
-    })
+    }
+
+    document.addEventListener('csl:auth-ready', _onCslAuthReady)
+    // If auth was already loaded before this script ran, call handler immediately
+    try {
+      if (window.CSLAuth && CSLAuth.isAdmin && CSLAuth.isAdmin()) {
+        _onCslAuthReady()
+      }
+    } catch (e) { /* ignore */ }
 
     // Auto-genera slug dal titolo
     document.getElementById('post-titolo').addEventListener('input', function () {

@@ -64,47 +64,93 @@ def load_results(risultati_dir: Path) -> Tuple[Dict, List[int]]:
     return players, global_scores
 
 
-def global_histogram(global_scores: List[int]) -> List[float]:
-    counts = [0.0] * SCORE_RANGE
+def global_histogram(global_scores: List[int], max_score: int = None) -> List[float]:
+    """Return empirical histogram over 0..max_score (inclusive).
+
+    If max_score is None the module-level SCORE_MAX is used. This allows
+    building a single extended discrete distribution (Option A) instead of
+    an ad-hoc tail component.
+    """
+    if max_score is None:
+        max_score = SCORE_MAX
+    rng = range(SCORE_MIN, max_score + 1)
+    length = max_score - SCORE_MIN + 1
+    counts = [0.0] * length
     for s in global_scores:
-        if SCORE_MIN <= s <= SCORE_MAX:
+        if s < SCORE_MIN:
+            continue
+        if s > max_score:
+            # values beyond max_score are aggregated into the top bin
+            counts[-1] += 1.0
+        else:
             counts[s - SCORE_MIN] += 1.0
     total = sum(counts)
     if total <= 0:
-        # uniform prior if no data
-        return [1.0 / SCORE_RANGE] * SCORE_RANGE
+        return [1.0 / length] * length
     return [c / total for c in counts]
 
 
-def build_player_models(players: Dict, global_scores: List[int], alpha_prior: float = 20.0, alpha_miss: float = 1.0) -> Dict:
+def build_player_models(players: Dict, global_scores: List[int], max_score: int = None, alpha_prior: float = 20.0, alpha_miss: float = 1.0) -> Dict:
     """Costruisce per ogni giocatore un modello discreto:
     - `score_probs`: lista di probabilità per valori 0..50 (con Dirichlet prior)
     - `miss_prob`: probabilità di mancare (Laplace-smoothed)
     - `mean` e `var` calcolate dalla distribuzione posteriore
     """
-    g_hist = global_histogram(global_scores)
+    # determine histogram support: allow extending beyond SCORE_MAX based on
+    # historical extreme percentiles so that tail mass is data-driven
+    if max_score is None:
+        # compute 99.5 percentile + small margin (data-driven extension)
+        try:
+            gs = sorted([s for s in global_scores if s is not None])
+            if gs:
+                p = 99.5
+                k = (len(gs) - 1) * (p / 100.0)
+                lo = int(math.floor(k))
+                hi = int(math.ceil(k))
+                if hi == lo:
+                    perc = gs[int(k)]
+                else:
+                    frac = k - lo
+                    perc = int(round(gs[lo] * (1 - frac) + gs[hi] * frac))
+                margin = 2
+                max_score = max(SCORE_MAX, perc + margin)
+            else:
+                max_score = SCORE_MAX
+        except Exception:
+            max_score = SCORE_MAX
+
+    g_hist = global_histogram(global_scores, max_score=max_score)
     # We'll use adaptive shrinkage: prior mass reduces with number of observations
     models = {}
+    support_len = len(g_hist)
     for name, rec in players.items():
-        counts = [0.0] * SCORE_RANGE
+        counts = [0.0] * support_len
         for s in rec.get('scores', []):
-            counts[s - SCORE_MIN] += 1.0
+            if s is None:
+                continue
+            if s < SCORE_MIN:
+                continue
+            if s > max_score:
+                # aggregate extreme observed values into the top bin
+                counts[-1] += 1.0
+            else:
+                counts[s - SCORE_MIN] += 1.0
         obs_total = sum(counts)
 
         # adaptive prior: fewer obs -> stronger prior
-        n_obs = len(rec.get('scores', []))
+        n_obs = int(sum(1 for _ in rec.get('scores', []) if _ is not None and _ >= SCORE_MIN))
         eff_alpha = alpha_prior / math.sqrt(n_obs + 1.0)
         prior_counts = [p * eff_alpha for p in g_hist]
 
-        # posterior counts: data + prior
-        post_counts = [counts[i] + prior_counts[i] for i in range(SCORE_RANGE)]
+        # posterior counts: data + prior (now over extended support)
+        post_counts = [counts[i] + prior_counts[i] for i in range(support_len)]
         post_total = sum(post_counts)
         if post_total <= 0:
-            probs = [1.0 / SCORE_RANGE] * SCORE_RANGE
+            probs = [1.0 / support_len] * support_len
         else:
             probs = [c / post_total for c in post_counts]
 
-        # moments
+        # moments (include extended support)
         mean = sum((i + SCORE_MIN) * p for i, p in enumerate(probs))
         var = sum(((i + SCORE_MIN) - mean) ** 2 * p for i, p in enumerate(probs))
 
@@ -113,32 +159,15 @@ def build_player_models(players: Dict, global_scores: List[int], alpha_prior: fl
         misses = rec.get('misses', 0)
         miss_prob = (misses + alpha_miss) / (opps + alpha_miss * 2) if opps or alpha_miss else 0.0
 
-        # tail smoothing: reserve small mass for scores beyond SCORE_MAX
-        # eps smaller if many observations
-        if n_obs <= 0:
-            eps = 0.05
-        else:
-            eps = min(0.05, 0.02 + 0.03 / math.sqrt(n_obs + 1.0))
-        tail_len = 6
-        tail_lambda = 0.7
-        tail_weights = [math.exp(-tail_lambda * i) for i in range(1, tail_len + 1)]
-        tw_sum = sum(tail_weights)
-        tail_probs = [eps * (w / tw_sum) for w in tail_weights]
-        # renormalize main probs to 1-eps
-        probs = [(1.0 - eps) * p for p in probs]
-
         models[name] = {
             'score_probs': probs,
-            'tail_probs': tail_probs,
-            'tail_len': tail_len,
-            'tail_lambda': tail_lambda,
-            'tail_mass': eps,
             'miss_prob': float(miss_prob),
             'attempts_on_record': int(len(rec.get('scores', []))),
             'opps': int(opps),
             'misses': int(misses),
             'mean': float(mean),
             'var': float(var),
+            'support_max': max_score,
         }
     return models
 
@@ -151,55 +180,42 @@ def deterministic_jitter(name: str, iteration: int) -> float:
 
 
 def sample_attempt_from_model(model: Dict, rng=random, ability: float = 0.0) -> int:
-    """Sample a single attempt. Returns -1 for a miss, otherwise integer score.
+    """Sample a single attempt from the model's unified discrete distribution.
 
-    `ability` is an optional bias term (used to induce correlation across attempts).
+    Returns -1 for a miss. The model contains `score_probs` over an extended
+    support 0..support_max. `ability` reweights probabilities smoothly without
+    introducing an artificial tail split.
     """
     if rng.random() < model.get('miss_prob', 0.0):
         return -1
 
     probs = model['score_probs']
-    tail_mass = model.get('tail_mass', 0.0)
-    tail_probs = model.get('tail_probs', [])
+    L = len(probs)
 
     # if ability != 0, reweight probabilities slightly to favor higher scores
     if ability and abs(ability) > 1e-12:
         beta = 0.6
-        # create weights proportional to p * exp(beta * ability * scaled_index)
         weights = []
         for i, p in enumerate(probs):
-            scaled = (i / float(max(1, SCORE_RANGE - 1)))
+            scaled = (i / float(max(1, L - 1)))
             weights.append(p * math.exp(beta * ability * scaled))
         s = sum(weights)
         if s > 0:
-            probs_mod = [w / s * (1.0 - tail_mass) for w in weights]
+            probs_mod = [w / s for w in weights]
         else:
             probs_mod = probs
     else:
         probs_mod = probs
 
+    # draw according to the discrete probabilities
     r = rng.random()
-    main_mass = sum(probs_mod)
-    if r < main_mass:
-        # sample from main probs
-        rr = r / main_mass
-        cum = 0.0
-        for i, p in enumerate(probs_mod):
-            cum += p / main_mass
-            if rr <= cum:
-                return i + SCORE_MIN
-        return SCORE_MAX
-    else:
-        # sample tail
-        if not tail_probs:
-            return SCORE_MAX
-        rr = (r - main_mass) / max(1e-12, tail_mass)
-        cum = 0.0
-        for i, p in enumerate(tail_probs):
-            cum += p / tail_mass
-            if rr <= cum:
-                return SCORE_MAX + (i + 1)
-        return SCORE_MAX + len(tail_probs)
+    cum = 0.0
+    for i, p in enumerate(probs_mod):
+        cum += p
+        if r <= cum:
+            return i + SCORE_MIN
+    # numerical fallback: return top of support
+    return SCORE_MIN + L - 1
 
 
 def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, mode: str = 'auto', seed: int = None, chunk_size: int = 5000, show_progress: bool = False, hist_max_per_player: Dict = None, global_record: int = 0, collect_hist: bool = False) -> Tuple[Dict, Counter, Dict, Dict]:
@@ -230,11 +246,9 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
 
     # precompute numpy arrays if in fast mode
     if mode == 'fast':
-        # prepare arrays of probs per player
-        probs_arr = np.array([players_models[n]['score_probs'] for n in names])  # shape (n_players, SCORE_RANGE)
+        # prepare arrays of probs per player over a unified extended support
+        probs_arr = np.array([players_models[n]['score_probs'] for n in names])
         miss_probs = np.array([players_models[n]['miss_prob'] for n in names])
-        tail_mass_arr = np.array([players_models[n].get('tail_mass', 0.0) for n in names])
-        tail_probs_list = [players_models[n].get('tail_probs', []) for n in names]
         rng = np.random.default_rng(seed)
 
         # chunked processing to limit memory
@@ -244,36 +258,17 @@ def simulate(players_models: Dict, iterations: int = 20000, max_pos: int = 10, m
             take = min(chunk_size, iterations - it)
             # sample attempts: build empty array then fill per-player to avoid unnecessary allocs
             samples = np.empty((n_players, take, 3), dtype=np.int16)
+            L = probs_arr.shape[1]
             for pi in range(n_players):
                 p = probs_arr[pi]
-                # normalize main probabilities to sum to 1 for numpy.choice
                 psum = float(p.sum())
                 if psum <= 0:
                     norm = None
                 else:
-                    norm = (p / psum).tolist()
-                flat = rng.choice(np.arange(SCORE_RANGE), size=(take * 3,), p=norm)
+                    norm = (p / psum)
+                flat = rng.choice(np.arange(L), size=(take * 3,), p=norm)
                 samples[pi] = flat.reshape((take, 3))
-                # apply tail sampling: replace a fraction tail_mass of draws with tail values
-                tm = float(tail_mass_arr[pi])
-                if tm and tm > 0.0:
-                    tail_probs = tail_probs_list[pi]
-                    if tail_probs:
-                        tail_norm = np.array(tail_probs) / float(sum(tail_probs))
-                        # select positions to replace
-                        tail_mask = rng.random((take, 3)) < tm
-                        cnt = int(tail_mask.sum())
-                        if cnt > 0:
-                            tail_choices = rng.choice(np.arange(1, len(tail_probs) + 1), size=cnt, p=tail_norm)
-                            samples_pi = samples[pi]
-                            ti = 0
-                            for i in range(take):
-                                for j in range(3):
-                                    if tail_mask[i, j]:
-                                        samples_pi[i, j] = SCORE_MAX + int(tail_choices[ti])
-                                        ti += 1
-                            samples[pi] = samples_pi
-                # apply misses: use sentinel -1 (overrides tail/main)
+                # apply misses: use sentinel -1 (overrides sampled values)
                 miss_mask = rng.random((take, 3)) < miss_probs[pi]
                 samples[pi][miss_mask] = -1
 
@@ -709,13 +704,19 @@ def main():
                     # choose top players by win prob
                     top_hist_n = min(6, len(players_sorted))
                     top_players = [kv[0] for kv in players_sorted[:top_hist_n]]
-                    # determine bin range (include tail if present)
-                    max_tail = 0
+                    # determine bin range from models' support
                     try:
-                        max_tail = max((players_models[n].get('tail_len', 0) for n in players_models.keys()), default=0)
+                        bin_max = max((len(players_models[n]['score_probs']) - 1 for n in players_models.keys()))
                     except Exception:
-                        max_tail = 0
-                    bin_max = SCORE_MAX + max_tail
+                        bin_max = SCORE_MAX
+                    # diagnostics: per-player mass beyond SCORE_MAX
+                    try:
+                        tail_masses = {n: sum(p for i, p in enumerate(players_models[n]['score_probs']) if (i + SCORE_MIN) > SCORE_MAX) for n in players_models.keys()}
+                        # print top players by tail mass
+                        tail_sorted = sorted(tail_masses.items(), key=lambda kv: kv[1], reverse=True)[:6]
+                        print('Tail mass (> %d) top players:' % SCORE_MAX, tail_sorted)
+                    except Exception:
+                        pass
                     # combined multi-panel
                     rows = len(top_players)
                     fig_h = max(3, rows * 1.5)

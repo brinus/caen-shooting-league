@@ -118,10 +118,11 @@ data,giocatore,iniziali,t1,t2,t3
 2026-06-15,Alberto Niccolai,AN,28,29,25
 2026-06-15,Andrea Picchi,AP,13,17,16
 2026-06-15,Antonio Nicolosi,AN,15,19,14
+2026-06-15,Daniele Ninci,DN,20,21,17
 2026-06-15,Francesco Pepe,CT,13,17,20
 2026-06-15,Matteo Brini,MB,12,24,37
 2026-06-15,Tommaso Banchini,TB,14,16,19
-2026-06-15,Daniele Ninci,DN,20,21,17
+2026-06-15,Andrea Della Maggiora,ADM,24,37,19
 2026-06-17,Alberto Niccolai,AN,10,28,24
 2026-06-17,Andrea Della Maggiora,ADM,22,26,19
 2026-06-17,Andrea Picchi,AP,13,14,22
@@ -145,3 +146,10 @@ data,giocatore,iniziali,t1,t2,t3
 2026-06-24,Daniele Ninci,DN,9,27,10
 2026-06-24,Matteo Brini,MB,24,13,13
 2026-06-24,Tommaso Banchini,TB,7,8,8
+2026-06-29,Alberto Niccolai,AN,21,29,32
+2026-06-29,Andrea Della Maggiora,ADM,19,28,26
+2026-06-29,Andrea Picchi,AP,15,19,27
+2026-06-29,Antonio Nicolosi,AN,25,30,11
+2026-06-29,Tommaso Banchini,TB,3,0,2
+2026-06-29,Francesco Pepe,FP,23,30,10
+2026-06-29,Matteo Brini,MB,10,22,11
